@@ -1,6 +1,12 @@
-import { useState } from 'react';
-import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight, Bug, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
+
+interface ServiceStatus {
+  name: string;
+  status: 'connected' | 'disconnected' | 'checking';
+  message: string;
+}
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
@@ -12,8 +18,72 @@ const BudgetMiniApp = () => {
     comment: ''
   });
 
+  // Service status states
+  const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([
+    { name: 'Telegram Bot', status: 'checking', message: 'Checking connection...' },
+    { name: 'Health Connect Sync', status: 'checking', message: 'Checking connection...' },
+    { name: 'Firefly API', status: 'checking', message: 'Checking connection...' }
+  ]);
+
   // Get Telegram user data
   const { userName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
+
+  // Check service connections when debug screen is opened
+  useEffect(() => {
+    if (currentScreen === 'debug') {
+      checkServiceConnections();
+    }
+  }, [currentScreen]);
+
+  const checkServiceConnections = async () => {
+    // Reset all to checking state
+    setServiceStatuses([
+      { name: 'Telegram Bot', status: 'checking', message: 'Checking connection...' },
+      { name: 'Health Connect Sync', status: 'checking', message: 'Checking connection...' },
+      { name: 'Firefly API', status: 'checking', message: 'Checking connection...' }
+    ]);
+
+    // Check Telegram Bot connection
+    setTimeout(() => {
+      setServiceStatuses(prev => prev.map(service =>
+        service.name === 'Telegram Bot'
+          ? {
+              ...service,
+              status: isAvailable ? 'connected' : 'disconnected',
+              message: isAvailable
+                ? 'Connected to Telegram Mini App'
+                : 'Not running in Telegram environment'
+            }
+          : service
+      ));
+    }, 500);
+
+    // Check Health Connect Sync (simulated)
+    setTimeout(() => {
+      setServiceStatuses(prev => prev.map(service =>
+        service.name === 'Health Connect Sync'
+          ? {
+              ...service,
+              status: 'disconnected',
+              message: 'Service not configured yet'
+            }
+          : service
+      ));
+    }, 1000);
+
+    // Check Firefly API (simulated)
+    setTimeout(() => {
+      setServiceStatuses(prev => prev.map(service =>
+        service.name === 'Firefly API'
+          ? {
+              ...service,
+              status: 'disconnected',
+              message: 'API endpoint not configured'
+            }
+          : service
+      ));
+    }, 1500);
+  };
 
   const accounts = [
     { id: 'cash', name: 'Cash', balance: '5,240 ₴', icon: <DollarSign size={20} />, color: '#10B981' },
@@ -118,7 +188,7 @@ const BudgetMiniApp = () => {
 
       <div className="px-3">
         <h2 className="text-sm font-semibold mb-2 text-white px-1">My Features</h2>
-        
+
         <div className="space-y-0">
           {features.map((feature, idx) => (
             <div
@@ -126,7 +196,7 @@ const BudgetMiniApp = () => {
               onClick={() => feature.title === 'Expenses' && setCurrentScreen('accounts')}
               className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3 hover:bg-gray-750 transition cursor-pointer active:bg-gray-700 flex items-center"
             >
-              <div 
+              <div
                 className="w-10 h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0"
                 style={{ backgroundColor: `${feature.color}20` }}
               >
@@ -140,6 +210,17 @@ const BudgetMiniApp = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Debug Button */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-3">
+        <button
+          onClick={() => setCurrentScreen('debug')}
+          className="w-full bg-gray-800 border border-gray-700 text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-700 transition active:scale-98 flex items-center justify-center gap-2"
+        >
+          <Bug size={18} />
+          <span>Debug</span>
+        </button>
       </div>
     </div>
   );
@@ -363,6 +444,99 @@ const BudgetMiniApp = () => {
     </div>
   );
 
+  const DebugScreen = () => {
+    const getStatusIcon = (status: 'connected' | 'disconnected' | 'checking') => {
+      switch (status) {
+        case 'connected':
+          return <CheckCircle size={20} className="text-green-500" />;
+        case 'disconnected':
+          return <XCircle size={20} className="text-red-500" />;
+        case 'checking':
+          return <AlertCircle size={20} className="text-yellow-500 animate-pulse" />;
+      }
+    };
+
+    const getStatusColor = (status: 'connected' | 'disconnected' | 'checking') => {
+      switch (status) {
+        case 'connected':
+          return 'text-green-500';
+        case 'disconnected':
+          return 'text-red-500';
+        case 'checking':
+          return 'text-yellow-500';
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-900 text-white pb-20">
+        <div className="flex items-center px-3 py-3 border-b border-gray-800">
+          <button onClick={() => setCurrentScreen('home')} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+          <h2 className="text-base font-semibold">Debug Information</h2>
+        </div>
+
+        <div className="p-3">
+          {/* Services Status Section */}
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold mb-3 text-white px-1">Services Status</h3>
+            <div className="space-y-0">
+              {serviceStatuses.map((service, idx) => (
+                <div
+                  key={idx}
+                  className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3"
+                >
+                  <div className="flex items-start">
+                    <div className="mt-0.5 mr-3">
+                      {getStatusIcon(service.status)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-medium text-white text-sm">{service.name}</h4>
+                        <span className={`text-xs font-medium uppercase ${getStatusColor(service.status)}`}>
+                          {service.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 leading-tight">{service.message}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Refresh Button */}
+          <button
+            onClick={checkServiceConnections}
+            className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition active:scale-98 flex items-center justify-center gap-2"
+          >
+            <AlertCircle size={18} />
+            <span>Refresh Status</span>
+          </button>
+
+          {/* Additional Debug Info */}
+          <div className="mt-4 bg-gray-800 rounded-lg p-3">
+            <h4 className="text-xs font-semibold text-gray-400 mb-2">System Information</h4>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Environment:</span>
+                <span className="text-gray-300">{isAvailable ? 'Telegram Mini App' : 'Browser'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">User:</span>
+                <span className="text-gray-300">{userName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Timestamp:</span>
+                <span className="text-gray-300">{new Date().toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-md mx-auto bg-gray-900 min-h-screen">
       {currentScreen === 'home' && <HomeScreen />}
@@ -371,6 +545,7 @@ const BudgetMiniApp = () => {
       {currentScreen === 'category' && <CategoryScreen />}
       {currentScreen === 'comment' && <CommentScreen />}
       {currentScreen === 'confirm' && <ConfirmScreen />}
+      {currentScreen === 'debug' && <DebugScreen />}
 
       {/* Success Toast */}
       {showSuccess && (
