@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight, Bug, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
+import { fireflyService } from './services/firefly';
 
 interface ServiceStatus {
   name: string;
@@ -71,17 +72,30 @@ const BudgetMiniApp = () => {
       ));
     }, 1000);
 
-    // Check Firefly API (simulated)
-    setTimeout(() => {
-      setServiceStatuses(prev => prev.map(service =>
-        service.name === 'Firefly API'
-          ? {
-              ...service,
-              status: 'disconnected',
-              message: 'API endpoint not configured'
-            }
-          : service
-      ));
+    // Check Firefly API (real check)
+    setTimeout(async () => {
+      try {
+        const result = await fireflyService.checkConnection();
+        setServiceStatuses(prev => prev.map(service =>
+          service.name === 'Firefly API'
+            ? {
+                ...service,
+                status: result.success ? 'connected' : 'disconnected',
+                message: result.message
+              }
+            : service
+        ));
+      } catch (error) {
+        setServiceStatuses(prev => prev.map(service =>
+          service.name === 'Firefly API'
+            ? {
+                ...service,
+                status: 'disconnected',
+                message: error instanceof Error ? error.message : 'Connection failed'
+              }
+            : service
+        ));
+      }
     }, 1500);
   };
 
@@ -445,6 +459,10 @@ const BudgetMiniApp = () => {
   );
 
   const DebugScreen = () => {
+    const [fireflyUrl, setFireflyUrl] = useState(fireflyService.getBaseUrl());
+    const [fireflyToken, setFireflyToken] = useState(fireflyService.getToken() || '');
+    const [showSettings, setShowSettings] = useState(false);
+
     const getStatusIcon = (status: 'connected' | 'disconnected' | 'checking') => {
       switch (status) {
         case 'connected':
@@ -465,6 +483,14 @@ const BudgetMiniApp = () => {
         case 'checking':
           return 'text-yellow-500';
       }
+    };
+
+    const saveFireflySettings = () => {
+      fireflyService.setBaseUrl(fireflyUrl);
+      fireflyService.setToken(fireflyToken);
+      setShowSettings(false);
+      // Re-check connection after saving
+      checkServiceConnections();
     };
 
     return (
@@ -531,6 +557,69 @@ const BudgetMiniApp = () => {
                 <span className="text-gray-300">{new Date().toLocaleString()}</span>
               </div>
             </div>
+          </div>
+
+          {/* Firefly API Settings */}
+          <div className="mt-4 bg-gray-800 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-semibold text-gray-400">Firefly III Settings</h4>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="text-xs text-blue-500 hover:text-blue-400"
+              >
+                {showSettings ? 'Hide' : 'Configure'}
+              </button>
+            </div>
+
+            {showSettings && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">API URL</label>
+                  <input
+                    type="text"
+                    value={fireflyUrl}
+                    onChange={(e) => setFireflyUrl(e.target.value)}
+                    placeholder="https://your-firefly-instance.com"
+                    className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded-lg border-none focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">API Token</label>
+                  <input
+                    type="password"
+                    value={fireflyToken}
+                    onChange={(e) => setFireflyToken(e.target.value)}
+                    placeholder="Your Firefly III API token"
+                    className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded-lg border-none focus:ring-1 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+
+                <button
+                  onClick={saveFireflySettings}
+                  className="w-full bg-green-500 text-white py-2 rounded-lg font-medium text-sm hover:bg-green-600 transition active:scale-98"
+                >
+                  Save Settings
+                </button>
+              </div>
+            )}
+
+            {!showSettings && (
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">API URL:</span>
+                  <span className="text-gray-300 truncate ml-2 max-w-[60%]">
+                    {fireflyUrl || 'Not configured'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Token:</span>
+                  <span className="text-gray-300">
+                    {fireflyToken ? '••••••••' : 'Not configured'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
