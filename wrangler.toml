@@ -1,0 +1,6 @@
+name = "budget-mini-app"
+compatibility_date = "2025-10-25"
+
+# Configuration for static assets (Vite build output)
+[site]
+bucket = "./dist"
