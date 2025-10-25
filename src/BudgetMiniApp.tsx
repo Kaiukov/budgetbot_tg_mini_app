@@ -462,6 +462,11 @@ const BudgetMiniApp = () => {
     const [fireflyUrl, setFireflyUrl] = useState(fireflyService.getBaseUrl());
     const [fireflyToken, setFireflyToken] = useState(fireflyService.getToken() || '');
     const [showSettings, setShowSettings] = useState(false);
+    const [testResults, setTestResults] = useState<{
+      testing: boolean;
+      result: string | null;
+      success: boolean | null;
+    }>({ testing: false, result: null, success: null });
 
     const getStatusIcon = (status: 'connected' | 'disconnected' | 'checking') => {
       switch (status) {
@@ -493,6 +498,25 @@ const BudgetMiniApp = () => {
       checkServiceConnections();
     };
 
+    const testFireflyAPI = async () => {
+      setTestResults({ testing: true, result: null, success: null });
+
+      try {
+        const result = await fireflyService.checkConnection();
+        setTestResults({
+          testing: false,
+          result: result.message,
+          success: result.success
+        });
+      } catch (error) {
+        setTestResults({
+          testing: false,
+          result: error instanceof Error ? error.message : 'Unknown error',
+          success: false
+        });
+      }
+    };
+
     return (
       <div className="min-h-screen bg-gray-900 text-white pb-20">
         <div className="flex items-center px-3 py-3 border-b border-gray-800">
@@ -503,6 +527,65 @@ const BudgetMiniApp = () => {
         </div>
 
         <div className="p-3">
+          {/* API Test Section */}
+          <div className="mb-4 bg-gray-800 rounded-lg p-3">
+            <h3 className="text-sm font-semibold mb-3 text-white">Quick API Test</h3>
+
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <button
+                  onClick={testFireflyAPI}
+                  disabled={testResults.testing}
+                  className="flex-1 bg-blue-500 text-white py-2.5 rounded-lg font-medium text-sm hover:bg-blue-600 transition active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {testResults.testing ? (
+                    <>
+                      <AlertCircle size={16} className="animate-pulse" />
+                      <span>Testing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} />
+                      <span>Test Firefly API</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {testResults.result && (
+                <div className={`p-3 rounded-lg ${
+                  testResults.success
+                    ? 'bg-green-900/30 border border-green-700/50'
+                    : 'bg-red-900/30 border border-red-700/50'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    {testResults.success ? (
+                      <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                    ) : (
+                      <XCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${
+                        testResults.success ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {testResults.success ? 'Connection Successful' : 'Connection Failed'}
+                      </p>
+                      <p className="text-xs text-gray-300 mt-1 break-words">
+                        {testResults.result}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-gray-400">
+                <p>Current Configuration:</p>
+                <p className="mt-1 truncate">URL: {fireflyService.getBaseUrl() || 'Not set'}</p>
+                <p className="truncate">Token: {fireflyService.getToken() ? '••••••••' : 'Not set'}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Services Status Section */}
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-3 text-white px-1">Services Status</h3>
