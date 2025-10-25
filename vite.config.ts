@@ -14,6 +14,14 @@ export default defineConfig({
     ],
     watch: {
       usePolling: true
+    },
+    proxy: {
+      '/api': {
+        target: 'https://dev.neon-chuckwalla.ts.net',
+        changeOrigin: true,
+        secure: true,
+        ws: true
+      }
     }
   },
   preview: {

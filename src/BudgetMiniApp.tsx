@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight, Bug, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { fireflyService } from './services/firefly';
+import { syncService, type AccountUsage } from './services/sync';
 
 interface ServiceStatus {
   name: string;
@@ -22,12 +23,24 @@ const BudgetMiniApp = () => {
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([
     { name: 'Telegram Bot', status: 'checking', message: 'Checking connection...' },
-    { name: 'Health Connect Sync', status: 'checking', message: 'Checking connection...' },
+    { name: 'Sync API', status: 'checking', message: 'Checking connection...' },
     { name: 'Firefly API', status: 'checking', message: 'Checking connection...' }
   ]);
 
+  // Accounts state
+  const [accounts, setAccounts] = useState<AccountUsage[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+
   // Get Telegram user data
   const { userName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
+
+  // Fetch accounts when accounts screen is opened
+  useEffect(() => {
+    if (currentScreen === 'accounts') {
+      fetchAccounts();
+    }
+  }, [currentScreen, userName]);
 
   // Check service connections when debug screen is opened
   useEffect(() => {
@@ -36,11 +49,47 @@ const BudgetMiniApp = () => {
     }
   }, [currentScreen]);
 
+  const fetchAccounts = async () => {
+    setAccountsLoading(true);
+    setAccountsError(null);
+
+    try {
+      console.log('🔍 Fetching accounts for user:', userName);
+
+      // If userName is known and matches users in the system, filter by userName
+      // Otherwise, return all accounts
+      // Treat "User" and "Guest" as unknown users (browser mode)
+      const isUnknownUser = userName === 'User' || userName === 'Guest';
+      const data = await syncService.getAccountsUsage(isUnknownUser ? undefined : userName);
+
+      console.log('📊 Fetched accounts:', {
+        total: data.total,
+        count: data.get_accounts_usage.length
+      });
+
+      // Sort by usage_count descending (most used first)
+      const sortedAccounts = data.get_accounts_usage.sort((a, b) => b.usage_count - a.usage_count);
+      setAccounts(sortedAccounts);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch accounts';
+      console.error('❌ Failed to fetch accounts:', {
+        error,
+        message: errorMessage,
+        userName,
+        syncConfigured: syncService.isConfigured(),
+        baseUrl: syncService.getBaseUrl()
+      });
+      setAccountsError(errorMessage);
+    } finally {
+      setAccountsLoading(false);
+    }
+  };
+
   const checkServiceConnections = async () => {
     // Reset all to checking state
     setServiceStatuses([
       { name: 'Telegram Bot', status: 'checking', message: 'Checking connection...' },
-      { name: 'Health Connect Sync', status: 'checking', message: 'Checking connection...' },
+      { name: 'Sync API', status: 'checking', message: 'Checking connection...' },
       { name: 'Firefly API', status: 'checking', message: 'Checking connection...' }
     ]);
 
@@ -59,17 +108,30 @@ const BudgetMiniApp = () => {
       ));
     }, 500);
 
-    // Check Health Connect Sync (simulated)
-    setTimeout(() => {
-      setServiceStatuses(prev => prev.map(service =>
-        service.name === 'Health Connect Sync'
-          ? {
-              ...service,
-              status: 'disconnected',
-              message: 'Service not configured yet'
-            }
-          : service
-      ));
+    // Check Sync API (real check)
+    setTimeout(async () => {
+      try {
+        const result = await syncService.checkConnection();
+        setServiceStatuses(prev => prev.map(service =>
+          service.name === 'Sync API'
+            ? {
+                ...service,
+                status: result.success ? 'connected' : 'disconnected',
+                message: result.message
+              }
+            : service
+        ));
+      } catch (error) {
+        setServiceStatuses(prev => prev.map(service =>
+          service.name === 'Sync API'
+            ? {
+                ...service,
+                status: 'disconnected',
+                message: error instanceof Error ? error.message : 'Connection failed'
+              }
+            : service
+        ));
+      }
     }, 1000);
 
     // Check Firefly API (real check)
@@ -98,12 +160,6 @@ const BudgetMiniApp = () => {
       }
     }, 1500);
   };
-
-  const accounts = [
-    { id: 'cash', name: 'Cash', balance: '5,240 ₴', icon: <DollarSign size={20} />, color: '#10B981' },
-    { id: 'card', name: 'Privat Card', balance: '12,580 ₴', icon: <CreditCard size={20} />, color: '#3B82F6' },
-    { id: 'savings', name: 'Savings', balance: '25,000 ₴', icon: <TrendingUp size={20} />, color: '#8B5CF6' }
-  ];
 
   const categories = [
     { id: 'food', name: 'Food', icon: <ShoppingBag size={18} />, color: '#EF4444' },
@@ -239,41 +295,101 @@ const BudgetMiniApp = () => {
     </div>
   );
 
-  const AccountsScreen = () => (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
-        <button onClick={() => setCurrentScreen('home')} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <h2 className="text-base font-semibold">Select Account</h2>
-      </div>
+  const AccountsScreen = () => {
+    // Helper function to get icon based on account name
+    const getAccountIcon = (accountName: string) => {
+      const name = accountName.toLowerCase();
+      if (name.includes('cash')) return <DollarSign size={20} />;
+      if (name.includes('card') || name.includes('mono') || name.includes('pumb') || name.includes('zen')) return <CreditCard size={20} />;
+      return <TrendingUp size={20} />;
+    };
 
-      <div className="p-3 space-y-0">
-        {accounts.map((account, _idx) => (
-          <div
-            key={account.id}
-            onClick={() => {
-              setExpenseData({ ...expenseData, account: account.name });
-              setCurrentScreen('amount');
-            }}
-            className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3 hover:bg-gray-750 transition cursor-pointer active:bg-gray-700 flex items-center"
-          >
-            <div 
-              className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
-              style={{ backgroundColor: `${account.color}20` }}
-            >
-              <div style={{ color: account.color }}>{account.icon}</div>
+    // Helper function to get color based on account name
+    const getAccountColor = (accountName: string) => {
+      const name = accountName.toLowerCase();
+      if (name.includes('cash')) return '#10B981';
+      if (name.includes('usd')) return '#3B82F6';
+      if (name.includes('eur')) return '#8B5CF6';
+      if (name.includes('uah')) return '#F59E0B';
+      return '#6B7280';
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="flex items-center px-3 py-3 border-b border-gray-800">
+          <button onClick={() => setCurrentScreen('home')} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+          <h2 className="text-base font-semibold">Select Account</h2>
+        </div>
+
+        <div className="p-3">
+          {/* Loading State */}
+          {accountsLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-400 text-sm">Loading accounts...</div>
             </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-white text-sm leading-tight">{account.name}</h3>
-              <p className="text-xs text-gray-400 mt-0.5 leading-tight">{account.balance}</p>
+          )}
+
+          {/* Error State */}
+          {accountsError && !accountsLoading && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <p className="text-red-400 text-sm">{accountsError}</p>
+              <button
+                onClick={fetchAccounts}
+                className="mt-2 text-red-400 text-sm underline"
+              >
+                Retry
+              </button>
             </div>
-            <ChevronRight size={16} className="text-gray-500" />
-          </div>
-        ))}
+          )}
+
+          {/* Accounts List */}
+          {!accountsLoading && !accountsError && accounts.length > 0 && (
+            <div className="space-y-0">
+              {accounts.map((account, idx) => {
+                const color = getAccountColor(account.account_name);
+                const icon = getAccountIcon(account.account_name);
+
+                return (
+                  <div
+                    key={`${account.account_name}-${idx}`}
+                    onClick={() => {
+                      setExpenseData({ ...expenseData, account: account.account_name });
+                      setCurrentScreen('amount');
+                    }}
+                    className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3 hover:bg-gray-750 transition cursor-pointer active:bg-gray-700 flex items-center"
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
+                      style={{ backgroundColor: `${color}20` }}
+                    >
+                      <div style={{ color }}>{icon}</div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
+                      <p className="text-xs text-gray-400 mt-0.5 leading-tight">
+                        Used {account.usage_count} times • {account.user_name}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-500" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!accountsLoading && !accountsError && accounts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8">
+              <CreditCard size={48} className="text-gray-600 mb-3" />
+              <p className="text-gray-400 text-sm">No accounts found</p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const AmountScreen = () => (
     <div className="min-h-screen bg-gray-900 text-white">

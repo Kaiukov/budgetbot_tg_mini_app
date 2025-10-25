@@ -163,3 +163,15 @@ The app connects to:
 ## License
 
 MIT
+
+
+
+  1. vite.config.ts - Added proxy configuration:
+  proxy: {
+    '/api': {
+      target: 'https://dev.neon-chuckwalla.ts.net',
+      changeOrigin: true,
+      secure: true,
+      ws: true
+    }
+  }

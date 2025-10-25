@@ -32,7 +32,10 @@ class FireflyService {
   constructor() {
     // Get configuration from environment variables only
     // Use single VITE_BASE_URL for all APIs
-    this.baseUrl = import.meta.env.VITE_BASE_URL || '';
+    // In development, use empty string to leverage Vite proxy
+    // In production, use the full URL
+    const isDevelopment = import.meta.env.DEV;
+    this.baseUrl = isDevelopment ? '' : (import.meta.env.VITE_BASE_URL || '');
     // Get Firefly III API token
     this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
   }
@@ -55,6 +58,12 @@ class FireflyService {
    * Check if service is configured
    */
   public isConfigured(): boolean {
+    // In development (DEV mode), baseUrl will be empty (using proxy)
+    // so we only check for apiToken
+    const isDevelopment = import.meta.env.DEV;
+    if (isDevelopment) {
+      return !!this.apiToken;
+    }
     return !!(this.getBaseUrl() && this.apiToken);
   }
 
