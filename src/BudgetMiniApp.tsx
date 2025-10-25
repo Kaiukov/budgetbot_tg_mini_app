@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, ShoppingBag, Coffee, Car, Heart, MoreHorizontal, ArrowLeft, Check, X, ChevronRight } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 
 const BudgetMiniApp = () => {
@@ -47,7 +47,13 @@ const BudgetMiniApp = () => {
     { title: 'Budget', desc: 'Plan your spending', icon: <Heart size={20} />, color: '#EC4899' }
   ];
 
-  const NumberPad = ({ onNumberClick, onDelete, onConfirm }) => {
+  interface NumberPadProps {
+    onNumberClick: (num: string) => void;
+    onDelete: () => void;
+    onConfirm?: () => void;
+  }
+
+  const NumberPad: React.FC<NumberPadProps> = ({ onNumberClick, onDelete, onConfirm: _onConfirm }) => {
     const buttons = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '←'];
     
     return (
@@ -148,7 +154,7 @@ const BudgetMiniApp = () => {
       </div>
 
       <div className="p-3 space-y-0">
-        {accounts.map((account, idx) => (
+        {accounts.map((account, _idx) => (
           <div
             key={account.id}
             onClick={() => {
@@ -192,12 +198,13 @@ const BudgetMiniApp = () => {
         </div>
 
         <NumberPad
-          onNumberClick={(num) => {
+          onNumberClick={(num: string) => {
             setExpenseData({ ...expenseData, amount: expenseData.amount + num });
           }}
           onDelete={() => {
             setExpenseData({ ...expenseData, amount: expenseData.amount.slice(0, -1) });
           }}
+          onConfirm={() => {}}
         />
 
         <button
@@ -264,9 +271,9 @@ const BudgetMiniApp = () => {
         <div className="mt-3">
           <p className="text-xs text-gray-400 mb-2">Quick options:</p>
           <div className="flex flex-wrap gap-1.5">
-            {suggestedComments.map((comment, idx) => (
+            {suggestedComments.map((comment, _idx: number) => (
               <button
-                key={idx}
+                key={_idx}
                 onClick={() => setExpenseData({ ...expenseData, comment })}
                 className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-full text-xs hover:bg-gray-700 transition active:scale-95"
               >
