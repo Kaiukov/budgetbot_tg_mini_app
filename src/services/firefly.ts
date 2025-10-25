@@ -31,8 +31,16 @@ class FireflyService {
 
   constructor() {
     // Get configuration from environment variables or localStorage
-    this.baseUrl = this.getStoredUrl() || import.meta.env.VITE_FIREFLY_API_URL || '';
-    this.apiToken = this.getStoredToken() || import.meta.env.VITE_FIREFLY_API_TOKEN || null;
+    // Support both VITE_FIREFLY_BASE_URL and VITE_FIREFLY_API_URL for compatibility
+    this.baseUrl = this.getStoredUrl() ||
+                   import.meta.env.VITE_FIREFLY_BASE_URL ||
+                   import.meta.env.VITE_FIREFLY_API_URL ||
+                   '';
+    // Support both VITE_FIREFLY_TOKEN and VITE_FIREFLY_API_TOKEN for compatibility
+    this.apiToken = this.getStoredToken() ||
+                    import.meta.env.VITE_FIREFLY_TOKEN ||
+                    import.meta.env.VITE_FIREFLY_API_TOKEN ||
+                    null;
   }
 
   /**
