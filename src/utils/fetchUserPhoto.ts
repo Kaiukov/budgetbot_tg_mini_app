@@ -5,7 +5,7 @@
  * We fetch it securely from our backend which calls Telegram Bot API.
  */
 
-const SYNC_SERVICE_URL = import.meta.env.VITE_API_BASE_URL || 'http://sync-service:8001';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost';
 
 export interface UserData {
   success: boolean;
@@ -19,7 +19,7 @@ export async function fetchUserData(userId: number): Promise<UserData | null> {
   try {
     console.log('📸 Fetching user data from backend for user ID:', userId);
 
-    const response = await fetch(`${SYNC_SERVICE_URL}/telegram/user/${userId}`);
+    const response = await fetch(`${BASE_URL}/api/sync/telegram/user/${userId}`);
 
     if (!response.ok) {
       console.error('❌ Failed to fetch user data:', response.statusText, response.status);

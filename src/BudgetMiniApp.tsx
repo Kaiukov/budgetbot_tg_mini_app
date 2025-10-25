@@ -459,10 +459,6 @@ const BudgetMiniApp = () => {
   );
 
   const DebugScreen = () => {
-    const [fireflyUrl, setFireflyUrl] = useState(fireflyService.getBaseUrl());
-    const [fireflyToken, setFireflyToken] = useState(fireflyService.getToken() || '');
-    const [showSettings, setShowSettings] = useState(false);
-
     const getStatusIcon = (status: 'connected' | 'disconnected' | 'checking') => {
       switch (status) {
         case 'connected':
@@ -483,14 +479,6 @@ const BudgetMiniApp = () => {
         case 'checking':
           return 'text-yellow-500';
       }
-    };
-
-    const saveFireflySettings = () => {
-      fireflyService.setBaseUrl(fireflyUrl);
-      fireflyService.setToken(fireflyToken);
-      setShowSettings(false);
-      // Re-check connection after saving
-      checkServiceConnections();
     };
 
     return (
@@ -559,67 +547,34 @@ const BudgetMiniApp = () => {
             </div>
           </div>
 
-          {/* Firefly API Settings */}
+          {/* Environment Configuration (Read-only) */}
           <div className="mt-4 bg-gray-800 rounded-lg p-3">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-semibold text-gray-400">Firefly III Settings</h4>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="text-xs text-blue-500 hover:text-blue-400"
-              >
-                {showSettings ? 'Hide' : 'Configure'}
-              </button>
+            <h4 className="text-xs font-semibold text-gray-400 mb-3">Environment Configuration</h4>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Base URL:</span>
+                <span className="text-gray-300 truncate ml-2 max-w-[60%]">
+                  {import.meta.env.VITE_BASE_URL || 'Not configured'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Firefly Token:</span>
+                <span className="text-gray-300">
+                  {import.meta.env.VITE_FIREFLY_TOKEN ? '••••••••' : 'Not configured'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Sync API Key:</span>
+                <span className="text-gray-300">
+                  {import.meta.env.VITE_SYNC_API_KEY ? '••••••••' : 'Not configured'}
+                </span>
+              </div>
             </div>
-
-            {showSettings && (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">API URL</label>
-                  <input
-                    type="text"
-                    value={fireflyUrl}
-                    onChange={(e) => setFireflyUrl(e.target.value)}
-                    placeholder="https://your-firefly-instance.com"
-                    className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded-lg border-none focus:ring-1 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">API Token</label>
-                  <input
-                    type="password"
-                    value={fireflyToken}
-                    onChange={(e) => setFireflyToken(e.target.value)}
-                    placeholder="Your Firefly III API token"
-                    className="w-full px-3 py-2 text-sm bg-gray-700 text-white rounded-lg border-none focus:ring-1 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <button
-                  onClick={saveFireflySettings}
-                  className="w-full bg-green-500 text-white py-2 rounded-lg font-medium text-sm hover:bg-green-600 transition active:scale-98"
-                >
-                  Save Settings
-                </button>
-              </div>
-            )}
-
-            {!showSettings && (
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">API URL:</span>
-                  <span className="text-gray-300 truncate ml-2 max-w-[60%]">
-                    {fireflyUrl || 'Not configured'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Token:</span>
-                  <span className="text-gray-300">
-                    {fireflyToken ? '••••••••' : 'Not configured'}
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-gray-700">
+              <p className="text-xs text-gray-500 italic">
+                Configuration is managed through environment variables (.env.local)
+              </p>
+            </div>
           </div>
         </div>
       </div>

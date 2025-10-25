@@ -30,43 +30,11 @@ class FireflyService {
   private apiToken: string | null = null;
 
   constructor() {
-    // Get configuration from environment variables or localStorage
-    // Support both VITE_FIREFLY_BASE_URL and VITE_FIREFLY_API_URL for compatibility
-    this.baseUrl = this.getStoredUrl() ||
-                   import.meta.env.VITE_FIREFLY_BASE_URL ||
-                   import.meta.env.VITE_FIREFLY_API_URL ||
-                   '';
-    // Support both VITE_FIREFLY_TOKEN and VITE_FIREFLY_API_TOKEN for compatibility
-    this.apiToken = this.getStoredToken() ||
-                    import.meta.env.VITE_FIREFLY_TOKEN ||
-                    import.meta.env.VITE_FIREFLY_API_TOKEN ||
-                    null;
-  }
-
-  /**
-   * Get API URL from localStorage
-   */
-  private getStoredUrl(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('firefly_api_url');
-  }
-
-  /**
-   * Get API token from localStorage
-   */
-  private getStoredToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('firefly_api_token');
-  }
-
-  /**
-   * Set API token and store it
-   */
-  public setToken(token: string): void {
-    this.apiToken = token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('firefly_api_token', token);
-    }
+    // Get configuration from environment variables only
+    // Use single VITE_BASE_URL for all APIs
+    this.baseUrl = import.meta.env.VITE_BASE_URL || '';
+    // Get Firefly III API token
+    this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
   }
 
   /**
@@ -77,30 +45,10 @@ class FireflyService {
   }
 
   /**
-   * Set base URL
-   */
-  public setBaseUrl(url: string): void {
-    this.baseUrl = url;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('firefly_api_url', url);
-    }
-  }
-
-  /**
    * Get base URL
    */
   public getBaseUrl(): string {
-    if (this.baseUrl) return this.baseUrl;
-
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('firefly_api_url');
-      if (stored) {
-        this.baseUrl = stored;
-        return stored;
-      }
-    }
-
-    return '';
+    return this.baseUrl;
   }
 
   /**
@@ -112,6 +60,7 @@ class FireflyService {
 
   /**
    * Make API request
+   * Note: All Firefly III API endpoints follow the pattern /api/v1/{endpoint}
    */
   private async makeRequest<T>(endpoint: string): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
@@ -173,7 +122,7 @@ class FireflyService {
    */
   public async getCurrentUser(): Promise<FireflyUserResponse | null> {
     try {
-      return await this.makeRequest<FireflyUserResponse>('/api/v1/about/user');
+      return await this.makeRequest<FireflyUserResponse>('/api/v1/user');
     } catch (error) {
       console.error('Failed to get current user:', error);
       return null;
