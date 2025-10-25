@@ -160,18 +160,35 @@ The app connects to:
 - Verify Docker network connectivity
 - Check environment variables
 
+## Deployment
+
+- **Production**: https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
+- **Development**: Local proxy to backend services
+
+### Development Proxy Configuration
+
+In development, Vite proxies API requests to avoid CORS issues:
+
+```typescript
+// vite.config.ts
+proxy: {
+  // Firefly III API - proxy to Tailscale backend
+  '/api/v1': {
+    target: 'https://dev.neon-chuckwalla.ts.net',
+    changeOrigin: true,
+    secure: true,
+    ws: true
+  },
+  // Sync API - proxy to Cloudflare Workers
+  '/api/sync': {
+    target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
+    changeOrigin: true,
+    secure: true,
+    ws: true
+  }
+}
+```
+
 ## License
 
 MIT
-
-
-
-  1. vite.config.ts - Added proxy configuration:
-  proxy: {
-    '/api': {
-      target: 'https://dev.neon-chuckwalla.ts.net',
-      changeOrigin: true,
-      secure: true,
-      ws: true
-    }
-  }

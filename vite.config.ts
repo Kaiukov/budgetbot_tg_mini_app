@@ -8,6 +8,7 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
     allowedHosts: [
+      'budgetbot-tg-mini-app.kayukov2010.workers.dev',
       'oleksandrs-macbook-air.neon-chuckwalla.ts.net',
       'localhost',
       '.ts.net' // Allow all Tailscale domains
@@ -16,8 +17,16 @@ export default defineConfig({
       usePolling: true
     },
     proxy: {
-      '/api': {
-        target: 'https://dev.neon-chuckwalla.ts.net',
+      // Firefly III API - proxy to Tailscale backend
+      '/api/v1': {
+        target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
+        changeOrigin: true,
+        secure: true,
+        ws: true
+      },
+      // Sync API - proxy to Cloudflare Workers
+      '/api/sync': {
+        target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
         changeOrigin: true,
         secure: true,
         ws: true
@@ -29,6 +38,7 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
     allowedHosts: [
+      'budgetbot-tg-mini-app.kayukov2010.workers.dev',
       'oleksandrs-macbook-air.neon-chuckwalla.ts.net',
       'localhost',
       '.ts.net'

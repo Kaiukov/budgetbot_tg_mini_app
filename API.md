@@ -432,7 +432,7 @@ GET /api/sync/get_categories?active=true
 ### 5. Get Accounts Usage
 Retrieve account usage statistics.
 
-**Endpoint:** `GET /api/sync/get_accounts_usage`
+**Endpoint:** `GET . `
 
 **Query Parameters:** None
 
