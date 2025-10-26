@@ -25,10 +25,11 @@ class SyncService {
 
   constructor() {
     // Get configuration from environment variables
-    // In development, use empty string to leverage Vite proxy
-    // In production, use the full URL
-    const isDevelopment = import.meta.env.DEV;
-    this.baseUrl = isDevelopment ? '' : (import.meta.env.VITE_BASE_URL || '');
+    // Use empty string for baseUrl to leverage proxy in all environments:
+    // - Development: Vite dev server proxy (vite.config.ts)
+    // - Production: Cloudflare Pages Functions proxy (functions/_middleware.ts)
+    // This approach solves corporate network restrictions and CORS issues
+    this.baseUrl = '';
     this.apiKey = import.meta.env.VITE_SYNC_API_KEY || null;
   }
 
@@ -50,13 +51,9 @@ class SyncService {
    * Check if service is configured
    */
   public isConfigured(): boolean {
-    // In development (DEV mode), baseUrl will be empty (using proxy)
+    // baseUrl is always empty (using proxy in all environments)
     // so we only check for apiKey
-    const isDevelopment = import.meta.env.DEV;
-    if (isDevelopment) {
-      return !!this.apiKey;
-    }
-    return !!(this.getBaseUrl() && this.apiKey);
+    return !!this.apiKey;
   }
 
   /**
