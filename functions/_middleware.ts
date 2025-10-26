@@ -9,14 +9,14 @@
  *
  * Environment variables required in Cloudflare Pages:
  * - BACKEND_URL: The backend API URL (e.g., https://dev.neon-chuckwalla.ts.net)
- * - FIREFLY_TOKEN: Firefly III API token (optional, for server-side auth)
- * - SYNC_API_KEY: Sync API key (optional, for server-side auth)
+ * - VITE_FIREFLY_TOKEN: Firefly III API token (optional, for server-side auth)
+ * - VITE_SYNC_API_KEY: Sync API key (optional, for server-side auth)
  */
 
 interface Env {
   BACKEND_URL: string;
-  FIREFLY_TOKEN?: string;
-  SYNC_API_KEY?: string;
+  VITE_FIREFLY_TOKEN?: string;
+  VITE_SYNC_API_KEY?: string;
 }
 
 interface PagesContext {
@@ -92,10 +92,10 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
 
     // If client didn't provide auth header, use server-side tokens
     if (!headers.has('Authorization')) {
-      if (url.pathname.startsWith('/api/v1/') && env.FIREFLY_TOKEN) {
-        headers.set('Authorization', `Bearer ${env.FIREFLY_TOKEN}`);
-      } else if (url.pathname.startsWith('/api/sync/') && env.SYNC_API_KEY) {
-        headers.set('Authorization', `Bearer ${env.SYNC_API_KEY}`);
+      if (url.pathname.startsWith('/api/v1/') && env.VITE_FIREFLY_TOKEN) {
+        headers.set('Authorization', `Bearer ${env.VITE_FIREFLY_TOKEN}`);
+      } else if (url.pathname.startsWith('/api/sync/') && env.VITE_SYNC_API_KEY) {
+        headers.set('Authorization', `Bearer ${env.VITE_SYNC_API_KEY}`);
       }
     }
 
