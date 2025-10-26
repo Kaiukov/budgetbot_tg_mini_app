@@ -59,7 +59,11 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
     }
 
     // Construct target URL
-    const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
+    let path = url.pathname;
+    if (path.startsWith('/api/sync/')) {
+        path = path.substring('/api/sync'.length);
+    }
+    const targetUrl = `${backendUrl}${path}${url.search}`;
 
     console.log('🔄 Proxying request:', {
       timestamp: new Date().toISOString(),
