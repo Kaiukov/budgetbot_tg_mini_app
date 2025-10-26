@@ -9,6 +9,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: [
       'budgetbot-tg-mini-app.kayukov2010.workers.dev',
+      'dev.neon-chuckwalla.ts.net',
       'oleksandrs-macbook-air.neon-chuckwalla.ts.net',
       'localhost',
       '.ts.net' // Allow all Tailscale domains
@@ -39,6 +40,7 @@ export default defineConfig({
     strictPort: true,
     allowedHosts: [
       'budgetbot-tg-mini-app.kayukov2010.workers.dev',
+      'dev.neon-chuckwalla.ts.net',
       'oleksandrs-macbook-air.neon-chuckwalla.ts.net',
       'localhost',
       '.ts.net'
