@@ -16,6 +16,14 @@ export const ApiTest: React.FC = () => {
 
   const tests = [
     {
+      name: 'CF Pages Functions - Debug',
+      endpoint: '/api/debug',
+      test: async () => {
+        const response = await fetch('/api/debug');
+        return response;
+      },
+    },
+    {
       name: 'Firefly III - About',
       endpoint: '/api/v1/about',
       test: async () => {
