@@ -56,13 +56,9 @@ class FireflyService {
    * Check if service is configured
    */
   public isConfigured(): boolean {
-    // In development (DEV mode), baseUrl will be empty (using proxy)
-    // so we only check for apiToken
-    const isDevelopment = import.meta.env.DEV;
-    if (isDevelopment) {
-      return !!this.apiToken;
-    }
-    return !!(this.getBaseUrl() && this.apiToken);
+    // baseUrl is always empty (using proxy routing in both dev and prod)
+    // so we only need to check for apiToken
+    return !!this.apiToken;
   }
 
   /**

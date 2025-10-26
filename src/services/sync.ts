@@ -49,13 +49,9 @@ class SyncService {
    * Check if service is configured
    */
   public isConfigured(): boolean {
-    // In development (DEV mode), baseUrl will be empty (using proxy)
-    // so we only check for apiKey
-    const isDevelopment = import.meta.env.DEV;
-    if (isDevelopment) {
-      return !!this.apiKey;
-    }
-    return !!(this.getBaseUrl() && this.apiKey);
+    // baseUrl is always empty (using proxy routing in both dev and prod)
+    // so we only need to check for apiKey
+    return !!this.apiKey;
   }
 
   /**
