@@ -25,7 +25,7 @@ Add the following environment variables:
 
 | Variable Name | Value | Required | Description |
 |--------------|-------|----------|-------------|
-| `BACKEND_URL` | `https://budgetbot-tg-mini-app.kayukov2010.workers.dev` | **YES** | The backend API URL that the middleware will proxy to |
+| `BACKEND_URL` | `https://dev.neon-chuckwalla.ts.net` | **YES** | The backend API URL that the middleware will proxy to |
 | `FIREFLY_TOKEN` | `your_firefly_api_token` | Optional | Firefly III API token (for server-side auth) |
 | `SYNC_API_KEY` | `your_sync_api_key` | Optional | Sync API key (for server-side auth) |
 
@@ -36,19 +36,15 @@ Add the following environment variables:
 - **Do NOT** add `VITE_` prefix to these variables (they are server-side only)
 - After adding variables, you may need to redeploy
 
-### Step 3: Choose Your Backend URL
+### Step 3: Set Backend URL
 
-You have two options:
+Set the backend URL to your API server:
 
-#### Option 1: Cloudflare Workers (Recommended for production)
-```
-BACKEND_URL=https://budgetbot-tg-mini-app.kayukov2010.workers.dev
-```
-
-#### Option 2: Tailscale Funnel (For development/testing)
 ```
 BACKEND_URL=https://dev.neon-chuckwalla.ts.net
 ```
+
+**Note**: This should point to your actual backend API server (e.g., Tailscale Funnel, Cloudflare Workers, or any other backend).
 
 ### Step 4: Deploy or Trigger Redeploy
 
@@ -69,7 +65,7 @@ You should see:
   "success": true,
   "message": "Cloudflare Pages Functions are working",
   "environment": {
-    "BACKEND_URL": "https://budgetbot-tg-mini-app.kayukov2010.workers.dev",
+    "BACKEND_URL": "https://dev.neon-chuckwalla.ts.net",
     "FIREFLY_TOKEN": "✓ Configured",
     "SYNC_API_KEY": "✓ Configured"
   }

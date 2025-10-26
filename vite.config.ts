@@ -18,16 +18,16 @@ export default defineConfig({
       usePolling: true
     },
     proxy: {
-      // Firefly III API - proxy to Tailscale backend
+      // Firefly III API - proxy to backend
       '/api/v1': {
-        target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
+        target: 'https://dev.neon-chuckwalla.ts.net',
         changeOrigin: true,
         secure: true,
         ws: true
       },
-      // Sync API - proxy to Cloudflare Workers
+      // Sync API - proxy to backend
       '/api/sync': {
-        target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
+        target: 'https://dev.neon-chuckwalla.ts.net',
         changeOrigin: true,
         secure: true,
         ws: true
