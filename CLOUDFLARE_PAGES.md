@@ -66,41 +66,52 @@ In **Cloudflare Dashboard** → **Workers & Pages** → **Your Project** → **S
 #### Important Notes
 
 - **`BACKEND_URL`**: This is the URL of your backend server that the Cloudflare Pages Function will proxy to
-  - For Tailscale networks: Use your Tailscale domain (e.g., `https://dev.neon-chuckwalla.ts.net`)
-  - For public APIs: Use the public URL
-  - **Critical**: Cloudflare Pages Functions run on Cloudflare's edge network and may not be able to directly access private Tailscale networks. See solutions below.
+  - ✅ **If using Tailscale Funnel**: Use your funnel URL (e.g., `https://dev.neon-chuckwalla.ts.net`)
+  - ✅ **If using Cloudflare Tunnel**: Use your tunnel URL
+  - ✅ **If publicly accessible**: Use the public URL
+  - **Note**: The backend must be accessible from the public internet (Cloudflare's edge network)
 
 - **`VITE_*` variables**: These are build-time variables that get embedded in the client-side code
   - They are accessible in the browser
   - Do NOT put sensitive secrets here that you don't want exposed
 
-### 3. Handling Private Networks (Tailscale)
+### 3. Backend Internet Access (Required)
 
-If your backend is on a private network (like Tailscale), you have several options:
+Cloudflare Pages Functions run on the public internet, so your backend must be internet-accessible.
 
-#### Option A: Cloudflare Tunnel (Recommended)
-1. Install `cloudflared` on your backend server
-2. Create a tunnel: `cloudflared tunnel create budgetbot-backend`
-3. Configure tunnel to route to your backend
-4. Set `BACKEND_URL` to the Cloudflare Tunnel URL
+#### ✅ Already Using Tailscale Funnel?
 
-See: [Cloudflare Tunnel Documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
+If your backend is already exposed via **Tailscale Funnel** (like `https://dev.neon-chuckwalla.ts.net`), you're all set!
 
-#### Option B: Public Reverse Proxy
-1. Set up a public-facing reverse proxy (nginx, Caddy, etc.)
-2. Configure it to proxy to your Tailscale backend
-3. Secure with authentication and rate limiting
-4. Set `BACKEND_URL` to your public proxy URL
+Just set `BACKEND_URL=https://dev.neon-chuckwalla.ts.net` in Cloudflare Pages environment variables and deploy.
 
-#### Option C: Tailscale Funnel (Experimental)
-1. Use Tailscale Funnel to expose your service publicly
-2. Run: `tailscale funnel 8001`
-3. Set `BACKEND_URL` to the funnel URL
+#### Need to Expose Your Backend?
+
+If your backend is still on a private network, choose one option:
+
+**Option A: Tailscale Funnel** (Simplest)
+```bash
+# On your backend server
+tailscale funnel 8001
+```
+This exposes your service at a public `*.ts.net` URL.
 
 See: [Tailscale Funnel Documentation](https://tailscale.com/kb/1223/tailscale-funnel/)
 
-#### Option D: Deploy with Docker/Nginx (Alternative)
-If Cloudflare Pages doesn't work with your private network, use the Docker deployment:
+**Option B: Cloudflare Tunnel** (Most Secure)
+```bash
+# On your backend server
+cloudflared tunnel create budgetbot-backend
+cloudflared tunnel route dns budgetbot-backend api.yourdomain.com
+cloudflared tunnel run budgetbot-backend
+```
+See: [Cloudflare Tunnel Documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
+
+**Option C: Public Reverse Proxy**
+Set up nginx, Caddy, or similar with authentication and rate limiting.
+
+**Option D: Deploy with Docker/Nginx** (On Same Network as Backend)
+If you can't expose backend publicly, deploy the frontend on the same network:
 ```bash
 docker build -t budgetbot-tg-mini-app .
 docker run -p 3000:3000 -d budgetbot-tg-mini-app
