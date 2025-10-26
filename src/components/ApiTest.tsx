@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { fireflyAPI } from '../services/firefly';
-import { syncAPI } from '../services/sync';
 
 interface TestResult {
   name: string;
