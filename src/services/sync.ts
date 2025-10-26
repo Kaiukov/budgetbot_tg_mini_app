@@ -24,11 +24,10 @@ class SyncService {
   private apiKey: string | null = null;
 
   constructor() {
-    // Get configuration from environment variables
-    // In development, use empty string to leverage Vite proxy
-    // In production, use the full URL
-    const isDevelopment = import.meta.env.DEV;
-    this.baseUrl = isDevelopment ? '' : (import.meta.env.VITE_BASE_URL || '');
+    // Always use empty baseUrl to leverage proxy routing
+    // In development: Vite proxy handles /api/* requests
+    // In production: Cloudflare Pages middleware handles /api/* requests
+    this.baseUrl = '';
     this.apiKey = import.meta.env.VITE_SYNC_API_KEY || null;
   }
 

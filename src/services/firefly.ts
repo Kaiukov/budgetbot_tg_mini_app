@@ -30,12 +30,10 @@ class FireflyService {
   private apiToken: string | null = null;
 
   constructor() {
-    // Get configuration from environment variables only
-    // Use single VITE_BASE_URL for all APIs
-    // In development, use empty string to leverage Vite proxy
-    // In production, use the full URL
-    const isDevelopment = import.meta.env.DEV;
-    this.baseUrl = isDevelopment ? '' : (import.meta.env.VITE_BASE_URL || '');
+    // Always use empty baseUrl to leverage proxy routing
+    // In development: Vite proxy handles /api/* requests
+    // In production: Cloudflare Pages middleware handles /api/* requests
+    this.baseUrl = '';
     // Get Firefly III API token
     this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
   }
