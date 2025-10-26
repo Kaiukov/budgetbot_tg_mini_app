@@ -26,6 +26,7 @@ interface PagesContext {
 }
 
 export const onRequest = async (context: PagesContext): Promise<Response> => {
+  console.log(`[Middleware] Request received for: ${context.request.url}. BACKEND_URL is: ${context.env.BACKEND_URL ? 'SET' : 'NOT SET'}`);
   const { request, env } = context;
   const url = new URL(request.url);
 
