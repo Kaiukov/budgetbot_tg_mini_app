@@ -162,8 +162,30 @@ The app connects to:
 
 ## Deployment
 
-- **Production**: https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
-- **Development**: Local proxy to backend services
+### Cloudflare Pages (Recommended for Production)
+
+The app uses **Cloudflare Pages Functions** to solve corporate network restrictions:
+
+✅ **Solves**:
+- Corporate firewall restrictions
+- CORS (Cross-Origin Resource Sharing) issues
+- Network proxy requirements
+- Private network access (Tailscale, VPN, etc.)
+
+**Quick Deploy**:
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name=budgetbot-tg-mini-app
+```
+
+**Required Environment Variables** (set in Cloudflare Dashboard):
+- `BACKEND_URL` - Your backend API URL (e.g., `https://dev.neon-chuckwalla.ts.net`)
+- `VITE_TELEGRAM_BOT_TOKEN` - Telegram bot token
+- `VITE_TELEGRAM_BOT_USERNAME` - Bot username
+- `VITE_FIREFLY_TOKEN` - Firefly III API token
+- `VITE_SYNC_API_KEY` - Sync API key
+
+📖 **Full Setup Guide**: See [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md) for complete deployment instructions and private network configuration.
 
 ### Development Proxy Configuration
 
@@ -172,14 +194,14 @@ In development, Vite proxies API requests to avoid CORS issues:
 ```typescript
 // vite.config.ts
 proxy: {
-  // Firefly III API - proxy to Tailscale backend
+  // Firefly III API
   '/api/v1': {
-    target: 'https://dev.neon-chuckwalla.ts.net',
+    target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
     changeOrigin: true,
     secure: true,
     ws: true
   },
-  // Sync API - proxy to Cloudflare Workers
+  // Sync API
   '/api/sync': {
     target: 'https://budgetbot-tg-mini-app.kayukov2010.workers.dev',
     changeOrigin: true,
@@ -188,6 +210,13 @@ proxy: {
   }
 }
 ```
+
+### How Proxy Routing Works
+
+**Development**: Browser → Vite Proxy → Backend
+**Production**: Browser → Cloudflare Pages Function → Backend
+
+All `/api/*` requests are intercepted and proxied, bypassing CORS restrictions.
 
 ## License
 
