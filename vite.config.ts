@@ -18,19 +18,11 @@ export default defineConfig({
       usePolling: true
     },
     proxy: {
-      // Firefly III API - proxy to backend
-      '/api/v1': {
+      // Proxy all /api/* requests to backend
+      '/api': {
         target: 'https://dev.neon-chuckwalla.ts.net',
         changeOrigin: true,
-        secure: true,
-        ws: true
-      },
-      // Sync API - proxy to backend
-      '/api/sync': {
-        target: 'https://dev.neon-chuckwalla.ts.net',
-        changeOrigin: true,
-        secure: true,
-        ws: true
+        secure: true
       }
     }
   },
