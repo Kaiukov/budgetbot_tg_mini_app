@@ -32,10 +32,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Get backend URL from environment
     const backendUrl = env.BACKEND_URL;
     if (!backendUrl) {
+      console.error('❌ BACKEND_URL not configured!');
       return new Response(
         JSON.stringify({
           error: 'Backend URL not configured',
           message: 'Please set BACKEND_URL in Cloudflare Pages environment variables',
+          path: url.pathname,
+          timestamp: new Date().toISOString(),
+          hint: 'Visit /api/debug to check configuration',
         }),
         {
           status: 500,
@@ -51,13 +55,21 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
 
     console.log('🔄 Proxying request:', {
+      timestamp: new Date().toISOString(),
       from: url.pathname,
       to: targetUrl,
       method: request.method,
+      hasAuth: request.headers.has('Authorization'),
+      origin: request.headers.get('origin') || 'none',
     });
 
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
+      console.log('✅ CORS preflight request handled:', {
+        origin: request.headers.get('origin'),
+        method: request.headers.get('access-control-request-method'),
+        headers: request.headers.get('access-control-request-headers'),
+      });
       return new Response(null, {
         status: 204,
         headers: {
@@ -97,19 +109,31 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     proxyResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     console.log('✅ Proxy response:', {
+      timestamp: new Date().toISOString(),
       status: proxyResponse.status,
       statusText: proxyResponse.statusText,
+      contentType: proxyResponse.headers.get('content-type'),
+      hasBody: !!response.body,
     });
 
     return proxyResponse;
   } catch (error) {
-    console.error('❌ Proxy error:', error);
+    console.error('❌ Proxy error:', {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      path: url.pathname,
+      backendUrl: env.BACKEND_URL,
+    });
 
     return new Response(
       JSON.stringify({
         error: 'Proxy request failed',
         message: error instanceof Error ? error.message : 'Unknown error',
+        path: url.pathname,
+        timestamp: new Date().toISOString(),
         details: 'Check Cloudflare Pages Functions logs for more information',
+        hint: 'Visit /api/debug to verify backend connectivity',
       }),
       {
         status: 502,
