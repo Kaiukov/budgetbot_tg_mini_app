@@ -136,7 +136,10 @@ class SyncService {
         throw new Error('Sync API not configured');
       }
 
-      const data = await this.makeRequest<AccountsUsageResponse>('/api/sync/get_accounts_usage');
+      const data = await this.makeRequest<AccountsUsageResponse>(
+        '/api/sync/get_accounts_usage',
+        { method: 'GET' }
+      );
 
       console.log('📋 Raw API data:', {
         userName,
