@@ -45,14 +45,14 @@ class TelegramService {
   }
 
   /**
-   * Get user's full name
+   * Get user's Telegram username (or full name as fallback)
    */
   public getUserName(): string {
     const user = this.getUser();
     if (!user) return 'Guest';
 
-    const parts = [user.first_name, user.last_name].filter(Boolean);
-    return parts.join(' ') || user.username || 'User';
+    // Use Telegram username first (matches backend format)
+    return user.username || [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
   }
 
   /**
