@@ -124,7 +124,11 @@ class SyncService {
 
   /**
    * Get accounts usage for a specific user or all accounts
-   * @param userName - Optional username to filter accounts (if not provided, returns all accounts)
+   * Returns all existing accounts with smart sorting:
+   * - Top: Accounts user has used (usage_count > 0), sorted high to low
+   * - Bottom: Accounts user hasn't used (usage_count = 0)
+   *
+   * @param userName - Optional username to sort accounts by usage
    */
   public async getAccountsUsage(userName?: string): Promise<AccountsUsageResponse> {
     try {
@@ -141,27 +145,61 @@ class SyncService {
         firstAccount: data.get_accounts_usage[0]
       });
 
-      // Filter by username if provided
-      if (userName) {
-        const filteredAccounts = data.get_accounts_usage.filter(
-          account => account.user_name === userName
-        );
-
-        console.log('🔍 Filtered results:', {
-          requestedUser: userName,
-          filteredCount: filteredAccounts.length,
-          originalCount: data.get_accounts_usage.length
-        });
-
-        return {
-          ...data,
-          get_accounts_usage: filteredAccounts,
-          total: filteredAccounts.length,
-        };
+      // If no username provided, return all accounts as-is
+      if (!userName) {
+        console.log('✅ Returning all accounts (no sorting)');
+        return data;
       }
 
-      console.log('✅ Returning all accounts (no filter)');
-      return data;
+      // Smart sorting for specific user
+      const allAccounts = data.get_accounts_usage;
+
+      // Get all unique account names
+      const uniqueAccountNames = new Set<string>(
+        allAccounts.map(acc => acc.account_name)
+      );
+
+      // Separate into used and unused accounts for this user
+      const usedAccounts = allAccounts.filter(
+        account => account.user_name === userName && account.usage_count > 0
+      );
+
+      // Find accounts this user hasn't used
+      const usedAccountNames = new Set(usedAccounts.map(acc => acc.account_name));
+      const unusedAccountNames = Array.from(uniqueAccountNames).filter(
+        name => !usedAccountNames.has(name)
+      );
+
+      // Sort used accounts by usage_count (high to low)
+      usedAccounts.sort((a, b) => b.usage_count - a.usage_count);
+
+      // Create placeholder entries for unused accounts
+      const currentTimestamp = new Date().toISOString();
+      const unusedAccounts: AccountUsage[] = unusedAccountNames.map(accountName => ({
+        user_name: userName,
+        account_name: accountName,
+        usage_count: 0,
+        created_at: currentTimestamp,
+        updated_at: currentTimestamp,
+      }));
+
+      // Combine: used accounts first, then unused
+      const sortedAccounts = [...usedAccounts, ...unusedAccounts];
+
+      console.log('🔍 Smart sorted results:', {
+        requestedUser: userName,
+        usedCount: usedAccounts.length,
+        unusedCount: unusedAccounts.length,
+        totalCount: sortedAccounts.length,
+        topAccount: sortedAccounts[0]?.account_name,
+        topUsage: sortedAccounts[0]?.usage_count
+      });
+
+      return {
+        ...data,
+        get_accounts_usage: sortedAccounts,
+        total: sortedAccounts.length,
+      };
     } catch (error) {
       console.error('Failed to get accounts usage:', error);
       throw error;
