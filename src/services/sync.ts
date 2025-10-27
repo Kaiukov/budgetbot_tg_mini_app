@@ -162,21 +162,38 @@ class SyncService {
       // Smart sorting for specific user
       const allAccounts = data.get_accounts_usage;
 
-      // Get all unique account names
+      // Get all unique account names from API response
       const uniqueAccountNames = new Set<string>(
         allAccounts.map(acc => acc.account_name)
       );
+
+      console.log('🔍 Account extraction:', {
+        totalRows: allAccounts.length,
+        uniqueAccounts: uniqueAccountNames.size,
+        accountNames: Array.from(uniqueAccountNames)
+      });
 
       // Separate into used and unused accounts for this user
       const usedAccounts = allAccounts.filter(
         account => account.user_name === userName && account.usage_count > 0
       );
 
+      console.log('📊 User account filtering:', {
+        userName,
+        usedAccountsCount: usedAccounts.length,
+        usedAccounts: usedAccounts.map(a => ({ name: a.account_name, usage: a.usage_count }))
+      });
+
       // Find accounts this user hasn't used
       const usedAccountNames = new Set(usedAccounts.map(acc => acc.account_name));
       const unusedAccountNames = Array.from(uniqueAccountNames).filter(
         name => !usedAccountNames.has(name)
       );
+
+      console.log('🔍 Unused accounts:', {
+        unusedCount: unusedAccountNames.length,
+        unusedNames: unusedAccountNames
+      });
 
       // Sort used accounts by usage_count (high to low)
       usedAccounts.sort((a, b) => b.usage_count - a.usage_count);
@@ -194,13 +211,14 @@ class SyncService {
       // Combine: used accounts first, then unused
       const sortedAccounts = [...usedAccounts, ...unusedAccounts];
 
-      console.log('🔍 Smart sorted results:', {
+      console.log('✅ Smart sorted results:', {
         requestedUser: userName,
         usedCount: usedAccounts.length,
         unusedCount: unusedAccounts.length,
         totalCount: sortedAccounts.length,
         topAccount: sortedAccounts[0]?.account_name,
-        topUsage: sortedAccounts[0]?.usage_count
+        topUsage: sortedAccounts[0]?.usage_count,
+        sortedOrder: sortedAccounts.map(a => ({ name: a.account_name, usage: a.usage_count }))
       });
 
       return {

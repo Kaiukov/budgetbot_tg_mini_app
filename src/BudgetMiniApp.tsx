@@ -72,9 +72,9 @@ const BudgetMiniApp = () => {
         count: data.get_accounts_usage.length
       });
 
-      // Sort by usage_count descending (most used first)
-      const sortedAccounts = data.get_accounts_usage.sort((a, b) => b.usage_count - a.usage_count);
-      setAccounts(sortedAccounts);
+      // Accounts are already sorted by syncService.getAccountsUsage()
+      // Used accounts (high → low by usage_count) followed by unused accounts (usage_count = 0)
+      setAccounts(data.get_accounts_usage);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch accounts';
       console.error('❌ Failed to fetch accounts:', {
