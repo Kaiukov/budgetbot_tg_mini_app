@@ -52,18 +52,13 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
           status: 500,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
           },
         }
       );
     }
 
     // Construct target URL
-    let path = url.pathname;
-    if (path.startsWith('/api/sync/')) {
-        path = path.substring('/api/sync'.length);
-    }
-    const targetUrl = `${backendUrl}${path}${url.search}`;
+    const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
 
     console.log('🔄 Proxying request:', {
       timestamp: new Date().toISOString(),
@@ -74,22 +69,14 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
       origin: request.headers.get('origin') || 'none',
     });
 
-    // Handle CORS preflight
+    // Handle CORS preflight - forward to backend (nginx handles CORS)
     if (request.method === 'OPTIONS') {
-      console.log('✅ CORS preflight request handled:', {
+      console.log('✅ CORS preflight request - forwarding to backend:', {
         origin: request.headers.get('origin'),
         method: request.headers.get('access-control-request-method'),
         headers: request.headers.get('access-control-request-headers'),
       });
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-          'Access-Control-Max-Age': '86400',
-        },
-      });
+      // Let nginx handle CORS headers - just forward the OPTIONS request
     }
 
     // Clone headers from original request
@@ -113,11 +100,9 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
 
     const response = await fetch(proxyRequest);
 
-    // Clone response and add CORS headers
+    // Pass through response - nginx already added CORS headers
+    // No need to add CORS headers here as it would duplicate them
     const proxyResponse = new Response(response.body, response);
-    proxyResponse.headers.set('Access-Control-Allow-Origin', '*');
-    proxyResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    proxyResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     console.log('✅ Proxy response:', {
       timestamp: new Date().toISOString(),
@@ -150,7 +135,6 @@ export const onRequest = async (context: PagesContext): Promise<Response> => {
         status: 502,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
         },
       }
     );
