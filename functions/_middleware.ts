@@ -1,142 +1,23 @@
 /**
- * Cloudflare Pages Function - API Proxy Middleware
+ * Cloudflare Pages Function - Middleware (Pass-through)
  *
- * This middleware intercepts all /api/* requests and proxies them to the backend.
- * It solves corporate network restrictions and CORS issues by:
- * 1. Routing requests through Cloudflare's edge network
- * 2. Adding proper CORS headers
- * 3. Forwarding authentication headers securely
+ * NOTE: This middleware is now a pass-through only.
+ * The application calls the backend API directly in production.
+ * This file is kept for compatibility but does not intercept /api/* requests.
  *
- * Environment variables required in Cloudflare Pages:
- * - BACKEND_URL: The backend API URL (e.g., https://dev.neon-chuckwalla.ts.net)
- * - VITE_FIREFLY_TOKEN: Firefly III API token (optional, for server-side auth)
- * - VITE_SYNC_API_KEY: Sync API key (optional, for server-side auth)
+ * Architecture:
+ * - Development: Browser → Vite proxy → nginx → backend
+ * - Production: Browser → nginx directly → backend (CORS handled by nginx)
  */
-
-interface Env {
-  BACKEND_URL: string;
-  VITE_FIREFLY_TOKEN?: string;
-  VITE_SYNC_API_KEY?: string;
-}
 
 interface PagesContext {
   request: Request;
-  env: Env;
+  env: any;
   next: () => Promise<Response>;
 }
 
 export const onRequest = async (context: PagesContext): Promise<Response> => {
-  console.log(`[Middleware] Request received for: ${context.request.url}. BACKEND_URL is: ${context.env.BACKEND_URL ? 'SET' : 'NOT SET'}`);
-  const { request, env } = context;
-  const url = new URL(request.url);
-
-  // Only handle /api/* requests
-  if (!url.pathname.startsWith('/api/')) {
-    return context.next();
-  }
-
-  try {
-    // Get backend URL from environment
-    const backendUrl = env.BACKEND_URL;
-    if (!backendUrl) {
-      console.error('❌ BACKEND_URL not configured!');
-      return new Response(
-        JSON.stringify({
-          error: 'Backend URL not configured',
-          message: 'Please set BACKEND_URL in Cloudflare Pages environment variables',
-          path: url.pathname,
-          timestamp: new Date().toISOString(),
-          hint: 'Visit /api/debug to check configuration',
-        }),
-        {
-          status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
-
-    // Construct target URL
-    const targetUrl = `${backendUrl}${url.pathname}${url.search}`;
-
-    console.log('🔄 Proxying request:', {
-      timestamp: new Date().toISOString(),
-      from: url.pathname,
-      to: targetUrl,
-      method: request.method,
-      hasAuth: request.headers.has('Authorization'),
-      origin: request.headers.get('origin') || 'none',
-    });
-
-    // Handle CORS preflight - forward to backend (nginx handles CORS)
-    if (request.method === 'OPTIONS') {
-      console.log('✅ CORS preflight request - forwarding to backend:', {
-        origin: request.headers.get('origin'),
-        method: request.headers.get('access-control-request-method'),
-        headers: request.headers.get('access-control-request-headers'),
-      });
-      // Let nginx handle CORS headers - just forward the OPTIONS request
-    }
-
-    // Clone headers from original request
-    const headers = new Headers(request.headers);
-
-    // If client didn't provide auth header, use server-side tokens
-    if (!headers.has('Authorization')) {
-      if (url.pathname.startsWith('/api/v1/') && env.VITE_FIREFLY_TOKEN) {
-        headers.set('Authorization', `Bearer ${env.VITE_FIREFLY_TOKEN}`);
-      } else if (url.pathname.startsWith('/api/sync/') && env.VITE_SYNC_API_KEY) {
-        headers.set('Authorization', `Bearer ${env.VITE_SYNC_API_KEY}`);
-      }
-    }
-
-    // Forward the request to backend
-    const proxyRequest = new Request(targetUrl, {
-      method: request.method,
-      headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
-    });
-
-    const response = await fetch(proxyRequest);
-
-    // Pass through response - nginx already added CORS headers
-    // No need to add CORS headers here as it would duplicate them
-    const proxyResponse = new Response(response.body, response);
-
-    console.log('✅ Proxy response:', {
-      timestamp: new Date().toISOString(),
-      status: proxyResponse.status,
-      statusText: proxyResponse.statusText,
-      contentType: proxyResponse.headers.get('content-type'),
-      hasBody: !!response.body,
-    });
-
-    return proxyResponse;
-  } catch (error) {
-    console.error('❌ Proxy error:', {
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      path: url.pathname,
-      backendUrl: env.BACKEND_URL,
-    });
-
-    return new Response(
-      JSON.stringify({
-        error: 'Proxy request failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        path: url.pathname,
-        timestamp: new Date().toISOString(),
-        details: 'Check Cloudflare Pages Functions logs for more information',
-        hint: 'Visit /api/debug to verify backend connectivity',
-      }),
-      {
-        status: 502,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
+  // Pass through all requests without interception
+  // Services (firefly.ts, sync.ts) handle backend URLs directly
+  return context.next();
 };

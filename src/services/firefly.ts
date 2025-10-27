@@ -30,12 +30,23 @@ class FireflyService {
   private apiToken: string | null = null;
 
   constructor() {
-    // Always use empty baseUrl to leverage proxy routing
-    // In development: Vite proxy handles /api/* requests
-    // In production: Cloudflare Pages middleware handles /api/* requests
-    this.baseUrl = '';
+    // Detect environment
+    const isProduction = typeof window !== 'undefined' &&
+      (window.location.hostname.includes('workers.dev') ||
+       window.location.hostname.includes('pages.dev'));
+
+    // In production: call backend directly (middleware not working)
+    // In development: use Vite proxy (empty baseUrl)
+    this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
+
     // Get Firefly III API token
     this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
+
+    console.log('🔧 Firefly Service Config:', {
+      environment: isProduction ? 'production' : 'development',
+      baseUrl: this.baseUrl || '(using proxy)',
+      hasToken: !!this.apiToken
+    });
   }
 
   /**
