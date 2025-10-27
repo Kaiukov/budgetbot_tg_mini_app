@@ -80,24 +80,29 @@ class SyncService {
     const { default: telegramService } = await import('./telegram');
     const initData = telegramService.getInitData();
 
+    const method = options?.method || 'POST';
+
     console.log('🔄 Sync API Request:', {
       url,
-      method: options?.method || 'POST',
+      method,
       hasApiKey: !!apiKey,
       hasInitData: !!initData
     });
 
     try {
       const response = await fetch(url, {
-        method: options?.method || 'POST',
+        method,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          initData,
-          ...options?.body
+        // Only include body for POST requests (GET cannot have body)
+        ...(method === 'POST' && {
+          body: JSON.stringify({
+            initData,
+            ...options?.body
+          })
         }),
       });
 
