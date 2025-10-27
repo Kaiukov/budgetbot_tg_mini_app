@@ -45,6 +45,14 @@ class TelegramService {
   }
 
   /**
+   * Get Telegram initData for backend authentication
+   * This contains HMAC-signed data used to validate user identity
+   */
+  public getInitData(): string {
+    return this.webApp?.initData || '';
+  }
+
+  /**
    * Get user's Telegram username (or full name as fallback)
    */
   public getUserName(): string {

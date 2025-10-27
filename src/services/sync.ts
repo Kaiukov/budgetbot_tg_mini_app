@@ -66,9 +66,9 @@ class SyncService {
   }
 
   /**
-   * Make API request to Sync API
+   * Make API request to Sync API with Telegram authentication
    */
-  private async makeRequest<T>(endpoint: string): Promise<T> {
+  private async makeRequest<T>(endpoint: string, options?: { method?: string; body?: any }): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
     const apiKey = this.getApiKey();
 
@@ -76,16 +76,29 @@ class SyncService {
       throw new Error('Sync API key not configured');
     }
 
-    console.log('🔄 Sync API Request:', { url, hasApiKey: !!apiKey });
+    // Get Telegram initData for authentication
+    const { default: telegramService } = await import('./telegram');
+    const initData = telegramService.getInitData();
+
+    console.log('🔄 Sync API Request:', {
+      url,
+      method: options?.method || 'POST',
+      hasApiKey: !!apiKey,
+      hasInitData: !!initData
+    });
 
     try {
       const response = await fetch(url, {
-        method: 'GET',
+        method: options?.method || 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          initData,
+          ...options?.body
+        }),
       });
 
       console.log('📡 Sync API Response:', {
