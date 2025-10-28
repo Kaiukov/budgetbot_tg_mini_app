@@ -73,7 +73,7 @@ class FireflyService {
   }
 
   /**
-   * Make API request
+   * Make API request (GET only)
    * Note: All Firefly III API endpoints follow the pattern /api/v1/{endpoint}
    */
   private async makeRequest<T>(endpoint: string): Promise<T> {
@@ -98,6 +98,127 @@ class FireflyService {
     }
 
     return response.json();
+  }
+
+  /**
+   * Make POST request to Firefly III API
+   */
+  public async postRequest<T = unknown>(
+    endpoint: string,
+    body: unknown
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    const url = `${this.getBaseUrl()}${endpoint}`;
+    const token = this.getToken();
+
+    if (!token) {
+      return { success: false, error: 'API token not configured' };
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `API request failed: ${response.status} ${response.statusText}`,
+          data: data as T,
+        };
+      }
+
+      return { success: true, data: data as T };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Make PUT request to Firefly III API
+   */
+  public async putRequest<T = unknown>(
+    endpoint: string,
+    body: unknown
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    const url = `${this.getBaseUrl()}${endpoint}`;
+    const token = this.getToken();
+
+    if (!token) {
+      return { success: false, error: 'API token not configured' };
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `API request failed: ${response.status} ${response.statusText}`,
+          data: data as T,
+        };
+      }
+
+      return { success: true, data: data as T };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Make DELETE request to Firefly III API
+   */
+  public async deleteRequest(
+    endpoint: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const url = `${this.getBaseUrl()}${endpoint}`;
+    const token = this.getToken();
+
+    if (!token) {
+      return { success: false, error: 'API token not configured' };
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `API request failed: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { success: false, error: errorMessage };
+    }
   }
 
   /**
