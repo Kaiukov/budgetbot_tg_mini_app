@@ -37,10 +37,12 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && amount) {
+    if (e.key === 'Enter' && amount && parseFloat(amount) > 0) {
       onNext();
     }
   };
+
+  const isValidAmount = amount && parseFloat(amount) > 0;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -70,7 +72,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
 
         <button
           onClick={onNext}
-          disabled={!amount}
+          disabled={!isValidAmount}
           className="w-full mt-4 bg-blue-500 text-white py-3 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 transition active:scale-98"
         >
           Next
