@@ -1,11 +1,10 @@
-import { ArrowLeft, X, Check } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 
 interface ConfirmScreenProps {
   account: string;
   amount: string;
   category: string;
   comment: string;
-  onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -15,16 +14,12 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   amount,
   category,
   comment,
-  onBack,
   onCancel,
   onConfirm
 }) => {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="flex items-center px-3 py-3 border-b border-gray-800">
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
         <h2 className="text-base font-semibold">Confirmation</h2>
       </div>
 
@@ -55,20 +50,13 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={onCancel}
             className="bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition active:scale-95 flex items-center justify-center text-xs"
           >
             <X size={14} className="mr-1" />
             No
-          </button>
-          <button
-            onClick={onBack}
-            className="bg-gray-700 text-white py-2 rounded-lg font-medium hover:bg-gray-600 transition active:scale-95 flex items-center justify-center text-xs"
-          >
-            <ArrowLeft size={14} className="mr-1" />
-            Back
           </button>
           <button
             onClick={onConfirm}

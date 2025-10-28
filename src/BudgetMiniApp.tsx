@@ -298,7 +298,6 @@ const BudgetMiniApp = () => {
           amount={expenseData.amount}
           category={expenseData.category}
           comment={expenseData.comment}
-          onBack={() => setCurrentScreen('comment')}
           onCancel={() => setCurrentScreen('home')}
           onConfirm={handleConfirmExpense}
         />
