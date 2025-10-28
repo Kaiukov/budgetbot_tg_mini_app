@@ -21,8 +21,8 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     // Replace comma with dot for decimal separator
     value = value.replace(/,/g, '.');
 
-    // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+    // Allow negative numbers, digits and one decimal point
+    if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
       onAmountChange(value);
     }
   };
