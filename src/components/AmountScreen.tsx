@@ -28,6 +28,10 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
 
     // Allow only numbers and one decimal point
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
+      if (value.startsWith('.')) {
+        value = '0' + value;
+      }
       onAmountChange(value);
     }
   };
