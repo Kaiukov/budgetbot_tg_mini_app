@@ -4,8 +4,15 @@
  */
 
 export interface AccountUsage {
+  account_id: string;
   user_name: string;
   account_name: string;
+  account_currency: string;
+  current_balance: number;
+  balance_in_USD: number;
+  balance_in_EUR: number;
+  owner: string;
+  owner_id: string;
   usage_count: number;
   created_at: string;
   updated_at: string;
@@ -17,6 +24,33 @@ export interface AccountsUsageResponse {
   timestamp: string;
   get_accounts_usage: AccountUsage[];
   total: number;
+}
+
+export interface CategoryUsage {
+  user_name: string;
+  category_name: string;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoriesUsageResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  get_categories_usage: CategoryUsage[];
+  total: number;
+}
+
+export interface TelegramUserData {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  userData: {
+    photo_url: string | null;
+    bio: string;
+    user_id: number;
+  } | null;
 }
 
 class SyncService {
@@ -141,8 +175,13 @@ class SyncService {
         throw new Error('Sync API not configured');
       }
 
+      // Build URL with optional user_name query parameter
+      const endpoint = userName
+        ? `/api/sync/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/sync/get_accounts_usage';
+
       const data = await this.makeRequest<AccountsUsageResponse>(
-        '/api/sync/get_accounts_usage',
+        endpoint,
         { method: 'GET' }
       );
 
@@ -159,66 +198,41 @@ class SyncService {
         return data;
       }
 
-      // Smart sorting for specific user
+      // When userName is provided, API already filtered the results server-side
+      // We just need to sort by usage_count: high to low, with 0 usage at the end
       const allAccounts = data.get_accounts_usage;
 
-      // Get all unique account names from API response
-      const uniqueAccountNames = new Set<string>(
-        allAccounts.map(acc => acc.account_name)
-      );
-
-      console.log('🔍 Account extraction:', {
-        totalRows: allAccounts.length,
-        uniqueAccounts: uniqueAccountNames.size,
-        accountNames: Array.from(uniqueAccountNames)
-      });
-
-      // Separate into used and unused accounts for this user
-      const usedAccounts = allAccounts.filter(
-        account => account.user_name === userName && account.usage_count > 0
-      );
-
-      console.log('📊 User account filtering:', {
+      console.log('📊 API returned accounts for user:', {
         userName,
-        usedAccountsCount: usedAccounts.length,
-        usedAccounts: usedAccounts.map(a => ({ name: a.account_name, usage: a.usage_count }))
+        totalAccounts: allAccounts.length,
+        accountsData: allAccounts.map(a => ({
+          name: a.account_name,
+          user: a.user_name,
+          usage: a.usage_count
+        }))
       });
 
-      // Find accounts this user hasn't used
-      const usedAccountNames = new Set(usedAccounts.map(acc => acc.account_name));
-      const unusedAccountNames = Array.from(uniqueAccountNames).filter(
-        name => !usedAccountNames.has(name)
-      );
-
-      console.log('🔍 Unused accounts:', {
-        unusedCount: unusedAccountNames.length,
-        unusedNames: unusedAccountNames
-      });
+      // Separate accounts by usage: used (count > 0) and unused (count = 0)
+      const usedAccounts = allAccounts.filter(account => account.usage_count > 0);
+      const unusedAccounts = allAccounts.filter(account => account.usage_count === 0);
 
       // Sort used accounts by usage_count (high to low)
       usedAccounts.sort((a, b) => b.usage_count - a.usage_count);
 
-      // Create placeholder entries for unused accounts
-      const currentTimestamp = new Date().toISOString();
-      const unusedAccounts: AccountUsage[] = unusedAccountNames.map(accountName => ({
-        user_name: userName,
-        account_name: accountName,
-        usage_count: 0,
-        created_at: currentTimestamp,
-        updated_at: currentTimestamp,
-      }));
-
       // Combine: used accounts first, then unused
       const sortedAccounts = [...usedAccounts, ...unusedAccounts];
 
-      console.log('✅ Smart sorted results:', {
+      console.log('✅ Sorted account results:', {
         requestedUser: userName,
         usedCount: usedAccounts.length,
         unusedCount: unusedAccounts.length,
         totalCount: sortedAccounts.length,
         topAccount: sortedAccounts[0]?.account_name,
         topUsage: sortedAccounts[0]?.usage_count,
-        sortedOrder: sortedAccounts.map(a => ({ name: a.account_name, usage: a.usage_count }))
+        sortedOrder: sortedAccounts.map(a => ({
+          name: a.account_name,
+          usage: a.usage_count
+        }))
       });
 
       return {
@@ -229,6 +243,149 @@ class SyncService {
     } catch (error) {
       console.error('Failed to get accounts usage:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get categories usage for a specific user or all categories
+   * Returns all existing categories with smart sorting:
+   * - Top: Categories user has used (usage_count > 0), sorted high to low
+   * - Bottom: Categories user hasn't used (usage_count = 0)
+   *
+   * @param userName - Optional username to sort categories by usage
+   */
+  public async getCategoriesUsage(userName?: string): Promise<CategoriesUsageResponse> {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error('Sync API not configured');
+      }
+
+      const data = await this.makeRequest<CategoriesUsageResponse>(
+        '/api/sync/get_categories_usage',
+        { method: 'GET' }
+      );
+
+      console.log('📋 Raw categories API data:', {
+        userName,
+        total: data.total,
+        categoryCount: data.get_categories_usage.length,
+        firstCategory: data.get_categories_usage[0]
+      });
+
+      // If no username provided, return all categories as-is
+      if (!userName) {
+        console.log('✅ Returning all categories (no sorting)');
+        return data;
+      }
+
+      // Smart sorting for specific user
+      const allCategories = data.get_categories_usage;
+
+      // Get all unique category names from API response
+      const uniqueCategoryNames = new Set<string>(
+        allCategories.map(cat => cat.category_name)
+      );
+
+      console.log('🔍 Category extraction:', {
+        totalRows: allCategories.length,
+        uniqueCategories: uniqueCategoryNames.size,
+        categoryNames: Array.from(uniqueCategoryNames)
+      });
+
+      // Separate into used and unused categories for this user
+      const usedCategories = allCategories.filter(
+        category => category.user_name === userName && category.usage_count > 0
+      );
+
+      console.log('📊 User category filtering:', {
+        userName,
+        usedCategoriesCount: usedCategories.length,
+        usedCategories: usedCategories.map(c => ({ name: c.category_name, usage: c.usage_count }))
+      });
+
+      // Find categories this user hasn't used
+      const usedCategoryNames = new Set(usedCategories.map(cat => cat.category_name));
+      const unusedCategoryNames = Array.from(uniqueCategoryNames).filter(
+        name => !usedCategoryNames.has(name)
+      );
+
+      console.log('🔍 Unused categories:', {
+        unusedCount: unusedCategoryNames.length,
+        unusedNames: unusedCategoryNames
+      });
+
+      // Sort used categories by usage_count (high to low)
+      usedCategories.sort((a, b) => b.usage_count - a.usage_count);
+
+      // Create placeholder entries for unused categories
+      const currentTimestamp = new Date().toISOString();
+      const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(categoryName => ({
+        user_name: userName,
+        category_name: categoryName,
+        usage_count: 0,
+        created_at: currentTimestamp,
+        updated_at: currentTimestamp,
+      }));
+
+      // Combine: used categories first, then unused
+      const sortedCategories = [...usedCategories, ...unusedCategories];
+
+      console.log('✅ Smart sorted category results:', {
+        requestedUser: userName,
+        usedCount: usedCategories.length,
+        unusedCount: unusedCategories.length,
+        totalCount: sortedCategories.length,
+        topCategory: sortedCategories[0]?.category_name,
+        topUsage: sortedCategories[0]?.usage_count,
+        sortedOrder: sortedCategories.map(c => ({ name: c.category_name, usage: c.usage_count }))
+      });
+
+      return {
+        ...data,
+        get_categories_usage: sortedCategories,
+        total: sortedCategories.length,
+      };
+    } catch (error) {
+      console.error('Failed to get categories usage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get Telegram user data from backend
+   * Returns user photo, bio, and user ID validated through Telegram
+   */
+  public async getTelegramUser(): Promise<TelegramUserData> {
+    try {
+      if (!this.isConfigured()) {
+        console.warn('⚠️ Sync API not configured');
+        return {
+          success: false,
+          message: 'Sync API not configured on client',
+          timestamp: new Date().toISOString(),
+          userData: null
+        };
+      }
+
+      console.log('📸 Fetching Telegram user data from backend');
+
+      const data = await this.makeRequest<TelegramUserData>('/api/sync/tgUser', { method: 'POST' });
+
+      if (data.success) {
+        console.log('✅ Successfully fetched Telegram user data:', data.userData);
+      } else {
+        console.error('❌ Backend returned error:', data.message);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('💥 Error fetching Telegram user data:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+        userData: null
+      };
     }
   }
 

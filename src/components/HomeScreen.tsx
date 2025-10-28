@@ -1,7 +1,7 @@
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug } from 'lucide-react';
 
 interface HomeScreenProps {
-  userName: string;
+  userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
   userPhotoUrl: string | null;
   userInitials: string;
   userBio: string;
@@ -19,7 +19,7 @@ const features = [
 ];
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
-  userName,
+  userFullName,
   userPhotoUrl,
   userInitials,
   userBio,
@@ -33,7 +33,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         {userPhotoUrl ? (
           <img
             src={userPhotoUrl}
-            alt={userName}
+            alt={userFullName}
             className="w-16 h-16 rounded-full mb-2.5 object-cover border-2 border-blue-500"
           />
         ) : (
@@ -43,18 +43,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
 
         <h1 className="text-lg font-semibold text-white mb-0.5">
-          {userName}
+          {userFullName}
         </h1>
         <p className="text-xs text-gray-400 text-center px-4">
           {isAvailable ? userBio : 'Browser Mode - Limited Features'}
         </p>
-
-        {/* Debug info - remove after testing */}
-        {isAvailable && (
-          <div className="mt-2 text-[10px] text-gray-500 text-center px-4">
-            Debug: photoUrl={userPhotoUrl ? 'yes' : 'no'} | available={String(isAvailable)}
-          </div>
-        )}
       </div>
 
       <div className="px-3 mb-3">

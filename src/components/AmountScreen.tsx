@@ -1,12 +1,10 @@
 import { ArrowLeft } from 'lucide-react';
-import NumberPad from './NumberPad';
 
 interface AmountScreenProps {
   account: string;
   amount: string;
   onBack: () => void;
-  onNumberClick: (num: string) => void;
-  onDelete: () => void;
+  onAmountChange: (value: string) => void;
   onNext: () => void;
 }
 
@@ -14,10 +12,27 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
   onBack,
-  onNumberClick,
-  onDelete,
+  onAmountChange,
   onNext
 }) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+
+    // Replace comma with dot for decimal separator
+    value = value.replace(/,/g, '.');
+
+    // Allow only numbers and one decimal point
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      onAmountChange(value);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && amount) {
+      onNext();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="flex items-center px-3 py-3 border-b border-gray-800">
@@ -30,15 +45,19 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       <div className="p-4">
         <div className="bg-gray-800 rounded-lg p-4 mb-3">
           <p className="text-xs text-gray-400 mb-2">Account: {account}</p>
-          <div className="text-3xl font-bold text-center py-4 text-white">
-            {amount || '0'} <span className="text-gray-500">₴</span>
-          </div>
+          <input
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*"
+            value={amount}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder="0"
+            className="w-full p-4 text-3xl font-bold text-center bg-transparent text-white border-none focus:outline-none placeholder-gray-600"
+            autoFocus
+          />
+          <div className="text-center text-gray-500 text-2xl">₴</div>
         </div>
-
-        <NumberPad
-          onNumberClick={onNumberClick}
-          onDelete={onDelete}
-        />
 
         <button
           onClick={onNext}

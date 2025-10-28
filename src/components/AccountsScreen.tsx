@@ -1,6 +1,7 @@
 import { ArrowLeft, ChevronRight, CreditCard } from 'lucide-react';
 import type { AccountUsage } from '../services/sync';
 import { getAccountIcon, getAccountColor } from '../utils/accounts';
+import { formatCurrency } from '../utils/formatCurrency';
 
 interface AccountsScreenProps {
   accounts: AccountUsage[];
@@ -53,8 +54,8 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
         {!accountsLoading && !accountsError && accounts.length > 0 && (
           <div className="space-y-0">
             {accounts.map((account, idx) => {
-              const color = getAccountColor(account.account_name);
-              const Icon = getAccountIcon(account.account_name);
+              const color = getAccountColor(account.account_currency, account.account_name);
+              const Icon = getAccountIcon(account.account_currency, account.account_name);
 
               return (
                 <div
@@ -71,7 +72,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
                   <div className="flex-1">
                     <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
-                      Used {account.usage_count} times • {account.user_name}
+                      Used {account.usage_count} times • {account.user_name || account.owner || 'Unknown'} • {formatCurrency(account.current_balance, account.account_currency)}
                     </p>
                   </div>
                   <ChevronRight size={16} className="text-gray-500" />

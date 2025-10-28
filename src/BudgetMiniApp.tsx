@@ -3,7 +3,7 @@ import { Check } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useExpenseData } from './hooks/useExpenseData';
 import { fireflyService } from './services/firefly';
-import { syncService, type AccountUsage } from './services/sync';
+import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 
 // Components
@@ -27,8 +27,13 @@ const BudgetMiniApp = () => {
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
 
+  // Categories state
+  const [categories, setCategories] = useState<CategoryUsage[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+
   // Get Telegram user data
-  const { userName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
+  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
 
   // Get expense data hook
   const {
@@ -44,6 +49,13 @@ const BudgetMiniApp = () => {
   useEffect(() => {
     if (currentScreen === 'accounts') {
       fetchAccounts();
+    }
+  }, [currentScreen, userName]);
+
+  // Fetch categories when category screen is opened
+  useEffect(() => {
+    if (currentScreen === 'category') {
+      fetchCategories();
     }
   }, [currentScreen, userName]);
 
@@ -87,6 +99,42 @@ const BudgetMiniApp = () => {
       setAccountsError(errorMessage);
     } finally {
       setAccountsLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+
+    try {
+      console.log('🔍 Fetching categories for user:', userName);
+
+      // If userName is known and matches users in the system, filter by userName
+      // Otherwise, return all categories
+      // Treat "User" and "Guest" as unknown users (browser mode)
+      const isUnknownUser = userName === 'User' || userName === 'Guest';
+      const data = await syncService.getCategoriesUsage(isUnknownUser ? undefined : userName);
+
+      console.log('📊 Fetched categories:', {
+        total: data.total,
+        count: data.get_categories_usage.length
+      });
+
+      // Categories are already sorted by syncService.getCategoriesUsage()
+      // Used categories (high → low by usage_count) followed by unused categories (usage_count = 0)
+      setCategories(data.get_categories_usage);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories';
+      console.error('❌ Failed to fetch categories:', {
+        error,
+        message: errorMessage,
+        userName,
+        syncConfigured: syncService.isConfigured(),
+        baseUrl: syncService.getBaseUrl()
+      });
+      setCategoriesError(errorMessage);
+    } finally {
+      setCategoriesLoading(false);
     }
   };
 
@@ -172,12 +220,8 @@ const BudgetMiniApp = () => {
     setCurrentScreen('amount');
   };
 
-  const handleNumberClick = (num: string) => {
-    updateAmount(expenseData.amount + num);
-  };
-
-  const handleDelete = () => {
-    updateAmount(expenseData.amount.slice(0, -1));
+  const handleAmountChange = (value: string) => {
+    updateAmount(value);
   };
 
   const handleConfirmExpense = () => {
@@ -194,7 +238,7 @@ const BudgetMiniApp = () => {
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
-          userName={userName}
+          userFullName={userFullName}
           userPhotoUrl={userPhotoUrl}
           userInitials={userInitials}
           userBio={userBio}
@@ -219,19 +263,22 @@ const BudgetMiniApp = () => {
           account={expenseData.account}
           amount={expenseData.amount}
           onBack={() => setCurrentScreen('accounts')}
-          onNumberClick={handleNumberClick}
-          onDelete={handleDelete}
+          onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
         />
       )}
 
       {currentScreen === 'category' && (
         <CategoryScreen
+          categories={categories}
+          categoriesLoading={categoriesLoading}
+          categoriesError={categoriesError}
           onBack={() => setCurrentScreen('amount')}
           onSelectCategory={(category) => {
             updateCategory(category);
             setCurrentScreen('comment');
           }}
+          onRetry={fetchCategories}
         />
       )}
 

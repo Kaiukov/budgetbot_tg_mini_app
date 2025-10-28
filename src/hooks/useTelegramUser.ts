@@ -6,11 +6,12 @@
 import { useState, useEffect } from 'react';
 import telegramService from '../services/telegram';
 import type { TelegramWebAppUser } from '../types/telegram';
-import { fetchUserData } from '../utils/fetchUserPhoto';
+import { fetchUserData } from '../utils/fetchUserData';
 
 export interface TelegramUserData {
   user: TelegramWebAppUser | null;
-  userName: string;
+  userName: string;           // Telegram username for API filtering (e.g., "Kaiukov")
+  userFullName: string;        // Full display name (e.g., "Oleksandr 🇺🇦 Kaiukov")
   userPhotoUrl: string | null;
   userInitials: string;
   userBio: string;
@@ -22,6 +23,7 @@ export function useTelegramUser(): TelegramUserData {
   const [userData, setUserData] = useState<TelegramUserData>({
     user: null,
     userName: 'Guest',
+    userFullName: 'Guest',
     userPhotoUrl: null,
     userInitials: 'G',
     userBio: 'Manage finances and create reports',
@@ -45,6 +47,7 @@ export function useTelegramUser(): TelegramUserData {
       setUserData({
         user,
         userName,
+        userFullName: userName, // Initially use username, will be updated from backend
         userPhotoUrl,
         userInitials,
         userBio,
@@ -62,18 +65,27 @@ export function useTelegramUser(): TelegramUserData {
         fullUserObject: user,
       });
 
-      // Fetch additional user data from backend (photo and bio)
+      // Fetch additional user data from backend (full name, photo, bio, and username)
       if (user?.id) {
-        console.log('📸 Fetching user data from backend...');
+        console.log('📸 Fetching comprehensive user data from backend...');
         fetchUserData(user.id).then((backendData) => {
-          if (backendData?.success) {
+          if (backendData?.success && backendData.userData) {
             setUserData((prev) => ({
               ...prev,
-              userPhotoUrl: backendData.photo_url || prev.userPhotoUrl,
-              userBio: backendData.bio || prev.userBio,
+              userName: backendData.userData.username || prev.userName,      // Username for API
+              userFullName: backendData.userData.name || prev.userFullName,  // Full name for display
+              userPhotoUrl: backendData.userData.avatar_url || prev.userPhotoUrl,
+              userBio: backendData.userData.bio || prev.userBio,
             }));
-            console.log('✅ Updated user data from backend');
+            console.log('✅ Updated comprehensive user data from backend:', {
+              username: backendData.userData.username,      // "Kaiukov"
+              fullName: backendData.userData.name,          // "Oleksandr 🇺🇦 Kaiukov"
+              avatar_url: backendData.userData.avatar_url,
+              bio: backendData.userData.bio,
+            });
           }
+        }).catch((error) => {
+          console.error('❌ Failed to fetch comprehensive user data:', error);
         });
       }
     } else {
