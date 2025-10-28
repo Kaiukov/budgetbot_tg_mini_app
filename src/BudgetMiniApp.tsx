@@ -285,6 +285,7 @@ const BudgetMiniApp = () => {
       {currentScreen === 'comment' && (
         <CommentScreen
           comment={expenseData.comment}
+          category={expenseData.category}
           onBack={() => setCurrentScreen('category')}
           onCommentChange={updateComment}
           onNext={() => setCurrentScreen('confirm')}
