@@ -29,9 +29,10 @@ export interface AccountsUsageResponse {
 export interface CategoryUsage {
   user_name: string;
   category_name: string;
+  category_id: number;
   usage_count: number;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface CategoriesUsageResponse {
@@ -279,8 +280,13 @@ class SyncService {
         throw new Error('Sync API not configured');
       }
 
+      // Build URL with optional user_name query parameter
+      const endpoint = userName
+        ? `/api/sync/get_categories_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/sync/get_categories_usage';
+
       const data = await this.makeRequest<CategoriesUsageResponse>(
-        '/api/sync/get_categories_usage',
+        endpoint,
         { method: 'GET' }
       );
 
@@ -337,13 +343,17 @@ class SyncService {
       usedCategories.sort((a, b) => b.usage_count - a.usage_count);
 
       // Create placeholder entries for unused categories
-      const currentTimestamp = new Date().toISOString();
+      const categoryIdMap = new Map(
+        allCategories.map(cat => [cat.category_name, cat.category_id])
+      );
+
       const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(categoryName => ({
         user_name: userName,
         category_name: categoryName,
+        category_id: categoryIdMap.get(categoryName) || 0,
         usage_count: 0,
-        created_at: currentTimestamp,
-        updated_at: currentTimestamp,
+        created_at: null,
+        updated_at: null,
       }));
 
       // Combine: used categories first, then unused
@@ -444,6 +454,88 @@ class SyncService {
         timestamp: new Date().toISOString(),
         userData: null
       };
+    }
+  }
+
+  /**
+   * Get exchange rate for currency conversion
+   * Converts amount from one currency to another
+   *
+   * @param from - Source currency code (e.g., "UAH")
+   * @param to - Target currency code (e.g., "EUR")
+   * @param amount - Amount to convert (default: 1.0)
+   * @returns Converted amount or null if conversion fails
+   */
+  public async getExchangeRate(from: string, to: string, amount: number = 1.0): Promise<number | null> {
+    try {
+      if (!this.isConfigured()) {
+        console.warn('⚠️ Sync API not configured, cannot get exchange rate');
+        return null;
+      }
+
+      // Build URL with query parameters
+      const params = new URLSearchParams({
+        from: from.toUpperCase(),
+        to: to.toUpperCase(),
+        amount: String(amount)
+      });
+
+      const endpoint = `/api/sync/exchange_rate?${params.toString()}`;
+
+      console.log('💱 Getting exchange rate:', {
+        from,
+        to,
+        amount,
+        endpoint
+      });
+
+      const response = await fetch(`${this.getBaseUrl()}${endpoint}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.getApiKey()}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('❌ Exchange rate API error:', {
+          status: response.status,
+          statusText: response.statusText
+        });
+        return null;
+      }
+
+      const data = await response.json();
+
+      // Extract converted amount from response
+      // API returns: { success: true, exchangeData: { exchangeAmount: number } }
+      let convertedAmount: number | null = null;
+
+      if (data.exchangeData && typeof data.exchangeData.exchangeAmount === 'number') {
+        convertedAmount = data.exchangeData.exchangeAmount;
+      } else if (data.result && typeof data.result === 'number') {
+        convertedAmount = data.result;
+      } else if (data.converted_amount && typeof data.converted_amount === 'number') {
+        convertedAmount = data.converted_amount;
+      }
+
+      if (convertedAmount === null || typeof convertedAmount !== 'number') {
+        console.error('❌ Invalid exchange rate response format:', data);
+        return null;
+      }
+
+      console.log('✅ Exchange rate conversion successful:', {
+        from,
+        to,
+        originalAmount: amount,
+        convertedAmount,
+        rate: convertedAmount / amount
+      });
+
+      return convertedAmount;
+    } catch (error) {
+      console.error('💥 Exchange rate conversion error:', error);
+      return null;
     }
   }
 

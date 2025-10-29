@@ -9,21 +9,25 @@ export interface Category {
 
 /**
  * Extract emoji from category name
- * Examples: "Їжа 🍜" → "🍜", "Food" → null
+ * Handles multi-character emojis with skin tone modifiers
+ * Examples: "Їжа 🍜" → "🍜", "Краса 💅🏻" → "💅🏻", "Food" → null
  */
 export const extractEmoji = (categoryName: string): string | null => {
-  // Regex to match emoji characters
-  const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
+  // Regex to match emoji with modifiers (skin tones, zero-width joiners, etc.)
+  // Matches: emoji base + optional variation selector + optional skin tone modifier + optional ZWJ sequences
+  const emojiRegex = /(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*(?:\u200D[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*)*|\p{Emoji_Component}+)/gu;
   const matches = categoryName.match(emojiRegex);
   return matches ? matches[0] : null;
 };
 
 /**
  * Get category name without emoji
- * Examples: "Їжа 🍜" → "Їжа", "Food" → "Food"
+ * Removes all emoji including those with modifiers
+ * Examples: "Їжа 🍜" → "Їжа", "Краса 💅🏻" → "Краса", "Food" → "Food"
  */
 export const getCategoryNameWithoutEmoji = (categoryName: string): string => {
-  const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu;
+  // Regex to match emoji with modifiers (skin tones, zero-width joiners, etc.)
+  const emojiRegex = /(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*(?:\u200D[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*)*|\p{Emoji_Component}+)/gu;
   return categoryName.replace(emojiRegex, '').trim();
 };
 

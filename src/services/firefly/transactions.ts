@@ -556,21 +556,24 @@ async function verifyTransactionExists(
 }
 
 /**
- * Convert currency amount
- * Placeholder for actual exchange rate implementation
+ * Convert currency amount using Sync API exchange rates
  */
 async function convertCurrency(fromCurrency: string, toCurrency: string, amount: number): Promise<number | null> {
   try {
-    // TODO: Implement actual currency conversion via exchange rate API
-    // For now, return null to indicate conversion not implemented
-    logTransactionOperation('warn', `Currency conversion not implemented: ${fromCurrency} -> ${toCurrency}`);
+    // Import syncService dynamically to get exchange rates
+    const { default: syncService } = await import('../sync');
 
-    // If you have an exchange_rate function similar to Python version, call it here
-    // const result = await exchange_rate(fromCurrency, toCurrency, amount);
-    // return result;
+    logTransactionOperation('info', `Converting ${amount} ${fromCurrency} to ${toCurrency}`);
 
-    // Placeholder: return amount as-is (this should be replaced with real conversion)
-    return amount;
+    const convertedAmount = await syncService.getExchangeRate(fromCurrency, toCurrency, amount);
+
+    if (convertedAmount === null) {
+      logTransactionOperation('warn', `Currency conversion failed via API: ${fromCurrency} -> ${toCurrency}, using amount as-is`);
+      return amount;
+    }
+
+    logTransactionOperation('info', `Currency conversion successful: ${amount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`);
+    return convertedAmount;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logTransactionOperation('error', `Currency conversion error: ${errorMessage}`);

@@ -33,15 +33,17 @@ const BudgetMiniApp = () => {
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
   // Get Telegram user data
-  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
+  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
 
   // Get expense data hook
   const {
     expenseData,
     updateAccount,
+    updateAccountWithDetails,
     updateAmount,
     updateCategory,
     updateComment,
+    setUserData,
     resetExpenseData
   } = useExpenseData();
 
@@ -216,7 +218,30 @@ const BudgetMiniApp = () => {
   };
 
   const handleSelectAccount = (accountName: string) => {
-    updateAccount(accountName);
+    // Clear previous transaction data before starting new one
+    resetExpenseData();
+
+    // Find the selected account from accounts list to get full details
+    const selectedAccount = accounts.find(acc => acc.account_name === accountName);
+
+    if (selectedAccount) {
+      // Store account details
+      updateAccountWithDetails(
+        selectedAccount.account_name,
+        selectedAccount.account_id,
+        selectedAccount.account_currency,
+        selectedAccount.user_name
+      );
+
+      // Store user data if available
+      if (user?.id) {
+        setUserData(user.id, userName);
+      }
+    } else {
+      // Fallback to old method if account not found
+      updateAccount(accountName);
+    }
+
     setCurrentScreen('amount');
   };
 
@@ -252,7 +277,10 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
-          onBack={() => setCurrentScreen('home')}
+          onBack={() => {
+            resetExpenseData();
+            setCurrentScreen('home');
+          }}
           onSelectAccount={handleSelectAccount}
           onRetry={fetchAccounts}
         />
@@ -298,8 +326,17 @@ const BudgetMiniApp = () => {
           amount={expenseData.amount}
           category={expenseData.category}
           comment={expenseData.comment}
-          onCancel={() => setCurrentScreen('home')}
+          expenseData={expenseData}
+          userName={userName}
+          onCancel={() => {
+            resetExpenseData();
+            setCurrentScreen('home');
+          }}
           onConfirm={handleConfirmExpense}
+          onSuccess={() => {
+            resetExpenseData();
+            setCurrentScreen('home');
+          }}
         />
       )}
 
