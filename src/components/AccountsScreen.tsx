@@ -72,7 +72,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
                   <div className="flex-1">
                     <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
-                      Used {account.usage_count} times • {account.user_name || account.owner || 'Unknown'} • {formatCurrency(account.current_balance, account.account_currency)}
+                      Used {account.usage_count} • {formatCurrency(account.current_balance, account.account_currency)}
                     </p>
                   </div>
                   <ChevronRight size={16} className="text-gray-500" />
