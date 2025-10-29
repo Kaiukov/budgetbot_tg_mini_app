@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { X, Check, Loader } from 'lucide-react';
+import { X, Check, Loader, ArrowLeft } from 'lucide-react';
 import { syncService } from '../services/sync';
 import { addTransaction } from '../services/firefly/transactions';
 import { extractBudgetName } from '../services/firefly/utils';
 import type { ExpenseTransactionData } from '../services/firefly/types';
 import type { ExpenseData } from '../hooks/useExpenseData';
+import { getCurrencySymbol } from '../utils/currencies';
 
 interface ConfirmScreenProps {
   account: string;
@@ -13,6 +14,7 @@ interface ConfirmScreenProps {
   comment: string;
   expenseData: ExpenseData;
   userName: string;
+  onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
   onSuccess: () => void;
@@ -25,6 +27,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   comment,
   expenseData,
   userName,
+  onBack,
   onCancel,
   onConfirm,
   onSuccess
@@ -129,13 +132,18 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="flex items-center px-3 py-3 border-b border-gray-800">
+        <button onClick={onBack} className="mr-3">
+          <ArrowLeft size={20} className="text-white" />
+        </button>
         <h2 className="text-base font-semibold">Confirmation</h2>
       </div>
 
       <div className="p-3">
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
           <div className="text-center mb-4">
-            <div className="text-3xl font-bold text-red-500 mb-1">-{amount} ₴</div>
+            <div className="text-3xl font-bold text-red-500 mb-1">
+              -{getCurrencySymbol(expenseData.account_currency)}{amount}
+            </div>
             <p className="text-xs text-gray-400">Expense</p>
           </div>
 

@@ -30,20 +30,14 @@ class FireflyService {
   private apiToken: string | null = null;
 
   constructor() {
-    // Detect environment
-    const isProduction = typeof window !== 'undefined' &&
-      (window.location.hostname.includes('workers.dev') ||
-       window.location.hostname.includes('pages.dev'));
-
-    // In production: call backend directly (middleware not working)
-    // In development: use Vite proxy (empty baseUrl)
-    this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
+    // Use VITE_BASE_URL for direct API calls
+    // If not set, use empty string (Vite proxy in development)
+    this.baseUrl = import.meta.env.VITE_BASE_URL || '';
 
     // Get Firefly III API token
     this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
 
     console.log('🔧 Firefly Service Config:', {
-      environment: isProduction ? 'production' : 'development',
       baseUrl: this.baseUrl || '(using proxy)',
       hasToken: !!this.apiToken
     });

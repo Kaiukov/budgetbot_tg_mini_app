@@ -73,9 +73,17 @@ export interface TelegramUserData {
   } | null;
 }
 
+export interface ExchangeRateCache {
+  rate: number;
+  timestamp: number;
+}
+
 class SyncService {
   private baseUrl: string;
   private apiKey: string | null = null;
+  private exchangeRateCache: Map<string, ExchangeRateCache> = new Map();
+  private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
+  private readonly CACHE_KEY_PREFIX = 'exchange_rate_';
 
   constructor() {
     // Detect environment
@@ -94,6 +102,78 @@ class SyncService {
       baseUrl: this.baseUrl || '(using proxy)',
       hasApiKey: !!this.apiKey
     });
+  }
+
+  /**
+   * Generate cache key for exchange rate pair
+   */
+  private generateCacheKey(from: string, to: string): string {
+    return `${from.toUpperCase()}:${to.toUpperCase()}`;
+  }
+
+  /**
+   * Get exchange rate from cache (memory + localStorage)
+   * Returns null if cache is expired or doesn't exist
+   */
+  private getExchangeRateFromCache(from: string, to: string): number | null {
+    const cacheKey = this.generateCacheKey(from, to);
+    const now = Date.now();
+
+    // Check memory cache first
+    const memoryCache = this.exchangeRateCache.get(cacheKey);
+    if (memoryCache && (now - memoryCache.timestamp) < this.CACHE_EXPIRY_MS) {
+      console.log('💾 Exchange rate cache HIT (memory):', { from, to, rate: memoryCache.rate });
+      return memoryCache.rate;
+    }
+
+    // Check localStorage as fallback
+    try {
+      const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
+      const cached = localStorage.getItem(storageKey);
+
+      if (cached) {
+        const data = JSON.parse(cached) as ExchangeRateCache;
+
+        if ((now - data.timestamp) < this.CACHE_EXPIRY_MS) {
+          console.log('💾 Exchange rate cache HIT (localStorage):', { from, to, rate: data.rate });
+          // Restore to memory cache for faster access
+          this.exchangeRateCache.set(cacheKey, data);
+          return data.rate;
+        } else {
+          // Cache expired, remove it
+          localStorage.removeItem(storageKey);
+          this.exchangeRateCache.delete(cacheKey);
+          console.log('💾 Exchange rate cache EXPIRED:', { from, to });
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Error reading exchange rate from localStorage:', error);
+    }
+
+    return null;
+  }
+
+  /**
+   * Save exchange rate to cache (memory + localStorage)
+   */
+  private setExchangeRateCache(from: string, to: string, rate: number): void {
+    const cacheKey = this.generateCacheKey(from, to);
+    const cacheData: ExchangeRateCache = {
+      rate,
+      timestamp: Date.now()
+    };
+
+    // Store in memory cache
+    this.exchangeRateCache.set(cacheKey, cacheData);
+
+    // Store in localStorage for persistence
+    try {
+      const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
+      localStorage.setItem(storageKey, JSON.stringify(cacheData));
+      console.log('💾 Exchange rate cached:', { from, to, rate, expiresIn: '1h' });
+    } catch (error) {
+      console.warn('⚠️ Error saving exchange rate to localStorage:', error);
+    }
   }
 
   /**
@@ -459,7 +539,7 @@ class SyncService {
 
   /**
    * Get exchange rate for currency conversion
-   * Converts amount from one currency to another
+   * Converts amount from one currency to another with 1-hour caching
    *
    * @param from - Source currency code (e.g., "UAH")
    * @param to - Target currency code (e.g., "EUR")
@@ -473,18 +553,37 @@ class SyncService {
         return null;
       }
 
+      // Normalize currency codes
+      const fromCode = from.toUpperCase();
+      const toCode = to.toUpperCase();
+
+      // Check cache first
+      const cachedRate = this.getExchangeRateFromCache(fromCode, toCode);
+      if (cachedRate !== null) {
+        // Apply amount to cached rate
+        const convertedAmount = cachedRate * amount;
+        console.log('💱 Using cached exchange rate:', {
+          from: fromCode,
+          to: toCode,
+          amount,
+          rate: cachedRate,
+          convertedAmount
+        });
+        return convertedAmount;
+      }
+
       // Build URL with query parameters
       const params = new URLSearchParams({
-        from: from.toUpperCase(),
-        to: to.toUpperCase(),
+        from: fromCode,
+        to: toCode,
         amount: String(amount)
       });
 
       const endpoint = `/api/sync/exchange_rate?${params.toString()}`;
 
-      console.log('💱 Getting exchange rate:', {
-        from,
-        to,
+      console.log('💱 Fetching fresh exchange rate:', {
+        from: fromCode,
+        to: toCode,
         amount,
         endpoint
       });
@@ -524,12 +623,16 @@ class SyncService {
         return null;
       }
 
+      // Calculate and cache the exchange rate (1 unit conversion)
+      const rate = convertedAmount / amount;
+      this.setExchangeRateCache(fromCode, toCode, rate);
+
       console.log('✅ Exchange rate conversion successful:', {
-        from,
-        to,
+        from: fromCode,
+        to: toCode,
         originalAmount: amount,
         convertedAmount,
-        rate: convertedAmount / amount
+        rate
       });
 
       return convertedAmount;

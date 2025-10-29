@@ -290,6 +290,7 @@ const BudgetMiniApp = () => {
         <AmountScreen
           account={expenseData.account}
           amount={expenseData.amount}
+          expenseData={expenseData}
           onBack={() => setCurrentScreen('accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
@@ -328,6 +329,7 @@ const BudgetMiniApp = () => {
           comment={expenseData.comment}
           expenseData={expenseData}
           userName={userName}
+          onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetExpenseData();
             setCurrentScreen('home');

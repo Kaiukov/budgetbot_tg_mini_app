@@ -1,7 +1,7 @@
 import { ArrowLeft, ChevronRight, CreditCard } from 'lucide-react';
 import type { AccountUsage } from '../services/sync';
 import { getAccountIcon, getAccountColor } from '../utils/accounts';
-import { formatCurrency } from '../utils/formatCurrency';
+import { formatCurrency } from '../utils/currencies';
 
 interface AccountsScreenProps {
   accounts: AccountUsage[];
