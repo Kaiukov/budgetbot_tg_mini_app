@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
-import { useExpenseData } from './hooks/useExpenseData';
+import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
@@ -13,11 +13,13 @@ import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
 import CommentScreen from './components/CommentScreen';
 import ConfirmScreen from './components/ConfirmScreen';
+import IncomeConfirmScreen from './components/IncomeConfirmScreen';
 import DebugScreen from './components/DebugScreen';
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
 
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>(getInitialServiceStatuses());
@@ -35,21 +37,21 @@ const BudgetMiniApp = () => {
   // Get Telegram user data
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
 
-  // Get expense data hook
+  // Get transaction data hook (supports expense and income)
   const {
-    expenseData,
+    transactionData,
     updateAccount,
     updateAccountWithDetails,
     updateAmount,
     updateCategory,
     updateComment,
     setUserData,
-    resetExpenseData
-  } = useExpenseData();
+    resetTransactionData
+  } = useTransactionData(transactionType);
 
-  // Fetch accounts when accounts screen is opened
+  // Fetch accounts when accounts screen is opened (for both expense and income flows)
   useEffect(() => {
-    if (currentScreen === 'accounts') {
+    if (currentScreen === 'accounts' || currentScreen === 'income-accounts') {
       fetchAccounts();
     }
   }, [currentScreen, userName]);
@@ -219,7 +221,7 @@ const BudgetMiniApp = () => {
 
   const handleSelectAccount = (accountName: string) => {
     // Clear previous transaction data before starting new one
-    resetExpenseData();
+    resetTransactionData();
 
     // Find the selected account from accounts list to get full details
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
@@ -249,11 +251,12 @@ const BudgetMiniApp = () => {
     updateAmount(value);
   };
 
-  const handleConfirmExpense = () => {
+  const handleConfirmTransaction = () => {
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
-      resetExpenseData();
+      resetTransactionData();
+      setTransactionType('expense'); // Reset to default
       setCurrentScreen('home');
     }, 2000);
   };
@@ -278,7 +281,7 @@ const BudgetMiniApp = () => {
           accountsLoading={accountsLoading}
           accountsError={accountsError}
           onBack={() => {
-            resetExpenseData();
+            resetTransactionData();
             setCurrentScreen('home');
           }}
           onSelectAccount={handleSelectAccount}
@@ -286,12 +289,30 @@ const BudgetMiniApp = () => {
         />
       )}
 
+      {currentScreen === 'income-accounts' && (
+        <AccountsScreen
+          accounts={accounts}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+          onBack={() => {
+            resetTransactionData();
+            setTransactionType('expense'); // Reset to default
+            setCurrentScreen('home');
+          }}
+          onSelectAccount={(accountName) => {
+            setTransactionType('income'); // Set transaction type to income
+            handleSelectAccount(accountName);
+          }}
+          onRetry={fetchAccounts}
+        />
+      )}
+
       {currentScreen === 'amount' && (
         <AmountScreen
-          account={expenseData.account}
-          amount={expenseData.amount}
-          expenseData={expenseData}
-          onBack={() => setCurrentScreen('accounts')}
+          account={transactionData.account}
+          amount={transactionData.amount}
+          expenseData={transactionData}
+          onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
         />
@@ -302,6 +323,7 @@ const BudgetMiniApp = () => {
           categories={categories}
           categoriesLoading={categoriesLoading}
           categoriesError={categoriesError}
+          transactionType={transactionType}
           onBack={() => setCurrentScreen('amount')}
           onSelectCategory={(category) => {
             updateCategory(category);
@@ -313,30 +335,55 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'comment' && (
         <CommentScreen
-          comment={expenseData.comment}
-          category={expenseData.category}
+          comment={transactionData.comment}
+          category={transactionData.category}
           onBack={() => setCurrentScreen('category')}
           onCommentChange={updateComment}
           onNext={() => setCurrentScreen('confirm')}
         />
       )}
 
-      {currentScreen === 'confirm' && (
+      {currentScreen === 'confirm' && transactionType === 'expense' && (
         <ConfirmScreen
-          account={expenseData.account}
-          amount={expenseData.amount}
-          category={expenseData.category}
-          comment={expenseData.comment}
-          expenseData={expenseData}
+          account={transactionData.account}
+          amount={transactionData.amount}
+          category={transactionData.category}
+          comment={transactionData.comment}
+          expenseData={transactionData}
           userName={userName}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
-            resetExpenseData();
+            resetTransactionData();
+            setTransactionType('expense');
             setCurrentScreen('home');
           }}
-          onConfirm={handleConfirmExpense}
+          onConfirm={handleConfirmTransaction}
           onSuccess={() => {
-            resetExpenseData();
+            resetTransactionData();
+            setTransactionType('expense');
+            setCurrentScreen('home');
+          }}
+        />
+      )}
+
+      {currentScreen === 'confirm' && transactionType === 'income' && (
+        <IncomeConfirmScreen
+          account={transactionData.account}
+          amount={transactionData.amount}
+          category={transactionData.category}
+          comment={transactionData.comment}
+          transactionData={transactionData}
+          userName={userName}
+          onBack={() => setCurrentScreen('comment')}
+          onCancel={() => {
+            resetTransactionData();
+            setTransactionType('expense');
+            setCurrentScreen('home');
+          }}
+          onConfirm={handleConfirmTransaction}
+          onSuccess={() => {
+            resetTransactionData();
+            setTransactionType('expense');
             setCurrentScreen('home');
           }}
         />
@@ -356,7 +403,9 @@ const BudgetMiniApp = () => {
       {showSuccess && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in">
           <Check size={20} />
-          <span className="font-medium">Expense saved successfully!</span>
+          <span className="font-medium">
+            {transactionType === 'income' ? 'Income' : 'Expense'} saved successfully!
+          </span>
         </div>
       )}
     </div>

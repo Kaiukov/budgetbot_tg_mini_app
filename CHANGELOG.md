@@ -7,24 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-10-29
+
 ### Added
-- Currency utilities module with comprehensive currency symbol and formatting support
-- Real-time currency conversion display in AmountScreen with EUR conversion preview
-- Exchange rate caching system with 1-hour TTL (memory + localStorage persistence)
-- Back navigation button in ConfirmScreen for improved UX
-- Dynamic currency symbol display based on account currency throughout UI
+- **Income Flow**: Complete income transaction flow with GREEN confirmation screen
+- **Generic Cache Utility**: Centralized caching with dual-layer (memory + localStorage) and configurable expiry
+- **Category Caching**: 1-minute cache for categories to reduce API calls
+- **Category Filtering**: Income transactions filter to category_id: 4, expense shows all categories
+- **Income Configuration**: Category type configuration file (`src/config/categories.json`)
+- **Generic Hooks**: `useTransactionData` for expense/income/transfer types, `useSyncData` for data fetching
+- **Category Filter Utility**: Type-based filtering (income-only, expense shows all)
+- **Income Confirmation Screen**: GREEN screen with positive amount display (+amount)
 
 ### Changed
-- AmountScreen now shows currency code alongside amount with responsive input sizing
-- ConfirmScreen displays proper currency symbols instead of hardcoded UAH symbol
-- AccountsScreen imports formatCurrency from new currencies utility module
-- Firefly service base URL configuration now uses VITE_BASE_URL environment variable
-- Exchange rate service implements intelligent caching to reduce API calls
+- **AmountScreen**: Improved number input handling with better overflow management for large numbers
+- **AmountScreen**: Dynamic text alignment - centered placeholder, right-aligned input with currency
+- **AmountScreen**: Fixed spacing between amount and currency label (reduced gap)
+- **CategoryScreen**: Added optional transaction type filtering support
+- **HomeScreen**: Income feature now has active route (`income-accounts`)
+- **BudgetMiniApp**: Transaction type state management for expense/income flows
+- **BudgetMiniApp**: Success toast message now shows transaction type (Income/Expense)
+- **Sync Service**: Integrated generic Cache utility for category caching
 
 ### Fixed
-- Currency display consistency across all screens using centralized utility functions
-- Exchange rate API calls now properly cached to improve performance
-- Base URL detection logic simplified to use environment variable with proxy fallback
+- Amount input overflow issue with very large numbers (now scrollable)
+- Amount input text cutting off on left side for multi-digit numbers
+- Excessive spacing between amount and currency code
+- Category caching implementation (1-minute TTL as per design requirements)
+
+### Technical Improvements
+- **DRY Compliance**: Eliminated duplication in data fetching and transaction management
+- **Code Organization**: Separated concerns with utility files and generic hooks
+- **Type Safety**: Improved TypeScript types for transaction flows
+- **Reusability**: Screens now support multiple transaction types
 
 ## [1.0.0] - 2025-10-29
 

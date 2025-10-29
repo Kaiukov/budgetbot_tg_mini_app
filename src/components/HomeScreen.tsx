@@ -11,7 +11,7 @@ interface HomeScreenProps {
 
 const features = [
   { title: 'Expenses', desc: 'Track daily expenses', icon: TrendingDown, color: '#EF4444', route: 'accounts' },
-  { title: 'Income', desc: 'Record income sources', icon: TrendingUp, color: '#10B981' },
+  { title: 'Income', desc: 'Record income sources', icon: TrendingUp, color: '#10B981', route: 'income-accounts' },
   { title: 'Accounts', desc: 'Manage multiple accounts', icon: CreditCard, color: '#3B82F6' },
   { title: 'Categories', desc: 'Organize transactions', icon: Home, color: '#8B5CF6' },
   { title: 'Reports', desc: 'Analyze your finances', icon: DollarSign, color: '#F59E0B' },

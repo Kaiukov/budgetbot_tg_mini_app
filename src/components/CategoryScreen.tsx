@@ -1,11 +1,13 @@
 import { ArrowLeft, ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
 import type { CategoryUsage } from '../services/sync';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
+import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
 
 interface CategoryScreenProps {
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
+  transactionType?: TransactionType;
   onBack: () => void;
   onSelectCategory: (categoryName: string) => void;
   onRetry: () => void;
@@ -15,10 +17,14 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   categories,
   categoriesLoading,
   categoriesError,
+  transactionType = 'expense',
   onBack,
   onSelectCategory,
   onRetry
 }) => {
+  // Filter categories based on transaction type (income only filters, expense shows all)
+  const displayCategories = filterCategoriesByType(categories, transactionType);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="flex items-center px-3 py-3 border-b border-gray-800">
@@ -50,9 +56,9 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
         )}
 
         {/* Categories List */}
-        {!categoriesLoading && !categoriesError && categories.length > 0 && (
+        {!categoriesLoading && !categoriesError && displayCategories.length > 0 && (
           <div className="space-y-0">
-            {categories.map((category, idx) => {
+            {displayCategories.map((category, idx) => {
               const color = getCategoryColor(category.category_name);
               const emoji = extractEmoji(category.category_name);
               const categoryNameWithoutEmoji = getCategoryNameWithoutEmoji(category.category_name);
@@ -87,10 +93,14 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
         )}
 
         {/* Empty State */}
-        {!categoriesLoading && !categoriesError && categories.length === 0 && (
+        {!categoriesLoading && !categoriesError && displayCategories.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8">
             <Folder size={48} className="text-gray-600 mb-3" />
-            <p className="text-gray-400 text-sm">No categories found</p>
+            <p className="text-gray-400 text-sm">
+              {transactionType === 'income'
+                ? 'No income categories found'
+                : 'No categories found'}
+            </p>
           </div>
         )}
       </div>

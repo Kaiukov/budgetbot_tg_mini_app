@@ -98,8 +98,8 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       <div className="p-4">
         <div className="bg-gray-800 rounded-lg p-4 mb-3">
           <p className="text-xs text-gray-400 mb-2">Account: {account}</p>
-          <div className="text-center">
-            <div className="flex items-baseline justify-center gap-2">
+          <div className="text-center overflow-x-auto">
+            <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
               <input
                 type="text"
                 inputMode="decimal"
@@ -108,12 +108,14 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder="0"
-                className="text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 text-center min-w-0"
-                style={{ width: amount ? `${Math.max(amount.length * 0.6, 1)}em` : '2em' }}
+                className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
+                  amount ? 'text-right' : 'text-center'
+                }`}
+                style={{ width: amount ? `${Math.min(amount.length * 0.65, 12)}em` : '2em', maxWidth: '100%' }}
                 autoFocus
               />
               {amount && (
-                <span className="text-2xl font-semibold text-gray-400">
+                <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {currencyCode || 'EUR'}
                 </span>
               )}

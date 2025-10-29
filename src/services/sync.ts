@@ -3,6 +3,8 @@
  * Provides utilities for interacting with the Sync API
  */
 
+import { Cache } from '../utils/cache';
+
 export interface AccountUsage {
   account_id: string;
   user_name: string;
@@ -85,6 +87,10 @@ class SyncService {
   private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
   private readonly CACHE_KEY_PREFIX = 'exchange_rate_';
 
+  // Category cache with 1-minute expiry
+  private categoryCache: Cache<CategoriesUsageResponse>;
+  private readonly CATEGORY_CACHE_EXPIRY_MS = 60000; // 1 minute in milliseconds
+
   constructor() {
     // Detect environment
     const isProduction = typeof window !== 'undefined' &&
@@ -96,6 +102,12 @@ class SyncService {
     this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
 
     this.apiKey = import.meta.env.VITE_SYNC_API_KEY || null;
+
+    // Initialize category cache with 1-minute expiry
+    this.categoryCache = new Cache<CategoriesUsageResponse>(
+      this.CATEGORY_CACHE_EXPIRY_MS,
+      'category_'
+    );
 
     console.log('🔧 Sync Service Config:', {
       environment: isProduction ? 'production' : 'development',
@@ -352,6 +364,8 @@ class SyncService {
    * - Top: Categories user has used (usage_count > 0), sorted high to low
    * - Bottom: Categories user hasn't used (usage_count = 0)
    *
+   * Uses 1-minute cache to reduce API calls
+   *
    * @param userName - Optional username to sort categories by usage
    */
   public async getCategoriesUsage(userName?: string): Promise<CategoriesUsageResponse> {
@@ -359,6 +373,18 @@ class SyncService {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
+
+      // Generate cache key
+      const cacheKey = userName || 'all';
+
+      // Check cache first
+      const cachedData = this.categoryCache.get(cacheKey);
+      if (cachedData) {
+        console.log('💾 Using cached categories for:', cacheKey);
+        return cachedData;
+      }
+
+      console.log('🔄 Fetching fresh categories for:', cacheKey);
 
       // Build URL with optional user_name query parameter
       const endpoint = userName
@@ -449,11 +475,16 @@ class SyncService {
         sortedOrder: sortedCategories.map(c => ({ name: c.category_name, usage: c.usage_count }))
       });
 
-      return {
+      const result = {
         ...data,
         get_categories_usage: sortedCategories,
         total: sortedCategories.length,
       };
+
+      // Cache the result for 1 minute
+      this.categoryCache.set(cacheKey, result);
+
+      return result;
     } catch (error) {
       console.error('Failed to get categories usage:', error);
       throw error;
