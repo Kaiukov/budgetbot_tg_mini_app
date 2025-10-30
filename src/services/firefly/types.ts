@@ -38,6 +38,10 @@ export interface ExpenseTransactionData extends BaseTransactionData {
  */
 export interface IncomeTransactionData extends BaseTransactionData {
   category: string;
+  budget_name?: string;
+  account_id?: string | number;
+  amount_foreign?: string | number;
+  user_id?: number;
 }
 
 /**
