@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2025-10-30
+
+### Added
+- **Transfer Flow**: Complete money transfer flow between accounts
+- **TransferAmountScreen**: Dual-input screen with real-time currency conversion for exit/entry amounts
+- **TransferFeeScreen**: Optional fee input for both exit and entry sides with skip functionality
+- **TransferConfirmScreen**: Transfer confirmation with detailed fee breakdown and multi-currency display
+- **Currency Conversion**: Automatic exchange rate calculation for cross-currency transfers
+- **Transfer Icon**: ArrowRightLeft icon in HomeScreen for transfer feature
+
+### Changed
+- **BudgetMiniApp**: Added transfer state management with 10 new state variables for complete transfer flow
+- **BudgetMiniApp**: Extended account fetching trigger to include transfer screens
+- **AmountScreen**: Renamed `expenseData` prop to `transactionData` for better generality
+- **ConfirmScreen**: Renamed `expenseData` prop to `transactionData` for consistency
+- **HomeScreen**: Updated Accounts feature color from blue to indigo for visual distinction
+
+### Removed
+- **useExpenseData.ts**: Removed old hook in favor of generic `useTransactionData`
+
+### Technical Improvements
+- Consistent transaction data handling across expense, income, and transfer flows
+- Real-time exchange rate integration for cross-currency transfers
+- Comprehensive state management for multi-step transfer workflow
+- Same-currency and different-currency transfer support
+
 ## [1.1.0] - 2025-10-29
 
 ### Added

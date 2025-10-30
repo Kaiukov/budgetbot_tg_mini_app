@@ -14,6 +14,9 @@ import CategoryScreen from './components/CategoryScreen';
 import CommentScreen from './components/CommentScreen';
 import ConfirmScreen from './components/ConfirmScreen';
 import IncomeConfirmScreen from './components/IncomeConfirmScreen';
+import TransferAmountScreen from './components/TransferAmountScreen';
+import TransferFeeScreen from './components/TransferFeeScreen';
+import TransferConfirmScreen from './components/TransferConfirmScreen';
 import DebugScreen from './components/DebugScreen';
 
 const BudgetMiniApp = () => {
@@ -34,6 +37,19 @@ const BudgetMiniApp = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
 
+  // Transfer-specific state
+  const [transferSourceAccount, setTransferSourceAccount] = useState('');
+  const [transferSourceAccountId, setTransferSourceAccountId] = useState('');
+  const [transferSourceCurrency, setTransferSourceCurrency] = useState('');
+  const [transferDestAccount, setTransferDestAccount] = useState('');
+  const [transferDestAccountId, setTransferDestAccountId] = useState('');
+  const [transferDestCurrency, setTransferDestCurrency] = useState('');
+  const [transferExitAmount, setTransferExitAmount] = useState('');
+  const [transferEntryAmount, setTransferEntryAmount] = useState('');
+  const [transferExitFee, setTransferExitFee] = useState('');
+  const [transferEntryFee, setTransferEntryFee] = useState('');
+  const [transferComment, setTransferComment] = useState('');
+
   // Get Telegram user data
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
 
@@ -49,9 +65,10 @@ const BudgetMiniApp = () => {
     resetTransactionData
   } = useTransactionData(transactionType);
 
-  // Fetch accounts when accounts screen is opened (for both expense and income flows)
+  // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
-    if (currentScreen === 'accounts' || currentScreen === 'income-accounts') {
+    if (currentScreen === 'accounts' || currentScreen === 'income-accounts' ||
+        currentScreen === 'transfer-source-accounts' || currentScreen === 'transfer-dest-accounts') {
       fetchAccounts();
     }
   }, [currentScreen, userName]);
@@ -311,7 +328,7 @@ const BudgetMiniApp = () => {
         <AmountScreen
           account={transactionData.account}
           amount={transactionData.amount}
-          expenseData={transactionData}
+          transactionData={transactionData}
           onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
@@ -349,7 +366,7 @@ const BudgetMiniApp = () => {
           amount={transactionData.amount}
           category={transactionData.category}
           comment={transactionData.comment}
-          expenseData={transactionData}
+          transactionData={transactionData}
           userName={userName}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
@@ -389,6 +406,176 @@ const BudgetMiniApp = () => {
         />
       )}
 
+      {/* Transfer Flow */}
+      {currentScreen === 'transfer-source-accounts' && (
+        <AccountsScreen
+          accounts={accounts}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+          onBack={() => {
+            // Reset transfer state
+            setTransferSourceAccount('');
+            setTransferSourceAccountId('');
+            setTransferSourceCurrency('');
+            setTransferDestAccount('');
+            setTransferDestAccountId('');
+            setTransferDestCurrency('');
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setTransferComment('');
+            setCurrentScreen('home');
+          }}
+          onSelectAccount={(accountName) => {
+            const selectedAccount = accounts.find(acc => acc.account_name === accountName);
+            if (selectedAccount) {
+              setTransferSourceAccount(selectedAccount.account_name);
+              setTransferSourceAccountId(selectedAccount.account_id);
+              setTransferSourceCurrency(selectedAccount.account_currency);
+            }
+            setCurrentScreen('transfer-dest-accounts');
+          }}
+          onRetry={fetchAccounts}
+        />
+      )}
+
+      {currentScreen === 'transfer-dest-accounts' && (
+        <AccountsScreen
+          accounts={accounts.filter(acc => acc.account_name !== transferSourceAccount)}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+          onBack={() => {
+            // Clear amounts when going back to source account selection
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setCurrentScreen('transfer-source-accounts');
+          }}
+          onSelectAccount={(accountName) => {
+            const selectedAccount = accounts.find(acc => acc.account_name === accountName);
+            if (selectedAccount) {
+              setTransferDestAccount(selectedAccount.account_name);
+              setTransferDestAccountId(selectedAccount.account_id);
+              setTransferDestCurrency(selectedAccount.account_currency);
+            }
+            setCurrentScreen('transfer-amount');
+          }}
+          onRetry={fetchAccounts}
+        />
+      )}
+
+      {currentScreen === 'transfer-amount' && (
+        <TransferAmountScreen
+          sourceAccount={transferSourceAccount}
+          destAccount={transferDestAccount}
+          sourceCurrency={transferSourceCurrency}
+          destCurrency={transferDestCurrency}
+          exitAmount={transferExitAmount}
+          entryAmount={transferEntryAmount}
+          onBack={() => {
+            // Clear amounts when going back to destination account selection
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setCurrentScreen('transfer-dest-accounts');
+          }}
+          onExitAmountChange={setTransferExitAmount}
+          onEntryAmountChange={setTransferEntryAmount}
+          onNext={() => setCurrentScreen('transfer-fees')}
+        />
+      )}
+
+      {currentScreen === 'transfer-fees' && (
+        <TransferFeeScreen
+          sourceAccount={transferSourceAccount}
+          destAccount={transferDestAccount}
+          sourceCurrency={transferSourceCurrency}
+          destCurrency={transferDestCurrency}
+          exitFee={transferExitFee}
+          entryFee={transferEntryFee}
+          onBack={() => {
+            // Clear fees when going back to amount screen
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setCurrentScreen('transfer-amount');
+          }}
+          onExitFeeChange={setTransferExitFee}
+          onEntryFeeChange={setTransferEntryFee}
+          onNext={() => setCurrentScreen('transfer-comment')}
+          onSkip={() => {
+            setTransferExitFee('0');
+            setTransferEntryFee('0');
+            setCurrentScreen('transfer-comment');
+          }}
+        />
+      )}
+
+      {currentScreen === 'transfer-comment' && (
+        <CommentScreen
+          comment={transferComment}
+          category="Transfer"
+          onBack={() => setCurrentScreen('transfer-fees')}
+          onCommentChange={setTransferComment}
+          onNext={() => setCurrentScreen('transfer-confirm')}
+        />
+      )}
+
+      {currentScreen === 'transfer-confirm' && (
+        <TransferConfirmScreen
+          sourceAccount={transferSourceAccount}
+          destAccount={transferDestAccount}
+          sourceCurrency={transferSourceCurrency}
+          destCurrency={transferDestCurrency}
+          exitAmount={transferExitAmount}
+          entryAmount={transferEntryAmount}
+          exitFee={transferExitFee}
+          entryFee={transferEntryFee}
+          comment={transferComment}
+          userName={userName}
+          onBack={() => setCurrentScreen('transfer-comment')}
+          onCancel={() => {
+            // Reset all transfer state
+            setTransferSourceAccount('');
+            setTransferSourceAccountId('');
+            setTransferSourceCurrency('');
+            setTransferDestAccount('');
+            setTransferDestAccountId('');
+            setTransferDestCurrency('');
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setTransferComment('');
+            setCurrentScreen('home');
+          }}
+          onConfirm={() => {
+            setShowSuccess(true);
+            setTimeout(() => {
+              setShowSuccess(false);
+              // Reset all transfer state
+              setTransferSourceAccount('');
+              setTransferSourceAccountId('');
+              setTransferSourceCurrency('');
+              setTransferDestAccount('');
+              setTransferDestAccountId('');
+              setTransferDestCurrency('');
+              setTransferExitAmount('');
+              setTransferEntryAmount('');
+              setTransferExitFee('0');
+              setTransferEntryFee('0');
+              setTransferComment('');
+              setCurrentScreen('home');
+            }, 2000);
+          }}
+          onSuccess={() => {
+            // Success handled by onConfirm
+          }}
+        />
+      )}
+
       {currentScreen === 'debug' && (
         <DebugScreen
           userName={userName}
@@ -404,7 +591,7 @@ const BudgetMiniApp = () => {
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in">
           <Check size={20} />
           <span className="font-medium">
-            {transactionType === 'income' ? 'Income' : 'Expense'} saved successfully!
+            {currentScreen.startsWith('transfer') ? 'Transfer' : transactionType === 'income' ? 'Income' : 'Expense'} saved successfully!
           </span>
         </div>
       )}

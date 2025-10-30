@@ -1,12 +1,12 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
-import type { ExpenseData } from '../hooks/useExpenseData';
+import type { TransactionData } from '../hooks/useTransactionData';
 
 interface AmountScreenProps {
   account: string;
   amount: string;
-  expenseData: ExpenseData;
+  transactionData: TransactionData;
   onBack: () => void;
   onAmountChange: (value: string) => void;
   onNext: () => void;
@@ -15,7 +15,7 @@ interface AmountScreenProps {
 const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
-  expenseData,
+  transactionData,
   onBack,
   onAmountChange,
   onNext
@@ -24,7 +24,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
 
   // Get currency code, default to empty string if not available
-  const currencyCode = expenseData.account_currency?.toUpperCase() || '';
+  const currencyCode = transactionData.account_currency?.toUpperCase() || '';
 
   // Fetch EUR conversion when amount or currency changes
   useEffect(() => {

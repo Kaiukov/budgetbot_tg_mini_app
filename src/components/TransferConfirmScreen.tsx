@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
+import { X, Check, Loader, ArrowLeft, ArrowRight } from 'lucide-react';
 import { addTransaction } from '../services/firefly/transactions';
-import { extractBudgetName } from '../services/firefly/utils';
-import type { ExpenseTransactionData } from '../services/firefly/types';
-import type { TransactionData } from '../hooks/useTransactionData';
+import type { TransferTransactionData } from '../services/firefly/types';
 import { getCurrencySymbol } from '../utils/currencies';
 
-interface ConfirmScreenProps {
-  account: string;
-  amount: string;
-  category: string;
+interface TransferConfirmScreenProps {
+  sourceAccount: string;
+  destAccount: string;
+  sourceCurrency: string;
+  destCurrency: string;
+  exitAmount: string;
+  entryAmount: string;
+  exitFee: string;
+  entryFee: string;
   comment: string;
-  transactionData: TransactionData;
   userName: string;
   onBack: () => void;
   onCancel: () => void;
@@ -20,12 +21,16 @@ interface ConfirmScreenProps {
   onSuccess: () => void;
 }
 
-const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
-  account,
-  amount,
-  category,
+const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
+  sourceAccount,
+  destAccount,
+  sourceCurrency,
+  destCurrency,
+  exitAmount,
+  entryAmount,
+  exitFee,
+  entryFee,
   comment,
-  transactionData,
   userName,
   onBack,
   onCancel,
@@ -35,6 +40,10 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
+  const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
+  const isSameCurrency = sourceCurrencyCode === destCurrencyCode;
+
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
 
@@ -42,62 +51,41 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     setSubmitMessage(null);
 
     try {
-      console.log('💳 Starting transaction submission:', {
-        account,
-        amount,
-        category,
-        transactionData
+      console.log('💸 Starting transfer transaction submission:', {
+        sourceAccount,
+        destAccount,
+        exitAmount,
+        entryAmount,
+        exitFee,
+        entryFee,
+        comment
       });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
-
-      // Build transaction payload
-      const budgetName = extractBudgetName(category);
-      const transactionPayload: ExpenseTransactionData = {
-        account: transactionData.account,
-        account_id: parseInt(transactionData.account_id || '0'),
-        account_currency: transactionData.account_currency || 'EUR',
-        currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: category,
-        comment: comment || '',
+      // Build transfer transaction payload
+      const transactionPayload: TransferTransactionData = {
+        username: userName || 'unknown',
         date: new Date().toISOString(),
-        user_id: transactionData.user_id || 0,
-        username: userName || transactionData.username || 'unknown',
-        // Only include budget_name if it's not empty (excludes Cyrillic/non-ASCII names)
-        ...(budgetName && { budget_name: budgetName })
+        exit_account: sourceAccount,
+        entry_account: destAccount,
+        exit_amount: parseFloat(exitAmount),
+        entry_amount: parseFloat(entryAmount),
+        exit_currency: sourceCurrencyCode,
+        entry_currency: destCurrencyCode,
+        exit_fee: exitFee ? parseFloat(exitFee) : 0,
+        entry_fee: entryFee ? parseFloat(entryFee) : 0,
+        description: comment || ''
       };
 
-      console.log('📝 Transaction payload built:', transactionPayload);
+      console.log('📝 Transfer payload built:', transactionPayload);
 
       // Submit to Firefly
-      const [success, response] = await addTransaction(transactionPayload, 'expense', true);
+      const [success, response] = await addTransaction(transactionPayload, 'transfer', true);
 
       if (success) {
-        console.log('✅ Transaction submitted successfully:', response);
+        console.log('✅ Transfer submitted successfully:', response);
         setSubmitMessage({
           type: 'success',
-          text: 'Transaction saved to Firefly!'
+          text: 'Transfer saved to Firefly!'
         });
 
         // Reset form and navigate after showing success
@@ -106,10 +94,10 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
           onConfirm();
         }, 2000);
       } else {
-        console.error('❌ Transaction submission failed:', response);
+        console.error('❌ Transfer submission failed:', response);
         const errorMessage = typeof response === 'object' && response !== null && 'error' in response
           ? (response as { error: string }).error
-          : 'Failed to save transaction';
+          : 'Failed to save transfer';
 
         setSubmitMessage({
           type: 'error',
@@ -117,7 +105,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
         });
       }
     } catch (error) {
-      console.error('💥 Transaction submission error:', error);
+      console.error('💥 Transfer submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
       setSubmitMessage({
@@ -141,21 +129,46 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
       <div className="p-3">
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
           <div className="text-center mb-4">
-            <div className="text-3xl font-bold text-red-500 mb-1">
-              -{getCurrencySymbol(transactionData.account_currency)}{amount}
-            </div>
-            <p className="text-xs text-gray-400">Expense</p>
+            {/* Transfer amount display with arrow */}
+            {isSameCurrency ? (
+              <div className="text-3xl font-bold text-blue-500 mb-1">
+                {getCurrencySymbol(sourceCurrencyCode)}{exitAmount}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-3xl font-bold text-blue-500 mb-1">
+                <span>{getCurrencySymbol(sourceCurrencyCode)}{exitAmount}</span>
+                <ArrowRight size={24} className="flex-shrink-0" />
+                <span>{getCurrencySymbol(destCurrencyCode)}{entryAmount}</span>
+              </div>
+            )}
+            <p className="text-xs text-gray-400">Transfer</p>
           </div>
 
           <div className="space-y-0">
             <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Account:</span>
-              <span className="text-xs font-medium text-white">{account}</span>
+              <span className="text-xs text-gray-400">From Account:</span>
+              <span className="text-xs font-medium text-white">{sourceAccount}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Category:</span>
-              <span className="text-xs font-medium text-white">{category}</span>
+              <span className="text-xs text-gray-400">To Account:</span>
+              <span className="text-xs font-medium text-white">{destAccount}</span>
             </div>
+
+            {/* Show fees if they're greater than 0 */}
+            {((exitFee && parseFloat(exitFee) > 0) || (entryFee && parseFloat(entryFee) > 0)) && (
+              <div className="flex justify-between py-2.5 border-b border-gray-700">
+                <span className="text-xs text-gray-400">Fees:</span>
+                <div className="text-xs font-medium text-white text-right">
+                  {exitFee && parseFloat(exitFee) > 0 && (
+                    <div>Exit: {getCurrencySymbol(sourceCurrencyCode)}{exitFee}</div>
+                  )}
+                  {entryFee && parseFloat(entryFee) > 0 && (
+                    <div>Entry: {getCurrencySymbol(destCurrencyCode)}{entryFee}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Comment:</span>
               <span className="text-xs font-medium text-white text-right max-w-[60%]">{comment || 'No comment'}</span>
@@ -215,4 +228,4 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   );
 };
 
-export default ConfirmScreen;
+export default TransferConfirmScreen;

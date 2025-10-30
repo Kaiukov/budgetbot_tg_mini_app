@@ -1,4 +1,4 @@
-import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug } from 'lucide-react';
+import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
 
 interface HomeScreenProps {
   userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
@@ -12,7 +12,8 @@ interface HomeScreenProps {
 const features = [
   { title: 'Expenses', desc: 'Track daily expenses', icon: TrendingDown, color: '#EF4444', route: 'accounts' },
   { title: 'Income', desc: 'Record income sources', icon: TrendingUp, color: '#10B981', route: 'income-accounts' },
-  { title: 'Accounts', desc: 'Manage multiple accounts', icon: CreditCard, color: '#3B82F6' },
+  { title: 'Transfer', desc: 'Move money between accounts', icon: ArrowRightLeft, color: '#3B82F6', route: 'transfer-source-accounts' },
+  { title: 'Accounts', desc: 'Manage multiple accounts', icon: CreditCard, color: '#6366F1' },
   { title: 'Categories', desc: 'Organize transactions', icon: Home, color: '#8B5CF6' },
   { title: 'Reports', desc: 'Analyze your finances', icon: DollarSign, color: '#F59E0B' },
   { title: 'Budget', desc: 'Plan your spending', icon: Heart, color: '#EC4899' }
