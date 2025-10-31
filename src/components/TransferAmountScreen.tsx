@@ -189,7 +189,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
                   entryAmount ? 'text-right' : 'text-center'
                 }`}
-                style={{ width: entryAmount ? `${Math.min(entryAmount.length * 0.65, 12)}em` : '2em', maxWidth: '100%' }}
+                style={{ width: entryAmount ? `${Math.min(entryAmount.length * 0.65, 12)}em` : suggestedAmount ? `${Math.min(suggestedAmount.length * 0.65 + 1, 12)}em` : '2em', maxWidth: '100%' }}
               />
               {entryAmount && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">

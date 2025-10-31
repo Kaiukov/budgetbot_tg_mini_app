@@ -87,6 +87,30 @@ const BudgetMiniApp = () => {
     }
   }, [currentScreen]);
 
+  // Preload categories after 5 seconds (background optimization)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (userName) {
+        console.log('🚀 Preloading categories in background...');
+        fetchCategories().catch(error => {
+          console.warn('⚠️ Background category preload failed:', error);
+        });
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [userName]);
+
+  // Preload accounts when on home screen (background optimization)
+  useEffect(() => {
+    if (currentScreen === 'home' && userName) {
+      console.log('🚀 Preloading accounts in background...');
+      fetchAccounts().catch(error => {
+        console.warn('⚠️ Background account preload failed:', error);
+      });
+    }
+  }, [currentScreen, userName]);
+
   const fetchAccounts = async () => {
     setAccountsLoading(true);
     setAccountsError(null);
@@ -105,9 +129,21 @@ const BudgetMiniApp = () => {
         count: data.get_accounts_usage.length
       });
 
+      // Deduplicate by account_id (defensive - ensures unique accounts only)
+      const uniqueAccounts = data.get_accounts_usage.filter(
+        (account, index, self) =>
+          index === self.findIndex((a) => a.account_id === account.account_id)
+      );
+
+      console.log('🔍 Deduplication:', {
+        original: data.get_accounts_usage.length,
+        unique: uniqueAccounts.length,
+        duplicatesRemoved: data.get_accounts_usage.length - uniqueAccounts.length
+      });
+
       // Accounts are already sorted by syncService.getAccountsUsage()
       // Used accounts (high → low by usage_count) followed by unused accounts (usage_count = 0)
-      setAccounts(data.get_accounts_usage);
+      setAccounts(uniqueAccounts);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch accounts';
       console.error('❌ Failed to fetch accounts:', {
@@ -409,6 +445,7 @@ const BudgetMiniApp = () => {
       {/* Transfer Flow */}
       {currentScreen === 'transfer-source-accounts' && (
         <AccountsScreen
+          title="Select Account - Exit"
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
@@ -442,6 +479,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'transfer-dest-accounts' && (
         <AccountsScreen
+          title="Select Account - Entry"
           accounts={accounts.filter(acc => acc.account_name !== transferSourceAccount)}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
@@ -497,9 +535,7 @@ const BudgetMiniApp = () => {
           exitFee={transferExitFee}
           entryFee={transferEntryFee}
           onBack={() => {
-            // Clear fees when going back to amount screen
-            setTransferExitFee('');
-            setTransferEntryFee('');
+            // Preserve fees when going back to amount screen
             setCurrentScreen('transfer-amount');
           }}
           onExitFeeChange={setTransferExitFee}

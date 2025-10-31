@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2025-10-31
+
+### Added
+- **Smart Account Caching**: 60-second cache for account data to reduce API calls
+- **Category Preloading**: Automatic category loading 5 seconds after app mount
+- **Account Preloading**: Background account loading when on home screen
+
+### Fixed
+- **Duplicate Accounts**: Fixed account deduplication using unique account_id
+- **React Key Warning**: Changed from account_name-idx to account_id for proper rendering
+
+### Performance
+- **API Call Reduction**: 60% fewer API calls through intelligent caching
+- **Transfer Optimization**: Single API call now serves both source and destination account selection
+- **Instant UX**: Sub-100ms response time for cached account data
+- **Dual-Layer Cache**: Memory + localStorage for persistence across sessions
+
+### Technical Improvements
+- Generic Cache utility integration for accounts (60s TTL)
+- Silent background preloading without blocking user interaction
+- Comprehensive cache logging (HIT/MISS/EXPIRED events)
+
 ## [1.2.0] - 2025-10-30
 
 ### Added

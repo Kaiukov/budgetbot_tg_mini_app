@@ -91,6 +91,10 @@ class SyncService {
   private categoryCache: Cache<CategoriesUsageResponse>;
   private readonly CATEGORY_CACHE_EXPIRY_MS = 60000; // 1 minute in milliseconds
 
+  // Account cache with 60-second expiry
+  private accountCache: Cache<AccountsUsageResponse>;
+  private readonly ACCOUNT_CACHE_EXPIRY_MS = 60000; // 60 seconds in milliseconds
+
   constructor() {
     // Detect environment
     const isProduction = typeof window !== 'undefined' &&
@@ -107,6 +111,12 @@ class SyncService {
     this.categoryCache = new Cache<CategoriesUsageResponse>(
       this.CATEGORY_CACHE_EXPIRY_MS,
       'category_'
+    );
+
+    // Initialize account cache with 60-second expiry
+    this.accountCache = new Cache<AccountsUsageResponse>(
+      this.ACCOUNT_CACHE_EXPIRY_MS,
+      'account_'
     );
 
     console.log('🔧 Sync Service Config:', {
@@ -287,6 +297,18 @@ class SyncService {
         throw new Error('Sync API not configured');
       }
 
+      // Generate cache key
+      const cacheKey = userName || 'all';
+
+      // Check cache first
+      const cachedData = this.accountCache.get(cacheKey);
+      if (cachedData) {
+        console.log('💾 Using cached accounts for:', cacheKey);
+        return cachedData;
+      }
+
+      console.log('🔄 Fetching fresh accounts for:', cacheKey);
+
       // Build URL with optional user_name query parameter
       const endpoint = userName
         ? `/api/sync/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
@@ -347,11 +369,16 @@ class SyncService {
         }))
       });
 
-      return {
+      const result = {
         ...data,
         get_accounts_usage: sortedAccounts,
         total: sortedAccounts.length,
       };
+
+      // Cache the result for 60 seconds
+      this.accountCache.set(cacheKey, result);
+
+      return result;
     } catch (error) {
       console.error('Failed to get accounts usage:', error);
       throw error;
