@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface TransferAmountScreenProps {
   sourceAccount: string;
@@ -129,17 +130,17 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
         <button onClick={onBack} className="mr-3">
           <ArrowLeft size={20} className="text-white" />
         </button>
         <h2 className="text-base font-semibold">Transfer Amount</h2>
       </div>
 
-      <div className="p-4">
+      <div className={layouts.contentWide}>
         {/* Exit Amount (From Account) */}
-        <div className="bg-gray-800 rounded-lg p-4 mb-2">
+        <div className={`${cardStyles.container} mb-2`}>
           <p className="text-xs text-gray-400 mb-2">From: {sourceAccount}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">

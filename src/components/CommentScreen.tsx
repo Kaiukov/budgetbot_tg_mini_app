@@ -2,6 +2,7 @@ import { ArrowLeft, Loader } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService, type DestinationSuggestion } from '../services/sync';
 import { useTelegramUser } from '../hooks/useTelegramUser';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
@@ -115,15 +116,15 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
     : [];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
         <button onClick={onBack} className="mr-3">
           <ArrowLeft size={20} className="text-white" />
         </button>
         <h2 className="text-base font-semibold">Comment</h2>
       </div>
 
-      <div className="p-3">
+      <div className={layouts.content}>
         <textarea
           value={comment}
           onChange={(e) => onCommentChange(e.target.value)}

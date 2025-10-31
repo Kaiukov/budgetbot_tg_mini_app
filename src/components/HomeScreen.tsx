@@ -1,4 +1,5 @@
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
+import type { AccountUsage } from '../services/sync';
 
 interface HomeScreenProps {
   userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
@@ -6,6 +7,7 @@ interface HomeScreenProps {
   userInitials: string;
   userBio: string;
   isAvailable: boolean;
+  accounts?: AccountUsage[];   // Optional accounts for balance calculation
   onNavigate: (screen: string) => void;
 }
 
@@ -26,73 +28,102 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   userInitials,
   userBio,
   isAvailable,
+  accounts = [],
   onNavigate
 }) => {
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex flex-col items-center pt-6 pb-4 px-4">
-        {/* User Avatar */}
-        {userPhotoUrl ? (
-          <img
-            src={userPhotoUrl}
-            alt={userFullName}
-            className="w-16 h-16 rounded-full mb-2.5 object-cover border-2 border-blue-500"
-          />
-        ) : (
-          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mb-2.5">
-            <span className="text-white text-xl font-semibold">{userInitials}</span>
-          </div>
-        )}
+  // Calculate total balance from accounts
+  const getTotalBalance = () => {
+    if (!accounts || accounts.length === 0) return 0;
+    return accounts.reduce((sum, account) => sum + account.current_balance, 0);
+  };
 
-        <h1 className="text-lg font-semibold text-white mb-0.5">
-          {userFullName}
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950 text-white">
+      <div className="flex flex-col items-center pt-8 pb-6 px-4">
+        {/* User Avatar */}
+        <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
+          {userPhotoUrl ? (
+            <img
+              src={userPhotoUrl}
+              alt={userFullName}
+              className="w-20 h-20 rounded-full object-cover"
+            />
+          ) : (
+            <span className="text-white text-3xl font-semibold">{userInitials}</span>
+          )}
+        </div>
+
+        {/* Title with Gradient Text */}
+        <h1 className="text-xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+          Budget Manager
         </h1>
-        <p className="text-xs text-gray-400 text-center px-4">
+        <p className="text-xs text-gray-400 text-center">
+          {userFullName}
+        </p>
+        <p className="text-xs text-gray-400 text-center px-4 mt-1">
           {isAvailable ? userBio : 'Browser Mode - Limited Features'}
         </p>
       </div>
 
-      <div className="px-3 mb-3">
+      {/* Balance Card */}
+      <div className="px-4 mb-4">
+        <div
+          className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm border border-emerald-500/30 rounded-2xl px-6 py-3 cursor-pointer hover:scale-105 transition-transform shadow-lg shadow-emerald-500/10"
+        >
+          <div className="flex items-center justify-center">
+            <span className="text-xs text-gray-300 mr-2">Total Balance:</span>
+            <span className="text-lg font-bold text-emerald-400">{getTotalBalance().toLocaleString()} ₴</span>
+            <TrendingUp size={16} className="text-emerald-400 ml-1.5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="px-4 mb-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={16} />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Search"
-            className="w-full pl-10 pr-3 py-2.5 text-sm bg-gray-800 text-white rounded-lg border-none focus:ring-1 focus:ring-gray-700 outline-none placeholder-gray-500"
+            placeholder="Search features..."
+            className="w-full pl-12 pr-4 py-3 text-sm bg-slate-800/50 backdrop-blur-sm text-white rounded-xl border border-slate-700/50 focus:ring-2 focus:ring-amber-500/50 outline-none placeholder-gray-500 transition"
           />
         </div>
       </div>
 
-      <div className="px-3">
-        <h2 className="text-sm font-semibold mb-2 text-white px-1">My Features</h2>
+      {/* Features */}
+      <div className="px-4">
+        <h2 className="text-sm font-semibold mb-3 text-gray-300 px-1">My Features</h2>
 
-        <div className="space-y-0">
+        <div className="space-y-2">
           {features.map((feature, idx) => {
             const Icon = feature.icon;
             return (
               <div
                 key={idx}
                 onClick={() => feature.route && onNavigate(feature.route)}
-                className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3 hover:bg-gray-750 transition cursor-pointer active:bg-gray-700 flex items-center"
+                className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex items-center shadow-sm"
+                style={{
+                  boxShadow: feature.route ? `0 4px 12px ${feature.color}15` : 'none'
+                }}
               >
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center mr-3 flex-shrink-0"
-                  style={{ backgroundColor: `${feature.color}20` }}
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mr-3.5 flex-shrink-0 shadow-md"
+                  style={{
+                    backgroundColor: `${feature.color}20`
+                  }}
                 >
                   <Icon size={20} style={{ color: feature.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white text-sm leading-tight">{feature.title}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5 truncate leading-tight">{feature.desc}</p>
+                  <h3 className="font-semibold text-white text-sm leading-tight mb-0.5">{feature.title}</h3>
+                  <p className="text-xs text-gray-400 truncate leading-tight">{feature.desc}</p>
                 </div>
-                <ChevronRight size={16} className="text-gray-500 flex-shrink-0 ml-2" />
+                {feature.route && <ChevronRight size={18} className="text-gray-500 flex-shrink-0 ml-2" />}
               </div>
             );
           })}
         </div>
       </div>
-
-      
     </div>
   );
 };

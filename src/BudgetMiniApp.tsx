@@ -324,6 +324,7 @@ const BudgetMiniApp = () => {
           userInitials={userInitials}
           userBio={userBio}
           isAvailable={isAvailable}
+          accounts={accounts}
           onNavigate={handleNavigate}
         />
       )}

@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
 import type { CategoryUsage } from '../services/sync';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
 import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface CategoryScreenProps {
   categories: CategoryUsage[];
@@ -26,15 +27,15 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   const displayCategories = filterCategoriesByType(categories, transactionType);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
         <button onClick={onBack} className="mr-3">
           <ArrowLeft size={20} className="text-white" />
         </button>
         <h2 className="text-base font-semibold">Select Category</h2>
       </div>
 
-      <div className="p-3">
+      <div className={layouts.content}>
         {/* Loading State */}
         {categoriesLoading && (
           <div className="flex items-center justify-center py-8">
@@ -57,7 +58,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
 
         {/* Categories List */}
         {!categoriesLoading && !categoriesError && displayCategories.length > 0 && (
-          <div className="space-y-0">
+          <div className={layouts.listContainer}>
             {displayCategories.map((category, idx) => {
               const color = getCategoryColor(category.category_name);
               const emoji = extractEmoji(category.category_name);
@@ -67,10 +68,10 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
                 <div
                   key={`${category.category_name}-${idx}`}
                   onClick={() => onSelectCategory(category.category_name)}
-                  className="bg-gray-800 border-b border-gray-700 last:border-b-0 px-3 py-3 hover:bg-gray-750 transition cursor-pointer active:bg-gray-700 flex items-center"
+                  className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center mr-3"
+                    className={cardStyles.iconBase}
                     style={{ backgroundColor: `${color}20` }}
                   >
                     {emoji ? (
@@ -79,13 +80,13 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
                       <MoreHorizontal size={20} style={{ color }} />
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className={cardStyles.textWrapper}>
                     <h3 className="font-medium text-white text-sm leading-tight">{categoryNameWithoutEmoji}</h3>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
                       Used {category.usage_count} times
                     </p>
                   </div>
-                  <ChevronRight size={16} className="text-gray-500" />
+                  <ChevronRight size={16} className={cardStyles.chevron} />
                 </div>
               );
             })}

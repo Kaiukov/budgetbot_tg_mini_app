@@ -6,6 +6,7 @@ import { extractBudgetName } from '../services/firefly/utils';
 import type { ExpenseTransactionData } from '../services/firefly/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface ConfirmScreenProps {
   account: string;
@@ -130,16 +131,16 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
         <button onClick={onBack} className="mr-3">
           <ArrowLeft size={20} className="text-white" />
         </button>
         <h2 className="text-base font-semibold">Confirmation</h2>
       </div>
 
-      <div className="p-3">
-        <div className="bg-gray-800 rounded-lg p-4 mb-4">
+      <div className={layouts.content}>
+        <div className={`${cardStyles.container} mb-4`}>
           <div className="text-center mb-4">
             <div className="text-3xl font-bold text-red-500 mb-1">
               -{getCurrencySymbol(transactionData.account_currency)}{amount}
