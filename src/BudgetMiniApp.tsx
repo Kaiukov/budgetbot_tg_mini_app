@@ -39,10 +39,10 @@ const BudgetMiniApp = () => {
 
   // Transfer-specific state
   const [transferSourceAccount, setTransferSourceAccount] = useState('');
-  const [transferSourceAccountId, setTransferSourceAccountId] = useState('');
+  const [_transferSourceAccountId, setTransferSourceAccountId] = useState('');
   const [transferSourceCurrency, setTransferSourceCurrency] = useState('');
   const [transferDestAccount, setTransferDestAccount] = useState('');
-  const [transferDestAccountId, setTransferDestAccountId] = useState('');
+  const [_transferDestAccountId, setTransferDestAccountId] = useState('');
   const [transferDestCurrency, setTransferDestCurrency] = useState('');
   const [transferExitAmount, setTransferExitAmount] = useState('');
   const [transferEntryAmount, setTransferEntryAmount] = useState('');
