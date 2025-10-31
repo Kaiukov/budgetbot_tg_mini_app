@@ -129,7 +129,7 @@ class TelegramService {
   }
 
   /**
-   * Show back button
+   * Show back button with handler
    */
   public showBackButton(onClick: () => void): void {
     if (!this.webApp) return;
@@ -143,6 +143,31 @@ class TelegramService {
    */
   public hideBackButton(): void {
     this.webApp?.BackButton.hide();
+  }
+
+  /**
+   * Remove back button click handler
+   */
+  public offBackButton(callback: () => void): void {
+    if (!this.webApp) return;
+
+    this.webApp.BackButton.offClick(callback);
+  }
+
+  /**
+   * Setup back button with auto-cleanup
+   * Returns cleanup function to remove handler
+   */
+  public setupBackButton(onClick: () => void): () => void {
+    if (!this.webApp) return () => {};
+
+    this.webApp.BackButton.onClick(onClick);
+    this.webApp.BackButton.show();
+
+    // Return cleanup function
+    return () => {
+      this.webApp?.BackButton.offClick(onClick);
+    };
   }
 
   /**

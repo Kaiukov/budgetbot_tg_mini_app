@@ -5,6 +5,7 @@ import { useTransactionData, type TransactionType } from './hooks/useTransaction
 import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
+import telegramService from './services/telegram';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -111,10 +112,10 @@ const BudgetMiniApp = () => {
     }
   }, [currentScreen, userName]);
 
-  // Manage Telegram BackButton visibility and behavior
+  // Manage Telegram BackButton visibility and behavior using telegramService
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!tg) return;
+    // Skip if not running in Telegram
+    if (!telegramService.isAvailable()) return;
 
     const getBackHandler = (): (() => void) | null => {
       switch (currentScreen) {
@@ -200,17 +201,12 @@ const BudgetMiniApp = () => {
     const backHandler = getBackHandler();
 
     if (backHandler) {
-      // Show back button and set handler
-      tg.BackButton.show();
-      tg.BackButton.onClick(backHandler);
-
-      return () => {
-        // Cleanup: remove handler
-        tg.BackButton.offClick(backHandler);
-      };
+      // Show back button and set handler using telegramService
+      const cleanup = telegramService.setupBackButton(backHandler);
+      return cleanup; // Auto-cleanup when effect re-runs
     } else {
       // Hide back button on home screen
-      tg.BackButton.hide();
+      telegramService.hideBackButton();
     }
   }, [currentScreen, transactionType, resetTransactionData, setTransactionType]);
 
