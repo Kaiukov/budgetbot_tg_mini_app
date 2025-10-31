@@ -39,3 +39,11 @@ code {
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
+
+/* Telegram Mini App Safe Area Support */
+.safe-area {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
