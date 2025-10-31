@@ -35,8 +35,8 @@ export const gradients = {
   input: 'bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 text-white placeholder-gray-500 focus:ring-2 focus:ring-amber-500/50',
 
   // Icon backgrounds with dynamic color
-  iconBg: (color: string) => `rounded-xl flex items-center justify-center shadow-md`,
+  iconBg: 'rounded-xl flex items-center justify-center shadow-md',
 
-  // Colored glow effects
-  glow: (color: string) => `shadow-lg shadow-${color}/30`,
+  // Colored glow effects - pass color dynamically via inline styles
+  // Example: style={{ boxShadow: `0 0 20px ${color}30` }}
 } as const;

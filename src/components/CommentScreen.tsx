@@ -2,7 +2,7 @@ import { ArrowLeft, Loader } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService, type DestinationSuggestion } from '../services/sync';
 import { useTelegramUser } from '../hooks/useTelegramUser';
-import { gradients, cardStyles, layouts } from '../theme/dark';
+import { gradients, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
