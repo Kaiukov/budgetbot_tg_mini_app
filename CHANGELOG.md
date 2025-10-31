@@ -111,3 +111,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patch: Bug fixes
 - Minor: New features, no breaking changes
 - Major: Breaking changes
+
+**2025-10-31**
+- feat(home): move Debug into My Features and remove floating button

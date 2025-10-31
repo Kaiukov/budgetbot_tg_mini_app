@@ -16,7 +16,8 @@ const features = [
   { title: 'Accounts', desc: 'Manage multiple accounts', icon: CreditCard, color: '#6366F1' },
   { title: 'Categories', desc: 'Organize transactions', icon: Home, color: '#8B5CF6' },
   { title: 'Reports', desc: 'Analyze your finances', icon: DollarSign, color: '#F59E0B' },
-  { title: 'Budget', desc: 'Plan your spending', icon: Heart, color: '#EC4899' }
+  { title: 'Budget', desc: 'Plan your spending', icon: Heart, color: '#EC4899' },
+  { title: 'Debug', desc: 'System diagnostics', icon: Bug, color: '#6B7280', route: 'debug' }
 ];
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -91,16 +92,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* Debug Button */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-md px-3">
-        <button
-          onClick={() => onNavigate('debug')}
-          className="w-full bg-gray-800 border border-gray-700 text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-700 transition active:scale-98 flex items-center justify-center gap-2"
-        >
-          <Bug size={18} />
-          <span>Debug</span>
-        </button>
-      </div>
+      
     </div>
   );
 };
