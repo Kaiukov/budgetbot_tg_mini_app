@@ -315,7 +315,7 @@ const BudgetMiniApp = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-900 min-h-screen">
+    <div className="max-w-md mx-auto bg-gray-900 min-h-screen pt-4">
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
