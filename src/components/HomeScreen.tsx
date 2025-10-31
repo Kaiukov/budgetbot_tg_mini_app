@@ -12,9 +12,6 @@ interface HomeScreenProps {
 }
 
 const features = [
-  { title: 'Expenses', desc: 'Track daily expenses', icon: TrendingDown, color: '#EF4444', route: 'accounts' },
-  { title: 'Income', desc: 'Record income sources', icon: TrendingUp, color: '#10B981', route: 'income-accounts' },
-  { title: 'Transfer', desc: 'Move money between accounts', icon: ArrowRightLeft, color: '#3B82F6', route: 'transfer-source-accounts' },
   { title: 'Accounts', desc: 'Manage multiple accounts', icon: CreditCard, color: '#6366F1' },
   { title: 'Categories', desc: 'Organize transactions', icon: Home, color: '#8B5CF6' },
   { title: 'Reports', desc: 'Analyze your finances', icon: DollarSign, color: '#F59E0B' },
@@ -87,6 +84,69 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             placeholder="Search features..."
             className="w-full pl-12 pr-4 py-3 text-sm bg-slate-800/50 backdrop-blur-sm text-white rounded-xl border border-slate-700/50 focus:ring-2 focus:ring-amber-500/50 outline-none placeholder-gray-500 transition"
           />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="px-4 mb-4">
+        <h2 className="text-sm font-semibold mb-3 text-gray-300 px-1">Quick Actions</h2>
+        <div className="grid grid-cols-3 gap-2">
+          {/* Expense Card */}
+          <div
+            onClick={() => onNavigate('accounts')}
+            className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
+            style={{
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mb-2 shadow-md"
+              style={{
+                backgroundColor: '#EF444420'
+              }}
+            >
+              <TrendingDown size={20} style={{ color: '#EF4444' }} />
+            </div>
+            <span className="text-xs font-medium text-white text-center">Expense</span>
+          </div>
+
+          {/* Income Card */}
+          <div
+            onClick={() => onNavigate('income-accounts')}
+            className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
+            style={{
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)'
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mb-2 shadow-md"
+              style={{
+                backgroundColor: '#10B98120'
+              }}
+            >
+              <TrendingUp size={20} style={{ color: '#10B981' }} />
+            </div>
+            <span className="text-xs font-medium text-white text-center">Income</span>
+          </div>
+
+          {/* Transfer Card */}
+          <div
+            onClick={() => onNavigate('transfer-source-accounts')}
+            className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
+            style={{
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.08)'
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mb-2 shadow-md"
+              style={{
+                backgroundColor: '#3B82F620'
+              }}
+            >
+              <ArrowRightLeft size={20} style={{ color: '#3B82F6' }} />
+            </div>
+            <span className="text-xs font-medium text-white text-center">Transfer</span>
+          </div>
         </div>
       </div>
 
