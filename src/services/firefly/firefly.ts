@@ -391,10 +391,12 @@ class FireflyService {
 
       console.log('🔄 Fetching fresh accounts for:', cacheKey);
 
-      // Fetch all asset accounts
-      const accountsResponse = await this.makeRequest<FireflyAccountsResponse>(
-        '/api/v1/accounts?type=asset'
-      );
+      // Fetch all asset accounts with required start/end date parameters
+      const accountsStartDate = '2023-01-01'; // Hardcoded start date as required by Firefly
+      const accountsEndDate = this.getToday();
+      const accountsUrl = `/api/v1/accounts?type=asset&start=${accountsStartDate}&end=${accountsEndDate}`;
+
+      const accountsResponse = await this.makeRequest<FireflyAccountsResponse>(accountsUrl);
 
       const accounts = accountsResponse.data || [];
 
