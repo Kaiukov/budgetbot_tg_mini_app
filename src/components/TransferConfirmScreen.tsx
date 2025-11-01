@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft, ArrowRight } from 'lucide-react';
 import { addTransaction } from '../services/firefly/transactions';
+import telegramService from '../services/telegram';
 import type { TransferTransactionData } from '../services/firefly/types';
 import { getCurrencySymbol } from '../utils/currencies';
 import { gradients, cardStyles, layouts } from '../theme/dark';
@@ -16,6 +17,7 @@ interface TransferConfirmScreenProps {
   entryFee: string;
   comment: string;
   userName: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -33,6 +35,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   entryFee,
   comment,
   userName,
+  isAvailable,
   onBack,
   onCancel,
   onConfirm,
@@ -40,6 +43,12 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
@@ -84,21 +93,19 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
 
       if (success) {
         console.log('✅ Transfer submitted successfully:', response);
-        setSubmitMessage({
-          type: 'success',
-          text: 'Transfer saved to Firefly!'
-        });
-
-        // Reset form and navigate after showing success
-        setTimeout(() => {
+        // Show Telegram alert for success
+        telegramService.showAlert('✅ Transfer saved successfully!', () => {
           onSuccess();
           onConfirm();
-        }, 2000);
+        });
       } else {
         console.error('❌ Transfer submission failed:', response);
         const errorMessage = typeof response === 'object' && response !== null && 'error' in response
           ? (response as { error: string }).error
           : 'Failed to save transfer';
+
+        // Show Telegram alert for error
+        telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
         setSubmitMessage({
           type: 'error',
@@ -108,6 +115,9 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
     } catch (error) {
       console.error('💥 Transfer submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      // Show Telegram alert for error
+      telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
       setSubmitMessage({
         type: 'error',
@@ -121,9 +131,11 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Confirmation</h2>
       </div>
 

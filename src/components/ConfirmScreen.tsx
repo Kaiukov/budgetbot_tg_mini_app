@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
 import { syncService } from '../services/sync';
 import { addTransaction } from '../services/firefly/transactions';
 import { extractBudgetName } from '../services/firefly/utils';
+import telegramService from '../services/telegram';
 import type { ExpenseTransactionData } from '../services/firefly/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
@@ -15,6 +16,7 @@ interface ConfirmScreenProps {
   comment: string;
   transactionData: TransactionData;
   userName: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -28,6 +30,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   comment,
   transactionData,
   userName,
+  isAvailable,
   onBack,
   onCancel,
   onConfirm,
@@ -35,6 +38,12 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
@@ -96,21 +105,19 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 
       if (success) {
         console.log('✅ Transaction submitted successfully:', response);
-        setSubmitMessage({
-          type: 'success',
-          text: 'Transaction saved to Firefly!'
-        });
-
-        // Reset form and navigate after showing success
-        setTimeout(() => {
+        // Show Telegram alert for success
+        telegramService.showAlert('✅ Expense saved successfully!', () => {
           onSuccess();
           onConfirm();
-        }, 2000);
+        });
       } else {
         console.error('❌ Transaction submission failed:', response);
         const errorMessage = typeof response === 'object' && response !== null && 'error' in response
           ? (response as { error: string }).error
           : 'Failed to save transaction';
+
+        // Show Telegram alert for error
+        telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
         setSubmitMessage({
           type: 'error',
@@ -120,6 +127,9 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     } catch (error) {
       console.error('💥 Transaction submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+
+      // Show Telegram alert for error
+      telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
       setSubmitMessage({
         type: 'error',
@@ -133,9 +143,11 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Confirmation</h2>
       </div>
 

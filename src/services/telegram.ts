@@ -192,6 +192,47 @@ class TelegramService {
   public openLink(url: string): void {
     this.webApp?.openLink(url);
   }
+
+  /**
+   * Show alert dialog
+   */
+  public showAlert(message: string, callback?: () => void): void {
+    if (!this.webApp) return;
+    this.webApp.showAlert(message, callback);
+  }
+
+  /**
+   * Show confirmation dialog
+   */
+  public showConfirm(message: string, callback?: (confirmed: boolean) => void): void {
+    if (!this.webApp) return;
+    this.webApp.showConfirm(message, callback);
+  }
+
+  /**
+   * Check if Telegram WebApp is ready and connected
+   */
+  public isReady(): boolean {
+    if (!this.webApp) return false;
+
+    // Check if WebApp is properly initialized with required methods
+    return !!(this.webApp.initData && this.webApp.initDataUnsafe);
+  }
+
+  /**
+   * Get Telegram connection status message
+   */
+  public getConnectionStatus(): string {
+    if (!this.webApp) {
+      return 'Telegram WebApp not available';
+    }
+
+    if (this.isReady()) {
+      return 'Connected to Telegram';
+    }
+
+    return 'Telegram initialization pending';
+  }
 }
 
 // Export singleton instance

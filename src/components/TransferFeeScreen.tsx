@@ -1,4 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
+import { useEffect } from 'react';
+import telegramService from '../services/telegram';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface TransferFeeScreenProps {
@@ -8,6 +10,7 @@ interface TransferFeeScreenProps {
   destCurrency: string;
   exitFee: string;
   entryFee: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onExitFeeChange: (value: string) => void;
   onEntryFeeChange: (value: string) => void;
@@ -22,12 +25,19 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   destCurrency,
   exitFee,
   entryFee,
+  isAvailable,
   onBack,
   onExitFeeChange,
   onEntryFeeChange,
   onNext,
   onSkip
 }) => {
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
+
   const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
 
@@ -88,9 +98,11 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Transfer Fees (Optional)</h2>
       </div>
 

@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
+import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
@@ -8,6 +9,7 @@ interface AmountScreenProps {
   account: string;
   amount: string;
   transactionData: TransactionData;
+  isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
   onNext: () => void;
@@ -17,12 +19,19 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
   transactionData,
+  isAvailable,
   onBack,
   onAmountChange,
   onNext
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(null);
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   // Get currency code, default to empty string if not available
   const currencyCode = transactionData.account_currency?.toUpperCase() || '';
@@ -90,9 +99,11 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Enter Amount</h2>
       </div>
 

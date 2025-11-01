@@ -1,4 +1,6 @@
 import { ArrowLeft, ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
+import { useEffect } from 'react';
+import telegramService from '../services/telegram';
 import type { CategoryUsage } from '../services/sync';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
 import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
@@ -9,6 +11,7 @@ interface CategoryScreenProps {
   categoriesLoading: boolean;
   categoriesError: string | null;
   transactionType?: TransactionType;
+  isAvailable?: boolean;
   onBack: () => void;
   onSelectCategory: (categoryName: string) => void;
   onRetry: () => void;
@@ -19,19 +22,28 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   categoriesLoading,
   categoriesError,
   transactionType = 'expense',
+  isAvailable,
   onBack,
   onSelectCategory,
   onRetry
 }) => {
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
+
   // Filter categories based on transaction type (income only filters, expense shows all)
   const displayCategories = filterCategoriesByType(categories, transactionType);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Select Category</h2>
       </div>
 

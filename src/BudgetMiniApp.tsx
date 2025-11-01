@@ -4,6 +4,7 @@ import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
+import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 
 // Components
@@ -26,6 +27,7 @@ const BudgetMiniApp = () => {
 
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>(getInitialServiceStatuses());
+  const [telegramStatus, setTelegramStatus] = useState<ServiceStatus | null>(null);
 
   // Accounts state
   const [accounts, setAccounts] = useState<AccountUsage[]>([]);
@@ -199,6 +201,16 @@ const BudgetMiniApp = () => {
     // Reset all to checking state
     setServiceStatuses(getInitialServiceStatuses());
 
+    // Check Telegram SDK readiness
+    setTimeout(() => {
+      const isReady = telegramService.isReady();
+      setTelegramStatus({
+        name: 'Telegram SDK',
+        status: isReady ? 'connected' : 'disconnected',
+        message: telegramService.getConnectionStatus()
+      });
+    }, 300);
+
     // Check Telegram Bot connection
     setTimeout(() => {
       setServiceStatuses(prev => prev.map(service =>
@@ -334,6 +346,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             resetTransactionData();
             setCurrentScreen('home');
@@ -348,6 +361,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             resetTransactionData();
             setTransactionType('expense'); // Reset to default
@@ -366,6 +380,7 @@ const BudgetMiniApp = () => {
           account={transactionData.account}
           amount={transactionData.amount}
           transactionData={transactionData}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
@@ -378,6 +393,7 @@ const BudgetMiniApp = () => {
           categoriesLoading={categoriesLoading}
           categoriesError={categoriesError}
           transactionType={transactionType}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('amount')}
           onSelectCategory={(category) => {
             updateCategory(category);
@@ -391,6 +407,7 @@ const BudgetMiniApp = () => {
         <CommentScreen
           comment={transactionData.comment}
           category={transactionData.category}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('category')}
           onCommentChange={updateComment}
           onNext={() => setCurrentScreen('confirm')}
@@ -405,6 +422,7 @@ const BudgetMiniApp = () => {
           comment={transactionData.comment}
           transactionData={transactionData}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
@@ -428,6 +446,7 @@ const BudgetMiniApp = () => {
           comment={transactionData.comment}
           transactionData={transactionData}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
@@ -450,6 +469,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             // Reset transfer state
             setTransferSourceAccount('');
@@ -484,6 +504,7 @@ const BudgetMiniApp = () => {
           accounts={accounts.filter(acc => acc.account_name !== transferSourceAccount)}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             // Clear amounts when going back to source account selection
             setTransferExitAmount('');
@@ -513,6 +534,7 @@ const BudgetMiniApp = () => {
           destCurrency={transferDestCurrency}
           exitAmount={transferExitAmount}
           entryAmount={transferEntryAmount}
+          isAvailable={isAvailable}
           onBack={() => {
             // Clear amounts when going back to destination account selection
             setTransferExitAmount('');
@@ -535,6 +557,7 @@ const BudgetMiniApp = () => {
           destCurrency={transferDestCurrency}
           exitFee={transferExitFee}
           entryFee={transferEntryFee}
+          isAvailable={isAvailable}
           onBack={() => {
             // Preserve fees when going back to amount screen
             setCurrentScreen('transfer-amount');
@@ -554,6 +577,7 @@ const BudgetMiniApp = () => {
         <CommentScreen
           comment={transferComment}
           category="Transfer"
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-fees')}
           onCommentChange={setTransferComment}
           onNext={() => setCurrentScreen('transfer-confirm')}
@@ -572,6 +596,7 @@ const BudgetMiniApp = () => {
           entryFee={transferEntryFee}
           comment={transferComment}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-comment')}
           onCancel={() => {
             // Reset all transfer state
@@ -618,6 +643,7 @@ const BudgetMiniApp = () => {
           userName={userName}
           isAvailable={isAvailable}
           serviceStatuses={serviceStatuses}
+          telegramStatus={telegramStatus || undefined}
           onBack={() => setCurrentScreen('home')}
           onRefresh={checkServiceConnections}
         />

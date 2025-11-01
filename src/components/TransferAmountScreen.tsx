@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
+import telegramService from '../services/telegram';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface TransferAmountScreenProps {
@@ -10,6 +11,7 @@ interface TransferAmountScreenProps {
   destCurrency: string;
   exitAmount: string;
   entryAmount: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onExitAmountChange: (value: string) => void;
   onEntryAmountChange: (value: string) => void;
@@ -23,6 +25,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   destCurrency,
   exitAmount,
   entryAmount,
+  isAvailable,
   onBack,
   onExitAmountChange,
   onEntryAmountChange,
@@ -30,6 +33,12 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
 }) => {
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
   const [suggestedAmount, setSuggestedAmount] = useState<string | null>(null);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
@@ -132,9 +141,11 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Transfer Amount</h2>
       </div>
 

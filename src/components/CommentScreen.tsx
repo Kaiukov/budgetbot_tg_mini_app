@@ -1,12 +1,14 @@
 import { ArrowLeft, Loader } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService, type DestinationSuggestion } from '../services/sync';
+import telegramService from '../services/telegram';
 import { useTelegramUser } from '../hooks/useTelegramUser';
 import { gradients, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
   category: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onCommentChange: (comment: string) => void;
   onNext: () => void;
@@ -15,6 +17,7 @@ interface CommentScreenProps {
 const CommentScreen: React.FC<CommentScreenProps> = ({
   comment,
   category,
+  isAvailable,
   onBack,
   onCommentChange,
   onNext
@@ -24,6 +27,12 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useDynamicSuggestions, setUseDynamicSuggestions] = useState(false);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   // Fetch destination suggestions when category changes
   useEffect(() => {
@@ -118,9 +127,11 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">Comment</h2>
       </div>
 

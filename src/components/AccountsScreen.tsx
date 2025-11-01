@@ -1,4 +1,6 @@
 import { ArrowLeft, ChevronRight, CreditCard } from 'lucide-react';
+import { useEffect } from 'react';
+import telegramService from '../services/telegram';
 import type { AccountUsage } from '../services/sync';
 import { getAccountIcon, getAccountColor } from '../utils/accounts';
 import { formatCurrency } from '../utils/currencies';
@@ -9,6 +11,7 @@ interface AccountsScreenProps {
   accountsLoading: boolean;
   accountsError: string | null;
   title?: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onSelectAccount: (accountName: string) => void;
   onRetry: () => void;
@@ -19,16 +22,25 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
   accountsLoading,
   accountsError,
   title = 'Select Account',
+  isAvailable,
   onBack,
   onSelectAccount,
   onRetry
 }) => {
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
+
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h2 className="text-base font-semibold">{title}</h2>
       </div>
 
