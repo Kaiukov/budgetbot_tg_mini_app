@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
 import type { AccountUsage } from '../services/sync';
+import type { DisplayTransaction } from '../types/transaction';
+import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import TransactionCard from './TransactionCard';
 
 interface HomeScreenProps {
   userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
@@ -28,6 +32,30 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   accounts = [],
   onNavigate
 }) => {
+  const [latestTransactions, setLatestTransactions] = useState<DisplayTransaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Fetch latest 10 transactions on component mount
+  useEffect(() => {
+    const loadLatestTransactions = async () => {
+      setLoadingTransactions(true);
+      try {
+        const result = await fetchTransactions(1, 10);
+        if (!result.error) {
+          setLatestTransactions(result.transactions);
+        }
+      } catch (error) {
+        console.warn('Failed to load latest transactions:', error);
+      } finally {
+        setLoadingTransactions(false);
+      }
+    };
+
+    if (isAvailable) {
+      loadLatestTransactions();
+    }
+  }, [isAvailable]);
+
   // Calculate total balance from accounts
   const getTotalBalance = () => {
     if (!accounts || accounts.length === 0) return 0;
@@ -35,7 +63,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950 text-white">
+    <div className="min-h-screen text-white">
       <div className="flex flex-col items-center pt-8 pb-6 px-4">
         {/* User Avatar */}
         <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
@@ -148,6 +176,58 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-xs font-medium text-white text-center">Transfer</span>
           </div>
         </div>
+      </div>
+
+      {/* Transactions */}
+      <div className="px-4 mb-6">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-sm font-semibold text-gray-300">Transactions</h2>
+          {latestTransactions.length > 0 && (
+            <button
+              onClick={() => onNavigate('transactions')}
+              className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              View all
+            </button>
+          )}
+        </div>
+
+        {/* Loading State */}
+        {loadingTransactions && (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="h-20 bg-slate-800/40 border border-slate-700/50 rounded-xl animate-pulse"
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loadingTransactions && latestTransactions.length === 0 && (
+          <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-6 text-center">
+            <p className="text-sm text-gray-400">No transactions yet</p>
+            <p className="text-xs text-gray-500 mt-1">Start by creating your first transaction</p>
+          </div>
+        )}
+
+        {/* Transactions List */}
+        {!loadingTransactions && latestTransactions.length > 0 && (
+          <div className="space-y-2">
+            {latestTransactions.slice(0, 10).map((transaction) => (
+              <TransactionCard
+                key={transaction.id}
+                transaction={transaction}
+                onClick={() => {
+                  onNavigate('transaction-detail');
+                  // Store selected transaction ID in sessionStorage for navigation
+                  sessionStorage.setItem('selectedTransactionId', transaction.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Features */}

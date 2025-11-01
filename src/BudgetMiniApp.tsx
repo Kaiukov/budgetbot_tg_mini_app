@@ -19,6 +19,10 @@ import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
 import DebugScreen from './components/DebugScreen';
+import TransactionsListScreen from './components/TransactionsListScreen';
+import TransactionDetailScreen from './components/TransactionDetailScreen';
+import TransactionEditScreen from './components/TransactionEditScreen';
+import type { DisplayTransaction, TransactionData } from './types/transaction';
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
@@ -51,6 +55,11 @@ const BudgetMiniApp = () => {
   const [transferExitFee, setTransferExitFee] = useState('');
   const [transferEntryFee, setTransferEntryFee] = useState('');
   const [transferComment, setTransferComment] = useState('');
+
+  // Transaction view/edit state
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedTransactionData, setSelectedTransactionData] = useState<TransactionData | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<DisplayTransaction | null>(null);
 
   // Get Telegram user data
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
@@ -112,6 +121,16 @@ const BudgetMiniApp = () => {
       });
     }
   }, [currentScreen, userName]);
+
+  // Handle transaction detail navigation from sessionStorage
+  useEffect(() => {
+    if (currentScreen === 'transaction-detail') {
+      const transactionId = sessionStorage.getItem('selectedTransactionId');
+      if (transactionId) {
+        setSelectedTransactionId(transactionId);
+      }
+    }
+  }, [currentScreen]);
 
   const fetchAccounts = async () => {
     setAccountsLoading(true);
@@ -326,8 +345,64 @@ const BudgetMiniApp = () => {
     }, 2000);
   };
 
+  // Transaction handlers
+  const handleSelectTransaction = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    sessionStorage.setItem('selectedTransactionId', transactionId);
+    setCurrentScreen('transaction-detail');
+  };
+
+  const handleEditTransaction = async (transactionId: string, rawData: TransactionData) => {
+    setSelectedTransactionData(rawData);
+    // Get the display transaction from session or reconstruct from raw data
+    const storedId = sessionStorage.getItem('selectedTransactionId');
+    if (storedId) {
+      // We'll need to fetch the display transaction - for now use raw data to reconstruct
+      // In a real scenario, we'd have already fetched this
+      setEditingTransaction({
+        id: transactionId,
+        type: rawData.type === 'deposit' ? 'income' : rawData.type === 'withdrawal' ? 'expense' : 'transfer',
+        date: rawData.date,
+        amount: parseFloat(rawData.amount),
+        currency: rawData.currency_code,
+        currencySymbol: rawData.currency_symbol,
+        foreignAmount: rawData.foreign_amount ? parseFloat(rawData.foreign_amount) : undefined,
+        foreignCurrency: rawData.foreign_currency_code,
+        foreignCurrencySymbol: rawData.foreign_currency_symbol,
+        categoryName: rawData.category_name,
+        sourceName: rawData.source_name,
+        destinationName: rawData.destination_name,
+        description: rawData.description,
+        username: rawData.tags?.[0] || 'Unknown',
+        journalId: rawData.transaction_journal_id,
+      });
+      setCurrentScreen('transaction-edit');
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    try {
+      const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
+      if (response.success) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          sessionStorage.removeItem('selectedTransactionId');
+          setSelectedTransactionId(null);
+          setCurrentScreen('transactions');
+        }, 1500);
+      } else {
+        console.error('Failed to delete transaction:', response.error);
+        alert(`Failed to delete transaction: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert('Failed to delete transaction');
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto bg-gray-900 min-h-screen pt-8">
+    <div className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))' }}>
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
@@ -646,6 +721,44 @@ const BudgetMiniApp = () => {
           telegramStatus={telegramStatus || undefined}
           onBack={() => setCurrentScreen('home')}
           onRefresh={checkServiceConnections}
+        />
+      )}
+
+      {/* Transactions List Screen */}
+      {currentScreen === 'transactions' && (
+        <TransactionsListScreen
+          onBack={() => setCurrentScreen('home')}
+          onSelectTransaction={handleSelectTransaction}
+          isAvailable={isAvailable}
+        />
+      )}
+
+      {/* Transaction Detail Screen */}
+      {currentScreen === 'transaction-detail' && selectedTransactionId && (
+        <TransactionDetailScreen
+          transactionId={selectedTransactionId}
+          onBack={() => {
+            sessionStorage.removeItem('selectedTransactionId');
+            setCurrentScreen('transactions');
+          }}
+          onEdit={handleEditTransaction}
+          onDelete={handleDeleteTransaction}
+          isAvailable={isAvailable}
+        />
+      )}
+
+      {/* Transaction Edit Screen */}
+      {currentScreen === 'transaction-edit' && editingTransaction && selectedTransactionData && (
+        <TransactionEditScreen
+          transaction={editingTransaction}
+          rawData={selectedTransactionData}
+          onBack={() => setCurrentScreen('transaction-detail')}
+          onSuccess={() => {
+            setEditingTransaction(null);
+            setSelectedTransactionData(null);
+            setCurrentScreen('transaction-detail');
+          }}
+          isAvailable={isAvailable}
         />
       )}
 

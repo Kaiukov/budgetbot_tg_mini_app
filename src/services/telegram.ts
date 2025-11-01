@@ -172,6 +172,68 @@ class TelegramService {
   }
 
   /**
+   * Disable vertical swipes (prevent closing app by swiping)
+   */
+  public disableVerticalSwipes(): void {
+    if (!this.webApp) return;
+
+    // Try new SDK method first (if available)
+    const disableVerticalSwipes = (this.webApp as any).disableVerticalSwipes;
+    if (typeof disableVerticalSwipes === 'function') {
+      disableVerticalSwipes();
+      return;
+    }
+
+    // Fallback: disable swipe behavior via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.disableVertical === 'function') {
+      swipeBehavior.disableVertical();
+    }
+  }
+
+  /**
+   * Enable vertical swipes
+   */
+  public enableVerticalSwipes(): void {
+    if (!this.webApp) return;
+
+    // Try new SDK method first (if available)
+    const enableVerticalSwipes = (this.webApp as any).enableVerticalSwipes;
+    if (typeof enableVerticalSwipes === 'function') {
+      enableVerticalSwipes();
+      return;
+    }
+
+    // Fallback: enable swipe behavior via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.enableVertical === 'function') {
+      swipeBehavior.enableVertical();
+    }
+  }
+
+  /**
+   * Check if vertical swipes are enabled
+   */
+  public isVerticalSwipesEnabled(): boolean {
+    if (!this.webApp) return false;
+
+    // Try new SDK method first
+    const isVerticalSwipesEnabled = (this.webApp as any).isVerticalSwipesEnabled;
+    if (typeof isVerticalSwipesEnabled === 'function') {
+      return isVerticalSwipesEnabled();
+    }
+
+    // Fallback: check via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.isVerticalEnabled === 'function') {
+      return swipeBehavior.isVerticalEnabled();
+    }
+
+    // Default to enabled if unable to determine
+    return true;
+  }
+
+  /**
    * Send data to bot
    */
   public sendData(data: any): void {
