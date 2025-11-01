@@ -4,7 +4,7 @@
  */
 
 // Core service
-export { fireflyService, type FireflyAboutResponse, type FireflyUserResponse } from './firefly';
+export { fireflyService, type FireflyAboutResponse, type FireflyUserResponse, type AccountUsage } from './firefly';
 
 // Transaction functionality
 export { addTransaction } from './transactions';

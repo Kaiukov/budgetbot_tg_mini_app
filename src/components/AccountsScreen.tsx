@@ -1,7 +1,7 @@
 import { ArrowLeft, ChevronRight, CreditCard } from 'lucide-react';
 import { useEffect } from 'react';
 import telegramService from '../services/telegram';
-import type { AccountUsage } from '../services/sync';
+import type { AccountUsage } from '../BudgetMiniApp';
 import { getAccountIcon, getAccountColor } from '../utils/accounts';
 import { formatCurrency } from '../utils/currencies';
 import { gradients, cardStyles, layouts } from '../theme/dark';

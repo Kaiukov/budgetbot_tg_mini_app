@@ -3,6 +3,8 @@
  * Provides utilities for interacting with Firefly III API
  */
 
+import { Cache } from '../../utils/cache';
+
 export interface FireflyAboutResponse {
   data: {
     version: string;
@@ -25,9 +27,67 @@ export interface FireflyUserResponse {
   };
 }
 
+export interface AccountUsage {
+  account_id: string;
+  account_name: string;
+  account_currency: string;
+  current_balance: number;
+  usage_count: number;
+}
+
+interface FireflyAccount {
+  id: string;
+  attributes: {
+    name: string;
+    currency_code: string;
+    current_balance: number;
+    type: string;
+  };
+}
+
+interface FireflyTransaction {
+  type: string;
+  attributes: {
+    date: string;
+    amount: string;
+    source_name: string;
+    destination_name: string;
+    tags: string[];
+    [key: string]: unknown;
+  };
+}
+
+interface FireflyAccountsResponse {
+  data: FireflyAccount[];
+  meta?: {
+    pagination?: {
+      total: number;
+      count: number;
+      per_page: number;
+      current_page: number;
+      total_pages: number;
+    };
+  };
+}
+
+interface FireflyTransactionsResponse {
+  data: FireflyTransaction[];
+  meta?: {
+    pagination?: {
+      total: number;
+      count: number;
+      per_page: number;
+      current_page: number;
+      total_pages: number;
+    };
+  };
+}
+
 class FireflyService {
   private baseUrl: string;
   private apiToken: string | null = null;
+  private accountCache: Cache<AccountUsage[]>;
+  private readonly ACCOUNT_CACHE_EXPIRY_MS = 60000; // 60 seconds
 
   constructor() {
     // Use VITE_BASE_URL for direct API calls
@@ -36,6 +96,12 @@ class FireflyService {
 
     // Get Firefly III API token
     this.apiToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
+
+    // Initialize account cache with 60-second expiry
+    this.accountCache = new Cache<AccountUsage[]>(
+      this.ACCOUNT_CACHE_EXPIRY_MS,
+      'account_'
+    );
 
     console.log('🔧 Firefly Service Config:', {
       baseUrl: this.baseUrl || '(using proxy)',
@@ -294,6 +360,172 @@ class FireflyService {
         message: error instanceof Error ? error.message : 'Network error',
       };
     }
+  }
+
+  /**
+   * Get accounts usage by counting transactions over last 90 days
+   *
+   * Returns all accounts with usage_count calculated from transactions.
+   * Smart sorting:
+   * - Top: Accounts with usage_count > 0, sorted high → low
+   * - Bottom: Accounts with usage_count = 0
+   *
+   * @param userName - Optional filter by user (from transaction tags)
+   * @returns Sorted array of accounts with usage counts
+   */
+  public async getAccountsUsage(userName?: string): Promise<AccountUsage[]> {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error('Firefly service not configured');
+      }
+
+      // Generate cache key
+      const cacheKey = userName || 'all';
+
+      // Check cache first
+      const cachedData = this.accountCache.get(cacheKey);
+      if (cachedData) {
+        console.log('💾 Using cached accounts for:', cacheKey);
+        return cachedData;
+      }
+
+      console.log('🔄 Fetching fresh accounts for:', cacheKey);
+
+      // Fetch all asset accounts
+      const accountsResponse = await this.makeRequest<FireflyAccountsResponse>(
+        '/api/v1/accounts?type=asset'
+      );
+
+      const accounts = accountsResponse.data || [];
+
+      console.log('📋 Fetched', accounts.length, 'accounts from Firefly');
+
+      // Build account map for quick lookup
+      const accountMap = new Map(
+        accounts.map(acc => [
+          acc.attributes.name,
+          {
+            id: acc.id,
+            name: acc.attributes.name,
+            currency: acc.attributes.currency_code,
+            balance: acc.attributes.current_balance,
+          }
+        ])
+      );
+
+      // Fetch transactions from last 90 days
+      const startDate = this.get90DaysAgo();
+      const endDate = this.getToday();
+      const transactionsUrl = `/api/v1/transactions?start=${startDate}&end=${endDate}&limit=1000`;
+
+      const txnsResponse = await this.makeRequest<FireflyTransactionsResponse>(transactionsUrl);
+      const transactions = txnsResponse.data || [];
+
+      console.log('📋 Fetched', transactions.length, 'transactions');
+
+      // Count transactions per account grouped by user tag
+      const usageMap = new Map<string, Map<string, number>>();
+
+      transactions.forEach(txn => {
+        const sourceName = txn.attributes.source_name;
+        const userTag = (txn.attributes.tags && txn.attributes.tags[0]) || 'Unknown';
+
+        if (sourceName) {
+          if (!usageMap.has(sourceName)) {
+            usageMap.set(sourceName, new Map());
+          }
+
+          const accountUsers = usageMap.get(sourceName)!;
+          const currentCount = accountUsers.get(userTag) || 0;
+          accountUsers.set(userTag, currentCount + 1);
+        }
+      });
+
+      // Build account usage array
+      const allAccounts: AccountUsage[] = [];
+
+      accountMap.forEach((accountData, accountName) => {
+        const userUsageMap = usageMap.get(accountName);
+
+        if (userName && userName !== 'Unknown') {
+          // Filter by specific user
+          const count = userUsageMap?.get(userName) || 0;
+          allAccounts.push({
+            account_id: accountData.id,
+            account_name: accountData.name,
+            account_currency: accountData.currency,
+            current_balance: accountData.balance,
+            usage_count: count,
+          });
+        } else {
+          // Include all users - sum across all user tags for this account
+          let totalCount = 0;
+          if (userUsageMap) {
+            userUsageMap.forEach(count => {
+              totalCount += count;
+            });
+          }
+
+          allAccounts.push({
+            account_id: accountData.id,
+            account_name: accountData.name,
+            account_currency: accountData.currency,
+            current_balance: accountData.balance,
+            usage_count: totalCount,
+          });
+        }
+      });
+
+      console.log('📊 Built usage data for', allAccounts.length, 'accounts');
+
+      // Smart sort: used accounts first (high → low), then unused
+      const usedAccounts = allAccounts.filter(a => a.usage_count > 0);
+      const unusedAccounts = allAccounts.filter(a => a.usage_count === 0);
+
+      usedAccounts.sort((a, b) => b.usage_count - a.usage_count);
+
+      const sortedAccounts = [...usedAccounts, ...unusedAccounts];
+
+      console.log('✅ Sorted account results:', {
+        requestedUser: userName || 'all',
+        usedCount: usedAccounts.length,
+        unusedCount: unusedAccounts.length,
+        totalCount: sortedAccounts.length,
+        topAccount: sortedAccounts[0]?.account_name,
+        topUsage: sortedAccounts[0]?.usage_count,
+      });
+
+      // Cache the result for 60 seconds
+      this.accountCache.set(cacheKey, sortedAccounts);
+
+      return sortedAccounts;
+    } catch (error) {
+      console.error('Failed to get accounts usage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get date N days ago in YYYY-MM-DD format
+   */
+  private getDaysAgo(days: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date.toISOString().split('T')[0];
+  }
+
+  /**
+   * Get date 90 days ago
+   */
+  private get90DaysAgo(): string {
+    return this.getDaysAgo(90);
+  }
+
+  /**
+   * Get today's date in YYYY-MM-DD format
+   */
+  private getToday(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }
 

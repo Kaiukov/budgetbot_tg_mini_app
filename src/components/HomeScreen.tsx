@@ -1,5 +1,5 @@
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
-import type { AccountUsage } from '../services/sync';
+import type { AccountUsage } from '../BudgetMiniApp';
 
 interface HomeScreenProps {
   userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")

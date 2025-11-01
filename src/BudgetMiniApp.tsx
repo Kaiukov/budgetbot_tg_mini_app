@@ -3,9 +3,18 @@ import { Check } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { fireflyService } from './services/firefly';
-import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
+import { syncService, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
+
+// Account usage type - shared by both Firefly and Sync services
+export interface AccountUsage {
+  account_id: string;
+  account_name: string;
+  account_currency: string;
+  current_balance: number;
+  usage_count: number;
+}
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -124,26 +133,25 @@ const BudgetMiniApp = () => {
       // Otherwise, return all accounts
       // Treat "User" and "Guest" as unknown users (browser mode)
       const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getAccountsUsage(isUnknownUser ? undefined : userName);
+      const accounts = await fireflyService.getAccountsUsage(isUnknownUser ? undefined : userName);
 
       console.log('📊 Fetched accounts:', {
-        total: data.total,
-        count: data.get_accounts_usage.length
+        count: accounts.length
       });
 
       // Deduplicate by account_id (defensive - ensures unique accounts only)
-      const uniqueAccounts = data.get_accounts_usage.filter(
+      const uniqueAccounts = accounts.filter(
         (account, index, self) =>
           index === self.findIndex((a) => a.account_id === account.account_id)
       );
 
       console.log('🔍 Deduplication:', {
-        original: data.get_accounts_usage.length,
+        original: accounts.length,
         unique: uniqueAccounts.length,
-        duplicatesRemoved: data.get_accounts_usage.length - uniqueAccounts.length
+        duplicatesRemoved: accounts.length - uniqueAccounts.length
       });
 
-      // Accounts are already sorted by syncService.getAccountsUsage()
+      // Accounts are already sorted by fireflyService.getAccountsUsage()
       // Used accounts (high → low by usage_count) followed by unused accounts (usage_count = 0)
       setAccounts(uniqueAccounts);
     } catch (error) {
@@ -152,8 +160,8 @@ const BudgetMiniApp = () => {
         error,
         message: errorMessage,
         userName,
-        syncConfigured: syncService.isConfigured(),
-        baseUrl: syncService.getBaseUrl()
+        fireflyConfigured: fireflyService.isConfigured(),
+        baseUrl: fireflyService.getBaseUrl()
       });
       setAccountsError(errorMessage);
     } finally {
@@ -293,11 +301,12 @@ const BudgetMiniApp = () => {
 
     if (selectedAccount) {
       // Store account details
+      // Note: Firefly service doesn't provide user_name, use userName from state instead
       updateAccountWithDetails(
         selectedAccount.account_name,
         selectedAccount.account_id,
         selectedAccount.account_currency,
-        selectedAccount.user_name
+        userName
       );
 
       // Store user data if available
