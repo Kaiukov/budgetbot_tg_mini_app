@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2025-11-02
+
+### Changed
+- **UI Standardization**: Unified header design pattern across all 14 screens
+- **Header Spacing**: Standardized to text-2xl font-bold with pt-8 pb-6 px-4
+- **iOS Safe Area**: Fixed UI mixing on AccountsScreen (improved top padding from pt-2 to pt-8)
+- **Theme Update**: Added universal header pattern to layouts.ts
+- **Back Button Consistency**: Added conditional back buttons to TransactionDetail and TransactionEdit screens
+
+### Fixed
+- iOS status bar overlap issue on AccountsScreen
+- Inconsistent title font sizes across screens (now all text-2xl/24px)
+- Mixed spacing patterns in screen headers
+
+### Removed
+- Outdated documentation files (GEMINI.md, PLAN.md)
+
+### Technical Details
+- Total top spacing: ~107px on iPhone with notch, ~68px on iPhone SE
+- Back buttons only visible in browser mode (!isAvailable)
+- All headers now use flex items-center justify-between layout
+
 ## [1.2.1] - 2025-10-31
 
 ### Added
