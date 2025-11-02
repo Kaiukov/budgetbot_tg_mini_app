@@ -136,7 +136,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h2 className="text-base font-semibold">Confirmation</h2>
+        <h1 className="text-2xl font-bold">Confirmation</h1>
       </div>
 
       <div className={layouts.content}>

@@ -51,13 +51,13 @@ const DebugScreen: React.FC<DebugScreenProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-20">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
+      <div className="flex items-center justify-between px-4 pt-8 pb-6 border-b border-gray-800">
         {!isAvailable && (
           <button onClick={onBack} className="mr-3">
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h2 className="text-base font-semibold">Debug Information</h2>
+        <h1 className="text-2xl font-bold">Debug Information</h1>
       </div>
 
       <div className="p-3">

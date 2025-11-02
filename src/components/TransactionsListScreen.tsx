@@ -10,6 +10,7 @@ import telegramService from '../services/telegram';
 import { fetchTransactions } from '../services/firefly/transactionsFetch';
 import type { DisplayTransaction, PaginationMeta } from '../types/transaction';
 import TransactionCard from './TransactionCard';
+import { layouts, gradients } from '../theme/dark';
 
 interface TransactionsListScreenProps {
   onBack: () => void;
@@ -93,9 +94,9 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen text-white">
+    <div className={`${layouts.screen} ${gradients.screen}`}>
       {/* Header */}
-      <div className="flex items-center justify-between pt-8 pb-6 px-4">
+      <div className={layouts.headerLarge}>
         <h1 className="text-2xl font-bold">All Transactions</h1>
       </div>
 

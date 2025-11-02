@@ -132,7 +132,7 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h2 className="text-base font-semibold">Comment</h2>
+        <h1 className="text-2xl font-bold">Comment</h1>
       </div>
 
       <div className={layouts.content}>

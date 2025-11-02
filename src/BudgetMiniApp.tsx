@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Check } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { fireflyService } from './services/firefly';
@@ -26,7 +25,6 @@ import type { DisplayTransaction, TransactionData } from './types/transaction';
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [showSuccess, setShowSuccess] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
 
   // Service status states
@@ -336,13 +334,9 @@ const BudgetMiniApp = () => {
   };
 
   const handleConfirmTransaction = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      resetTransactionData();
-      setTransactionType('expense'); // Reset to default
-      setCurrentScreen('home');
-    }, 2000);
+    resetTransactionData();
+    setTransactionType('expense'); // Reset to default
+    setCurrentScreen('home');
   };
 
   // Transaction handlers
@@ -384,13 +378,9 @@ const BudgetMiniApp = () => {
     try {
       const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
       if (response.success) {
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          sessionStorage.removeItem('selectedTransactionId');
-          setSelectedTransactionId(null);
-          setCurrentScreen('transactions');
-        }, 1500);
+        sessionStorage.removeItem('selectedTransactionId');
+        setSelectedTransactionId(null);
+        setCurrentScreen('transactions');
       } else {
         console.error('Failed to delete transaction:', response.error);
         alert(`Failed to delete transaction: ${response.error}`);
@@ -402,7 +392,13 @@ const BudgetMiniApp = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))' }}>
+    <div
+      className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)'
+      }}
+    >
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
@@ -689,23 +685,19 @@ const BudgetMiniApp = () => {
             setCurrentScreen('home');
           }}
           onConfirm={() => {
-            setShowSuccess(true);
-            setTimeout(() => {
-              setShowSuccess(false);
-              // Reset all transfer state
-              setTransferSourceAccount('');
-              setTransferSourceAccountId('');
-              setTransferSourceCurrency('');
-              setTransferDestAccount('');
-              setTransferDestAccountId('');
-              setTransferDestCurrency('');
-              setTransferExitAmount('');
-              setTransferEntryAmount('');
-              setTransferExitFee('0');
-              setTransferEntryFee('0');
-              setTransferComment('');
-              setCurrentScreen('home');
-            }, 2000);
+            // Reset all transfer state
+            setTransferSourceAccount('');
+            setTransferSourceAccountId('');
+            setTransferSourceCurrency('');
+            setTransferDestAccount('');
+            setTransferDestAccountId('');
+            setTransferDestCurrency('');
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('0');
+            setTransferEntryFee('0');
+            setTransferComment('');
+            setCurrentScreen('home');
           }}
           onSuccess={() => {
             // Success handled by onConfirm
@@ -762,15 +754,6 @@ const BudgetMiniApp = () => {
         />
       )}
 
-      {/* Success Toast */}
-      {showSuccess && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in">
-          <Check size={20} />
-          <span className="font-medium">
-            {currentScreen.startsWith('transfer') ? 'Transfer' : transactionType === 'income' ? 'Income' : 'Expense'} saved successfully!
-          </span>
-        </div>
-      )}
     </div>
   );
 };

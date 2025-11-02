@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, AlertCircle, Loader } from 'lucide-react';
+import { Edit, Trash2, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
 import { fetchTransactionById } from '../services/firefly/transactionsFetch';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
@@ -97,7 +97,12 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
     return (
       <div className="min-h-screen text-white">
         {/* Header */}
-        <div className="flex items-center pt-8 pb-6 px-4">
+        <div className="flex items-center justify-between pt-8 pb-6 px-4">
+          {!isAvailable && (
+            <button onClick={onBack} className="mr-3">
+              <ArrowLeft size={20} className="text-white" />
+            </button>
+          )}
           <h1 className="text-2xl font-bold">Transaction Details</h1>
         </div>
 
@@ -119,6 +124,11 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
     <div className="min-h-screen text-white">
       {/* Header */}
       <div className="flex items-center justify-between pt-8 pb-6 px-4">
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h1 className="text-2xl font-bold">Transaction Details</h1>
       </div>
 

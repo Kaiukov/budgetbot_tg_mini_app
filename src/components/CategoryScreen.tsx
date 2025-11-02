@@ -44,7 +44,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h2 className="text-base font-semibold">Select Category</h2>
+        <h1 className="text-2xl font-bold">Select Category</h1>
       </div>
 
       <div className={layouts.content}>

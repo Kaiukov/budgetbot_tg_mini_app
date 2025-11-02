@@ -79,7 +79,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         {/* Title with Gradient Text */}
-        <h1 className="text-xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
           Budget Manager
         </h1>
         <p className="text-xs text-gray-400 text-center">

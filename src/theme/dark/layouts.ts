@@ -7,9 +7,9 @@ export const layouts = {
   // Screen container
   screen: 'min-h-screen text-white',
 
-  // Header bar
-  header: 'flex items-center px-3 py-3',
-  headerWide: 'flex items-center px-4 py-4',
+  // Header bar (safe area handled by parent container) - Universal pattern for all screens
+  header: 'flex items-center justify-between px-4 pt-8 pb-6',
+  headerLarge: 'flex items-center justify-between px-4 pt-8 pb-6', // Alias for backward compatibility
 
   // Content areas
   content: 'p-3',

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { AlertCircle, Save, Loader } from 'lucide-react';
+import { AlertCircle, Save, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
 import { fireflyService } from '../services/firefly/firefly';
 import type { TransactionData, DisplayTransaction } from '../types/transaction';
@@ -124,7 +124,12 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
   return (
     <div className="min-h-screen text-white">
       {/* Header */}
-      <div className="flex items-center pt-8 pb-6 px-4">
+      <div className="flex items-center justify-between pt-8 pb-6 px-4">
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
         <h1 className="text-2xl font-bold">Edit Transaction</h1>
       </div>
 
