@@ -5,6 +5,7 @@ import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
+import { refreshHomeTransactionCache } from './utils/cache';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -110,15 +111,7 @@ const BudgetMiniApp = () => {
     return () => clearTimeout(timer);
   }, [userName]);
 
-  // Preload accounts when on home screen (background optimization)
-  useEffect(() => {
-    if (currentScreen === 'home' && userName) {
-      console.log('🚀 Preloading accounts in background...');
-      fetchAccounts().catch(error => {
-        console.warn('⚠️ Background account preload failed:', error);
-      });
-    }
-  }, [currentScreen, userName]);
+
 
   // Handle transaction detail navigation from sessionStorage
   useEffect(() => {
@@ -378,6 +371,9 @@ const BudgetMiniApp = () => {
     try {
       const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
       if (response.success) {
+        // Proactively refresh transaction cache
+        await refreshHomeTransactionCache();
+
         sessionStorage.removeItem('selectedTransactionId');
         setSelectedTransactionId(null);
         setCurrentScreen('transactions');
@@ -407,7 +403,6 @@ const BudgetMiniApp = () => {
           userInitials={userInitials}
           userBio={userBio}
           isAvailable={isAvailable}
-          accounts={accounts}
           onNavigate={handleNavigate}
         />
       )}

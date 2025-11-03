@@ -64,6 +64,16 @@ export interface DestinationNameUsageResponse {
   total: number;
 }
 
+export interface CurrentBalanceResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  get_current_balance: {
+    balance_in_USD: number;
+  }[];
+  total: number;
+}
+
 export interface TelegramUserData {
   success: boolean;
   message: string;
@@ -95,6 +105,10 @@ class SyncService {
   private accountCache: Cache<AccountsUsageResponse>;
   private readonly ACCOUNT_CACHE_EXPIRY_MS = 60000; // 60 seconds in milliseconds
 
+  // Balance cache with 5-minute expiry
+  private balanceCache: Cache<CurrentBalanceResponse>;
+  private readonly BALANCE_CACHE_EXPIRY_MS = 300000; // 5 minutes in milliseconds
+
   constructor() {
     // Detect environment
     const isProduction = typeof window !== 'undefined' &&
@@ -117,6 +131,12 @@ class SyncService {
     this.accountCache = new Cache<AccountsUsageResponse>(
       this.ACCOUNT_CACHE_EXPIRY_MS,
       'account_'
+    );
+
+    // Initialize balance cache with 5-minute expiry
+    this.balanceCache = new Cache<CurrentBalanceResponse>(
+      this.BALANCE_CACHE_EXPIRY_MS,
+      'balance_'
     );
 
     console.log('🔧 Sync Service Config:', {
@@ -279,6 +299,41 @@ class SyncService {
       return data;
     } catch (error) {
       console.error('💥 Sync API Fetch Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current balance from the API with 5-minute caching
+   */
+  public async fetchCurrentBalance(): Promise<number> {
+    try {
+      if (!this.isConfigured()) {
+        throw new Error('Sync API not configured');
+      }
+
+      const cacheKey = 'current_balance';
+
+      // Check cache first
+      const cachedData = this.balanceCache.get(cacheKey);
+      if (cachedData) {
+        console.log('💾 Using cached balance');
+        return cachedData.get_current_balance[0]?.balance_in_USD || 0;
+      }
+
+      console.log('🔄 Fetching fresh balance');
+
+      const data = await this.makeRequest<CurrentBalanceResponse>(
+        '/api/sync/get_current_balance',
+        { method: 'GET' }
+      );
+
+      // Cache the result for 5 minutes
+      this.balanceCache.set(cacheKey, data);
+
+      return data.get_current_balance[0]?.balance_in_USD || 0;
+    } catch (error) {
+      console.error('Failed to fetch current balance:', error);
       throw error;
     }
   }

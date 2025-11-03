@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
-import type { AccountUsage } from '../services/sync';
+import { syncService } from '../services/sync';
 import type { DisplayTransaction } from '../types/transaction';
 import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import { transactionCache, TRANSACTION_CACHE_KEYS } from '../utils/cache';
 import TransactionCard from './TransactionCard';
 
 interface HomeScreenProps {
@@ -11,7 +12,6 @@ interface HomeScreenProps {
   userInitials: string;
   userBio: string;
   isAvailable: boolean;
-  accounts?: AccountUsage[];   // Optional accounts for balance calculation
   onNavigate: (screen: string) => void;
 }
 
@@ -29,20 +29,46 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   userInitials,
   userBio,
   isAvailable,
-  accounts = [],
   onNavigate
 }) => {
   const [latestTransactions, setLatestTransactions] = useState<DisplayTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [totalBalance, setTotalBalance] = useState(0);
 
-  // Fetch latest 10 transactions on component mount
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const balance = await syncService.fetchCurrentBalance();
+        setTotalBalance(balance);
+      } catch (error) {
+        console.warn('Failed to fetch total balance:', error);
+      }
+    };
+
+    if (isAvailable) {
+      fetchBalance();
+    }
+  }, [isAvailable]);
+
+  // Fetch latest 10 transactions on component mount with caching
   useEffect(() => {
     const loadLatestTransactions = async () => {
       setLoadingTransactions(true);
+
+      // Try cache first
+      const cached = transactionCache.get(TRANSACTION_CACHE_KEYS.HOME_LATEST);
+      if (cached) {
+        setLatestTransactions(cached);
+        setLoadingTransactions(false);
+        return;
+      }
+
+      // Cache miss - fetch from API
       try {
         const result = await fetchTransactions(1, 10);
         if (!result.error) {
           setLatestTransactions(result.transactions);
+          transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
         }
       } catch (error) {
         console.warn('Failed to load latest transactions:', error);
@@ -55,12 +81,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       loadLatestTransactions();
     }
   }, [isAvailable]);
-
-  // Calculate total balance from accounts
-  const getTotalBalance = () => {
-    if (!accounts || accounts.length === 0) return 0;
-    return accounts.reduce((sum, account) => sum + account.current_balance, 0);
-  };
 
   return (
     <div className="min-h-screen text-white">
@@ -80,11 +100,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Title with Gradient Text */}
         <h1 className="text-2xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
-          Budget Manager
-        </h1>
-        <p className="text-xs text-gray-400 text-center">
           {userFullName}
-        </p>
+        </h1>
         <p className="text-xs text-gray-400 text-center px-4 mt-1">
           {isAvailable ? userBio : 'Browser Mode - Limited Features'}
         </p>
@@ -97,7 +114,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         >
           <div className="flex items-center justify-center">
             <span className="text-xs text-gray-300 mr-2">Total Balance:</span>
-            <span className="text-lg font-bold text-emerald-400">{getTotalBalance().toLocaleString()} ₴</span>
+            <span className="text-lg font-bold text-emerald-400">
+              {totalBalance.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+            </span>
             <TrendingUp size={16} className="text-emerald-400 ml-1.5" />
           </div>
         </div>

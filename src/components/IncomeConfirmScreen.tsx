@@ -7,6 +7,7 @@ import telegramService from '../services/telegram';
 import type { IncomeTransactionData } from '../services/firefly/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
+import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface IncomeConfirmScreenProps {
@@ -105,6 +106,10 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 
       if (success) {
         console.log('✅ Income transaction submitted successfully:', response);
+
+        // Proactively refresh transaction cache
+        await refreshHomeTransactionCache();
+
         // Show Telegram alert for success
         telegramService.showAlert('✅ Income saved successfully!', () => {
           onSuccess();

@@ -395,19 +395,29 @@ GET /api/sync/get_accounts?currency_code=EUR
 ---
 
 ### 4. Get Categories
-Retrieve categories with optional active filter.
+Retrieve categories with optional filters and user-specific usage data.
+
+When `user_name` is provided, returns categories with personalized usage counts, following the same pattern as `/get_accounts_usage` endpoint.
 
 **Endpoint:** `GET /api/sync/get_categories`
 
 **Query Parameters:**
 - `active` (optional) - Filter by active status: `true` or `false`
+- `user_name` (optional) - Filter by user name and include usage counts
 
-**Example:**
+**Examples:**
 ```
+# Get all active categories (basic mode)
 GET /api/sync/get_categories?active=true
+
+# Get categories with user-specific usage data
+GET /api/sync/get_categories?user_name=John
+
+# Combine filters: active categories for specific user
+GET /api/sync/get_categories?active=true&user_name=John
 ```
 
-**Response:**
+**Response (without user_name):**
 ```json
 {
   "success": true,
@@ -427,55 +437,205 @@ GET /api/sync/get_categories?active=true
 }
 ```
 
----
-
-### 5. Get Accounts Usage
-Retrieve account usage statistics.
-
-**Endpoint:** `GET . `
-
-**Query Parameters:** None
-
-**Example:**
-```
-GET /api/sync/get_accounts_usage
-```
-
-**Response:**
+**Response (with user_name):**
 ```json
 {
   "success": true,
   "message": "Data retrieved successfully",
   "timestamp": "2025-10-23T12:00:00.000Z",
-  "get_accounts_usage": [
+  "get_categories": [
     {
-      "user_name": "John",
-      "account_name": "Checking Account",
-      "usage_count": 25,
+      "category_id": "1",
+      "name": "Food",
+      "notes": "Groceries and dining",
+      "active": true,
       "created_at": "2025-01-01T12:00:00.000Z",
-      "updated_at": "2025-10-23T12:00:00.000Z"
+      "updated_at": "2025-10-23T12:00:00.000Z",
+      "user_name": "John",
+      "usage_count": 45
+    },
+    {
+      "category_id": "2",
+      "name": "Transport",
+      "notes": "Travel expenses",
+      "active": true,
+      "created_at": "2025-01-01T12:00:00.000Z",
+      "updated_at": "2025-10-23T12:00:00.000Z",
+      "user_name": "John",
+      "usage_count": 0
     }
   ],
-  "total": 1
+  "total": 2
 }
 ```
+
+**Notes:**
+- Returns ALL active categories (including those with zero usage) when `user_name` is provided
+- When `user_name` is provided, categories are sorted by that user's usage frequency (DESC)
+- Without `user_name`, categories are sorted alphabetically by name
+- Uses CTE-based query with LEFT JOIN for optimal performance
+- Includes complete category details: name, notes, active status, timestamps
+
+---
+
+### 5. Get Accounts Usage
+Retrieve ALL accounts with user-specific usage statistics and full account details.
+
+**🔑 Key Behavior:** When `user_name` is provided, returns ALL accounts in the system with usage counts showing how often THAT specific user has used each account. This includes accounts owned by other users, shared accounts, and accounts the user has never used.
+
+Combines account information from `Accounts_current_state` with usage patterns from `accounts_usage` table. Returns all accounts with their usage counts, sorted by frequency.
+
+**Endpoint:** `GET /api/sync/get_accounts_usage`
+
+**Query Parameters:**
+- `user_name` (optional) - Show usage statistics for specific user across ALL accounts
+
+**Examples:**
+```
+# Get all accounts sorted alphabetically (no usage data)
+GET /api/sync/get_accounts_usage
+
+# Get ALL accounts sorted by John's usage frequency
+GET /api/sync/get_accounts_usage?user_name=John
+```
+
+**Response (with user_name):**
+```json
+{
+  "success": true,
+  "message": "Data retrieved successfully",
+  "timestamp": "2025-10-31T01:06:51.537581",
+  "get_accounts_usage": [
+    {
+      "account_id": "1",
+      "user_name": "John",
+      "account_name": "John's Checking",
+      "account_currency": "EUR",
+      "current_balance": 1500.00,
+      "balance_in_USD": 1620.00,
+      "balance_in_EUR": 1500.00,
+      "owner": "John",
+      "owner_id": "1",
+      "usage_count": 41
+    },
+    {
+      "account_id": "5",
+      "user_name": "John",
+      "account_name": "Jane's Savings",
+      "account_currency": "USD",
+      "current_balance": 5000.00,
+      "balance_in_USD": 5000.00,
+      "balance_in_EUR": 4629.63,
+      "owner": "Jane",
+      "owner_id": "2",
+      "usage_count": 7
+    },
+    {
+      "account_id": "3",
+      "user_name": "John",
+      "account_name": "Shared Cash Account",
+      "account_currency": "USD",
+      "current_balance": 2380.00,
+      "balance_in_USD": 2380.00,
+      "balance_in_EUR": 2047.69,
+      "owner": "Jane",
+      "owner_id": "2",
+      "usage_count": 2
+    },
+    {
+      "account_id": "8",
+      "user_name": "John",
+      "account_name": "Jane's Personal Card",
+      "account_currency": "EUR",
+      "current_balance": 753.64,
+      "balance_in_USD": 875.95,
+      "balance_in_EUR": 753.64,
+      "owner": "Jane",
+      "owner_id": "2",
+      "usage_count": 0
+    }
+  ],
+  "total": 4
+}
+```
+
+**Response (without user_name):**
+```json
+{
+  "success": true,
+  "message": "Data retrieved successfully",
+  "timestamp": "2025-10-31T01:06:57.045387",
+  "get_accounts_usage": [
+    {
+      "account_id": "3",
+      "user_name": "Jane",
+      "account_name": "Shared Cash Account",
+      "account_currency": "USD",
+      "current_balance": 2380.00,
+      "balance_in_USD": 2380.00,
+      "balance_in_EUR": 2047.69,
+      "owner": "Jane",
+      "owner_id": "2",
+      "usage_count": 0
+    },
+    {
+      "account_id": "1",
+      "user_name": "John",
+      "account_name": "John's Checking",
+      "account_currency": "EUR",
+      "current_balance": 1500.00,
+      "balance_in_USD": 1620.00,
+      "balance_in_EUR": 1500.00,
+      "owner": "John",
+      "owner_id": "1",
+      "usage_count": 0
+    }
+  ],
+  "total": 2
+}
+```
+
+**Field Descriptions:**
+- **`user_name`**: The requesting user (parameter value) when filtered, otherwise account owner
+- **`owner`**: The actual account owner (may differ from `user_name` for shared accounts)
+- **`owner_id`**: Firefly III user ID of the account owner
+- **`usage_count`**: How many times the requesting user has used this account (last 90 days)
+
+**Use Cases:**
+1. **Smart Account Suggestions**: Show user's most-used accounts first, regardless of ownership
+2. **Shared Account Management**: Track which shared accounts each user actually uses
+3. **Account Discovery**: Users can see all available accounts (including those they haven't used)
+4. **Personal Analytics**: Understand usage patterns across all accessible accounts
+
+**Notes:**
+- ✅ Returns ALL accounts in the system (not filtered by ownership)
+- ✅ When `user_name` provided, shows that user's usage across ALL accounts
+- ✅ Includes accounts with `usage_count=0` (never used by requesting user)
+- ✅ Shows accounts owned by other users if requesting user has used them
+- ✅ Sorted by requesting user's `usage_count DESC`, then account name
+- ✅ Without `user_name`, returns all accounts sorted alphabetically with owner as `user_name`
+- ✅ Uses CTE-based query with LEFT JOIN for optimal performance
+- ✅ Includes complete account details: balances, currency conversions, owner information
+- ⚠️ `user_name` and `owner` fields serve different purposes - don't confuse them!
 
 ---
 
 ### 6. Get Categories Usage
-Retrieve category usage statistics with optional user filter.
+Retrieve ALL category usage data (used and unused) for a specific user with smart sorting.
+
+Returns all categories including those never used by the user. Used categories have `usage_count > 0`, unused have `usage_count = 0`.
 
 **Endpoint:** `GET /api/sync/get_categories_usage`
 
 **Query Parameters:**
-- `user_name` (optional) - Filter by user name
+- `user_name` (required) - Filter by user name (mandatory parameter)
 
 **Example:**
 ```
 GET /api/sync/get_categories_usage?user_name=John
 ```
 
-**Response:**
+**Response (Success):**
 ```json
 {
   "success": true,
@@ -485,51 +645,182 @@ GET /api/sync/get_categories_usage?user_name=John
     {
       "user_name": "John",
       "category_name": "Food",
+      "category_id": 1,
       "usage_count": 30,
       "created_at": "2025-01-01T12:00:00.000Z",
       "updated_at": "2025-10-23T12:00:00.000Z"
+    },
+    {
+      "user_name": "John",
+      "category_name": "Transport",
+      "category_id": 2,
+      "usage_count": 15,
+      "created_at": "2025-01-01T12:00:00.000Z",
+      "updated_at": "2025-10-20T12:00:00.000Z"
+    },
+    {
+      "user_name": "John",
+      "category_name": "Health",
+      "category_id": 3,
+      "usage_count": 0,
+      "created_at": null,
+      "updated_at": null
+    },
+    {
+      "user_name": "John",
+      "category_name": "Entertainment",
+      "category_id": 4,
+      "usage_count": 0,
+      "created_at": null,
+      "updated_at": null
     }
   ],
-  "total": 1
+  "total": 4
 }
 ```
+
+**Response (Missing user_name - 400 Bad Request):**
+```json
+{
+  "success": false,
+  "message": "Missing required query parameter: user_name",
+  "timestamp": "2025-10-23T12:00:00.000Z",
+  "get_categories_usage": [],
+  "total": 0
+}
+```
+
+**Features:**
+- ✅ Returns ALL categories (used + unused)
+- ✅ Includes `category_id` from categories table
+- ✅ Unused categories have `usage_count = 0`
+- ✅ Null timestamps for unused categories
+- ✅ Sorted by `usage_count DESC` (most used first)
+- ✅ Mandatory `user_name` parameter (returns 400 if missing)
+- ✅ Perfect for client-side smart sorting and category suggestions
+
+**Notes:**
+- **Mandatory Parameter**: `user_name` is required. Request without it returns 400 Bad Request
+- **Complete Coverage**: Returns every active category in the system, regardless of user history
+- **Smart Sorting**: Used categories (with usage data) appear first, sorted by frequency
+- **Data Freshness**: Usage counts based on transactions from last 90 days (sync-dependent)
+- **Use Case**: Client app can make single API call and get all categories pre-sorted for smart suggestions
 
 ---
 
 ### 7. Get Destination Name Usage
-Retrieve destination usage statistics with optional filters.
+Retrieve destination usage statistics with optional smart suggestions.
+
+When both `user_name` AND `category_name` are provided, returns **smart suggestions** combining personal destinations with popular community destinations for discovery.
 
 **Endpoint:** `GET /api/sync/get_destination_name_usage`
 
 **Query Parameters:**
-- `user_name` (optional) - Filter by user name
-- `category_name` (optional) - Filter by category name
-- Filters can be combined
+- `user_name` (optional) - Filter by user name (enables smart suggestions when combined with category_name)
+- `category_name` (optional) - Filter by category name (enables smart suggestions when combined with user_name)
+- Filters can be combined for different modes
 
-**Example:**
+**Examples:**
 ```
+# Basic mode: Only John's used destinations
+GET /api/sync/get_destination_name_usage?user_name=John
+
+# Basic mode: All destinations in Food category (all users)
+GET /api/sync/get_destination_name_usage?category_name=Food
+
+# Smart suggestions mode: John's destinations + popular community destinations in Food
 GET /api/sync/get_destination_name_usage?user_name=John&category_name=Food
 ```
 
-**Response:**
+**Response (basic mode - only user's used destinations):**
 ```json
 {
   "success": true,
   "message": "Data retrieved successfully",
-  "timestamp": "2025-10-23T12:00:00.000Z",
+  "timestamp": "2025-10-28T12:00:00.000Z",
   "get_destination_name_usage": [
     {
       "user_name": "John",
-      "destination_name": "Supermarket",
+      "destination_name": "Penny Market",
       "category_name": "Food",
-      "usage_count": 15,
+      "usage_count": 45,
       "created_at": "2025-01-01T12:00:00.000Z",
-      "updated_at": "2025-10-23T12:00:00.000Z"
+      "updated_at": "2025-10-28T12:00:00.000Z"
     }
   ],
   "total": 1
 }
 ```
+
+**Response (smart suggestions mode - personal + community):**
+```json
+{
+  "success": true,
+  "message": "Data retrieved successfully",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "get_destination_name_usage": [
+    {
+      "user_name": "John",
+      "destination_name": "Penny Market",
+      "category_name": "Food",
+      "usage_count": 45,
+      "global_usage": 120,
+      "user_has_used": true,
+      "created_at": "2025-01-01T12:00:00.000Z",
+      "updated_at": "2025-10-28T12:00:00.000Z"
+    },
+    {
+      "user_name": "John",
+      "destination_name": "Starbucks",
+      "category_name": "Food",
+      "usage_count": 12,
+      "global_usage": 300,
+      "user_has_used": true,
+      "created_at": "2025-01-05T12:00:00.000Z",
+      "updated_at": "2025-10-28T12:00:00.000Z"
+    },
+    {
+      "user_name": "John",
+      "destination_name": "McDonald's",
+      "category_name": "Food",
+      "usage_count": 0,
+      "global_usage": 500,
+      "user_has_used": false,
+      "created_at": null,
+      "updated_at": null
+    },
+    {
+      "user_name": "John",
+      "destination_name": "Local Bakery",
+      "category_name": "Food",
+      "usage_count": 0,
+      "global_usage": 80,
+      "user_has_used": false,
+      "created_at": null,
+      "updated_at": null
+    }
+  ],
+  "total": 4
+}
+```
+
+**Smart Suggestions Features:**
+- **Discovery**: Users discover popular destinations they haven't tried yet
+- **Personalization**: User's destinations shown first, sorted by personal usage
+- **Social Intelligence**: Community destinations sorted by global popularity
+- **Complete Data**: Includes `global_usage` (total across all users) and `user_has_used` flag
+- **Smart Sorting**:
+  1. User's used destinations (by personal usage DESC)
+  2. Community destinations not yet used (by global popularity DESC)
+  3. Alphabetically within each group
+
+**Notes:**
+- **Smart mode** activates ONLY when both `user_name` AND `category_name` are provided
+- Basic filtering mode works when only one parameter is provided (backward compatible)
+- Returns ALL destinations in category when smart mode active
+- Similar to budgetbot's `get_smart_destinations_for_user()` functionality
+- Uses CTE-based query with LEFT JOIN for optimal performance
+- Perfect for autocomplete UI with discovery features
 
 ---
 
@@ -574,6 +865,34 @@ GET /api/sync/get_running_balance?start_date=2025-01-01&end_date=2025-01-31
 - Aggregates balances across all account currencies
 - Automatically converts to EUR and USD using exchange rates
 - Ordered by date ascending
+
+---
+
+### 9. Get Current Balance
+Retrieve current aggregated balances across all accounts.
+
+**Endpoint:** `GET /api/sync/get_current_balance`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Data retrieved successfully",
+  "timestamp": "2025-10-31T03:07:37.976006",
+  "get_current_balance": [
+    {
+      "date": "2025-10-31",
+      "balance_in_EUR": 11870.44,
+      "balance_in_USD": 13747.46
+    }
+  ],
+  "total": 1
+}
+```
+
+**Notes:**
+- Reads from PostgreSQL view `current_balance`.
+- Falls back to summing `Accounts_current_state` if the view is missing.
 
 ---
 
@@ -771,22 +1090,19 @@ All endpoints are currently open and do not require authentication. This is suit
 
 ## API Summary
 
-### Endpoint Count: 19 Total
+### Endpoint Count: 18 Total
 
-**Sync Endpoints (11):**
+**Sync Endpoints (8):**
 1. `GET /api/sync/sync_transactions`
 2. `GET /api/sync/sync_exchange_rate`
-3. `GET /api/sync/sync_budget` (FastAPI)
+3. `GET /api/sync/sync_budget`
 4. `GET /api/sync/sync_accounts`
 5. `GET /api/sync/sync_categories`
 6. `GET /api/sync/destination_name_usage`
 7. `GET /api/sync/sync_accounts_usage`
 8. `GET /api/sync/sync_categories_usage`
-9. `GET /api/sync/budget` (n8n webhook - external)
-10. `GET /api/sync/health`
-11. `GET /api/sync/metrics`
 
-**GET Endpoints (8):**
+**GET Endpoints (9):**
 1. `GET /api/sync/get_transactions`
 2. `GET /api/sync/get_budget`
 3. `GET /api/sync/get_accounts`
@@ -795,8 +1111,9 @@ All endpoints are currently open and do not require authentication. This is suit
 6. `GET /api/sync/get_categories_usage`
 7. `GET /api/sync/get_destination_name_usage`
 8. `GET /api/sync/get_running_balance`
+9. `GET /api/sync/get_current_balance`
 
-**Utility Endpoints (3):**
+**Utility Endpoints (2):**
 1. `GET /api/sync/exchange_rate`
 2. `POST /api/sync/tgUser`
 3. `GET /api/sync/status`
@@ -901,6 +1218,13 @@ FASTAPI_PORT=8001
 
 ## Version History
 
+### v2.0.1 (2025-10-31)
+- **Fixed** `/get_accounts_usage` endpoint user filtering behavior:
+  - `user_name` field now correctly shows requesting user, not account owner
+  - Returns ALL accounts with requesting user's usage statistics
+  - Properly supports shared account usage tracking across users
+  - Enhanced documentation with clear field descriptions and use cases
+
 ### v2.0.0 (2025-10-23)
 - Added 8 new GET endpoints for read-only data access
 - Added Telegram Mini App authentication (`POST /tgUser`)
@@ -926,5 +1250,5 @@ For issues, feature requests, or contributions:
 
 ---
 
-**Last Updated:** 2025-10-23
-**API Version:** 2.0.0
+**Last Updated:** 2025-10-31
+**API Version:** 2.0.1

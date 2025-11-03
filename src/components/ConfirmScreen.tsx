@@ -7,6 +7,7 @@ import telegramService from '../services/telegram';
 import type { ExpenseTransactionData } from '../services/firefly/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
+import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface ConfirmScreenProps {
@@ -105,6 +106,10 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 
       if (success) {
         console.log('✅ Transaction submitted successfully:', response);
+
+        // Proactively refresh transaction cache
+        await refreshHomeTransactionCache();
+
         // Show Telegram alert for success
         telegramService.showAlert('✅ Expense saved successfully!', () => {
           onSuccess();
