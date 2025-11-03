@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2025-11-03
+
+### Added
+- **Balance Caching**: 5-minute cache for current balance API calls to reduce backend load
+- **Proactive Cache Refresh**: Automatic transaction list refresh after deletion
+- **API Documentation**: Comprehensive Sync API documentation update with balance endpoint
+- **Project Documentation**: CLAUDE.md files across project structure for better navigation
+
+### Changed
+- **User Data Sync**: Removed unused avatar_url field from backend sync flow
+- **HomeScreen Optimization**: Removed redundant account preloading logic
+
+### Performance
+- **API Call Reduction**: Balance data cached for 5 minutes
+- **UX Improvement**: Transaction list auto-refreshes after deletions for consistency
+- **Data Efficiency**: Streamlined user sync without unnecessary avatar field
+
+### Technical Improvements
+- Cache<CurrentBalanceResponse> implementation in sync.ts
+- fetchCurrentBalance() method with intelligent caching
+- refreshHomeTransactionCache() integration on transaction delete
+- Comprehensive API.md with balance endpoint documentation
+
 ## [1.2.2] - 2025-11-02
 
 ### Changed
