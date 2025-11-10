@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2025-11-10
+
+### Changed
+- **Deployment Config**: Configure Vite base path for reverse proxy deployment at `/app/`
+
+### Technical Improvements
+- Vite config updated to support nginx reverse proxy routing
+- App accessible via https://dev.neon-chuckwalla.ts.net/app/
+
 ## [1.2.3] - 2025-11-03
 
 ### Added
