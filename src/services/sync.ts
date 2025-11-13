@@ -256,7 +256,7 @@ class SyncService {
     const { default: telegramService } = await import('./telegram');
     const initData = telegramService.getInitData();
 
-    const method = options?.method || 'POST';
+    const method = options?.method || 'GET';
 
     console.log('🔄 Sync API Request:', {
       url,

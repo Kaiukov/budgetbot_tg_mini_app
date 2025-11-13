@@ -35,7 +35,7 @@ This document provides a high-level overview of the "Budget Mini App" project, a
 
 ## Backend & Deployment
 
-- **[API.md](API.md)**: Detailed documentation for the backend Sync Service API, outlining all available endpoints. Always check if new updats exist: https://raw.githubusercontent.com/Kaiukov/firefly/refs/heads/main/sync/API.md
+- **[API.md](API.md)**: Detailed documentation for the backend Sync Service API, outlining all available endpoints. Always check if new updats exist: `/Users/oleksandrkaiukov/Code/firefly/sync/API.md`
 - **[Dockerfile](Dockerfile)**: Defines the steps to build a production-ready Docker image for the application using Nginx.
 - **[nginx.conf](nginx.conf)**: Nginx configuration for serving the static frontend files and proxying API requests to the backend services in a production environment.
 - **[wrangler.toml](wrangler.toml)**: Configuration for deploying the application to Cloudflare Pages.
