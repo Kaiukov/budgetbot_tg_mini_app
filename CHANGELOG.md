@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2025-11-13
+
+### Fixed
+- **Telegram User Profile**: Display full Telegram name and user bio on home page
+- **Auth Headers**: Fixed `/api/sync/tgUser` endpoint to use Tier 2 authentication
+  - Replace `Authorization: Bearer` with `X-Anonymous-Key` header
+  - Add `X-Telegram-Init-Data` for Telegram signature validation
+  - Proper multi-tier auth implementation for frontend clients
+
+### Changed
+- **Bio Display**: Removed hardcoded "Manage finances" fallback text
+- **User Data**: Show actual Telegram bio instead of placeholder text
+- **Authentication**: Implement Tier 2 (Authorized Telegram User) for profile endpoint
+
+### Technical Improvements
+- fetchUserData.ts now uses correct authentication tier headers
+- useTelegramUser hook updated to remove default bio fallback
+- HomeScreen bio display logic improved to show actual user data
+
 ## [1.2.4] - 2025-11-10
 
 ### Changed
