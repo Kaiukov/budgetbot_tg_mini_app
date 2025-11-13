@@ -102,9 +102,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <h1 className="text-2xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
           {userFullName}
         </h1>
-        <p className="text-xs text-gray-400 text-center px-4 mt-1">
-          {isAvailable ? userBio : 'Browser Mode - Limited Features'}
-        </p>
+        {!isAvailable ? (
+          <p className="text-xs text-gray-400 text-center px-4 mt-1">
+            Browser Mode - Limited Features
+          </p>
+        ) : userBio ? (
+          <p className="text-xs text-gray-400 text-center px-4 mt-1">
+            {userBio}
+          </p>
+        ) : null}
       </div>
 
       {/* Balance Card */}
