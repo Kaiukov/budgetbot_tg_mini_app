@@ -92,7 +92,7 @@ export interface ExchangeRateCache {
 
 class SyncService {
   private baseUrl: string;
-  private apiKey: string | null = null;
+  private anonKey: string | null = null;
   private exchangeRateCache: Map<string, ExchangeRateCache> = new Map();
   private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
   private readonly CACHE_KEY_PREFIX = 'exchange_rate_';
@@ -119,7 +119,7 @@ class SyncService {
     // In development: use Vite proxy (empty baseUrl)
     this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
 
-    this.apiKey = import.meta.env.VITE_SYNC_API_KEY || null;
+    this.anonKey = import.meta.env.VITE_SYNC_API_KEY || null;
 
     // Initialize category cache with 1-minute expiry
     this.categoryCache = new Cache<CategoriesUsageResponse>(
@@ -142,7 +142,7 @@ class SyncService {
     console.log('🔧 Sync Service Config:', {
       environment: isProduction ? 'production' : 'development',
       baseUrl: this.baseUrl || '(using proxy)',
-      hasApiKey: !!this.apiKey
+      hasApiKey: !!this.anonKey
     });
   }
 
@@ -219,10 +219,10 @@ class SyncService {
   }
 
   /**
-   * Get current API key
+   * Get current anonymous API key
    */
-  public getApiKey(): string | null {
-    return this.apiKey;
+  public getAnonKey(): string | null {
+    return this.anonKey;
   }
 
   /**
@@ -237,19 +237,19 @@ class SyncService {
    */
   public isConfigured(): boolean {
     // baseUrl is always empty (using proxy routing in both dev and prod)
-    // so we only need to check for apiKey
-    return !!this.apiKey;
+    // so we only need to check for anonKey
+    return !!this.anonKey;
   }
 
   /**
-   * Make API request to Sync API with Telegram authentication
+   * Make API request to Sync API with anonymous key authentication
    */
   private async makeRequest<T>(endpoint: string, options?: { method?: string; body?: any }): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
-    const apiKey = this.getApiKey();
+    const anonKey = this.getAnonKey();
 
-    if (!apiKey) {
-      throw new Error('Sync API key not configured');
+    if (!anonKey) {
+      throw new Error('Sync anonymous API key not configured');
     }
 
     // Get Telegram initData for authentication
@@ -261,7 +261,7 @@ class SyncService {
     console.log('🔄 Sync API Request:', {
       url,
       method,
-      hasApiKey: !!apiKey,
+      hasAnonKey: !!anonKey,
       hasInitData: !!initData
     });
 
@@ -269,7 +269,7 @@ class SyncService {
       const response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'X-Anonymous-Key': anonKey,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
@@ -704,7 +704,7 @@ class SyncService {
       const response = await fetch(`${this.getBaseUrl()}${endpoint}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.getApiKey()}`,
+          'X-Anonymous-Key': this.getAnonKey() || '',
           'Accept': 'application/json',
         },
       });
