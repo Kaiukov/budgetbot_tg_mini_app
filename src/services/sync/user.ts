@@ -1,12 +1,16 @@
 /**
  * Sync API Service - Telegram User Profile
- * Handles Telegram user data retrieval
+ * Handles Telegram user data retrieval and transaction creation
  */
 
-import type { TelegramUserData } from './types';
+import type { TelegramUserData, ExpenseTransactionData, IncomeTransactionData, TransferTransactionData } from './types';
 import { SyncServiceDestinations } from './destinations';
+import { SyncServiceTransactions } from './transactions';
 
+// Create a combined service class with both Destinations and Transactions
 export class SyncServiceUser extends SyncServiceDestinations {
+  // Mixin transaction methods from SyncServiceTransactions
+  private transactionService = new SyncServiceTransactions();
   /**
    * Get Telegram user data from backend
    * Returns user photo, bio, and user ID validated through Telegram
@@ -73,5 +77,16 @@ export class SyncServiceUser extends SyncServiceDestinations {
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Delegate transaction creation to transaction service
+   */
+  public async addTransaction(
+    body: ExpenseTransactionData | IncomeTransactionData | TransferTransactionData,
+    transactionType: string,
+    enableVerification: boolean = true
+  ) {
+    return this.transactionService.addTransaction(body, transactionType, enableVerification);
   }
 }

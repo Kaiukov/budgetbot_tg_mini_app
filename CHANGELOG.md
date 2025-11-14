@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2025-11-14
+
+### Added
+- **Sync Service Transactions**: Dedicated `SyncServiceTransactions` module with transaction utilities, verification helpers, and Claude skill references for Telegram mini app workflows.
+
+### Changed
+- **Transaction Flows**: Confirm screens now call `syncService.addTransaction` with unified Sync API types and helpers (budget extraction, transaction utils).
+- **Sync Core**: Tier 2 POST requests now send `X-Telegram-Init-Data` header while keeping GET payloads clean; POST bodies exclude redundant `initData`.
+- **Dev Proxy**: `vite.config.ts` dev proxy allows self-signed certs and surfaces proxy errors to bypass PNA restrictions.
+- **Docs**: `CLAUDE.md` trimmed obsolete API instructions in favor of centralized Sync API references.
+
 ## [1.2.5] - 2025-11-13
 
 ### Fixed

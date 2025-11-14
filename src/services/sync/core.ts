@@ -155,15 +155,13 @@ export class SyncServiceCore {
         method,
         headers: {
           'X-Anonymous-Key': anonKey,
+          ...(method === 'POST' && { 'X-Telegram-Init-Data': initData }),
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
         // Only include body for POST requests (GET cannot have body)
         ...(method === 'POST' && {
-          body: JSON.stringify({
-            initData,
-            ...options?.body
-          })
+          body: JSON.stringify(options?.body || {})
         }),
       });
 

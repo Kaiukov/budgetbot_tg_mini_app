@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft, ArrowRight } from 'lucide-react';
-import { addTransaction } from '../services/firefly/transactions';
+import { addTransaction } from '../services/sync';
 import telegramService from '../services/telegram';
-import type { TransferTransactionData } from '../services/firefly/types';
+import type { TransferTransactionData } from '../services/sync/types';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';

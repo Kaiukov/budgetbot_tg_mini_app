@@ -122,20 +122,7 @@ npm run dev
 
 ### API Testing
 
-**Sync API Endpoints** (see [API.md](API.md) for details)
-```bash
-# Test account fetch
-curl -H "X-Anonymous-Key: YOUR_API_KEY" \
-  "http://localhost:5173/api/sync/get_accounts_usage"
 
-# Test with specific user
-curl -H "X-Anonymous-Key: YOUR_API_KEY" \
-  "http://localhost:5173/api/sync/get_accounts_usage?user_name=testuser"
-
-# Check current balance
-curl -H "X-Anonymous-Key: YOUR_API_KEY" \
-  "http://localhost:5173/api/sync/get_current_balance"
-```
 
 **Browser DevTools Network Tab**
 ```
@@ -233,7 +220,6 @@ echo "✅ All checks passed!"
 
 ## Backend & Deployment
 
-- **[API.md](API.md)**: Detailed documentation for the backend Sync Service API, outlining all available endpoints. Always check if new updats exist: `/Users/oleksandrkaiukov/Code/firefly/sync/API.md`
 - **[Dockerfile](Dockerfile)**: Defines the steps to build a production-ready Docker image for the application using Nginx.
 - **[nginx.conf](nginx.conf)**: Nginx configuration for serving the static frontend files and proxying API requests to the backend services in a production environment.
 - **[wrangler.toml](wrangler.toml)**: Configuration for deploying the application to Cloudflare Pages.
