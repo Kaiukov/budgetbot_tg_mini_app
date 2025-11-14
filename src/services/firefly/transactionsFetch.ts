@@ -153,11 +153,11 @@ function transformTransactionForDisplay(data: TransactionData): DisplayTransacti
   const foreignAmount = data.foreign_amount ? parseFloat(data.foreign_amount) : undefined;
 
   // Get category name
-  let categoryName = data.category_name || 'Uncategorized';
+  const categoryName = data.category_name || 'Uncategorized';
 
   // Get source/destination names
-  let sourceName = data.source_name || 'Unknown Account';
-  let destinationName = data.destination_name || 'Unknown Account';
+  const sourceName = data.source_name || 'Unknown Account';
+  const destinationName = data.destination_name || 'Unknown Account';
 
   // Build description - remove duplicate info that's in category/account names
   let description = data.description || '';
@@ -187,11 +187,22 @@ function transformTransactionForDisplay(data: TransactionData): DisplayTransacti
 
 /**
  * Transform multiple transactions for display
+ * Deduplicates by journal ID since Firefly returns multiple ledger entries per journal
  */
 function transformTransactionsForDisplay(response: FireflyTransactionResponse): DisplayTransaction[] {
-  return response.data.flatMap((item) => {
-    return item.attributes.transactions.map((tx) => transformTransactionForDisplay(tx));
+  const journalMap = new Map<string | number, DisplayTransaction>();
+
+  response.data.forEach((item) => {
+    item.attributes.transactions.forEach((tx) => {
+      const journalId = tx.transaction_journal_id;
+      // Only keep the first occurrence of each journal ID
+      if (!journalMap.has(journalId)) {
+        journalMap.set(journalId, transformTransactionForDisplay(tx));
+      }
+    });
   });
+
+  return Array.from(journalMap.values());
 }
 
 /**

@@ -79,11 +79,21 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
 
     try {
       // Prepare update payload - must include all fields
+      // Preserve time from original transaction when date is edited
+      const originalDate = new Date(rawData.date);
+      const editedDate = new Date(formData.date);
+      editedDate.setHours(
+        originalDate.getHours(),
+        originalDate.getMinutes(),
+        originalDate.getSeconds(),
+        originalDate.getMilliseconds()
+      );
+
       const payload = {
         transactions: [
           {
             type: rawData.type as 'withdrawal' | 'deposit' | 'transfer',
-            date: new Date(formData.date).toISOString(),
+            date: editedDate.toISOString(),
             amount: formData.amount,
             description: formData.description,
             currency_code: rawData.currency_code,
