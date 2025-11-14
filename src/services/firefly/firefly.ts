@@ -70,7 +70,7 @@ class FireflyService {
    * Make API request (GET only)
    * Note: All Firefly III API endpoints follow the pattern /api/v1/{endpoint}
    */
-  private async makeRequest<T>(endpoint: string): Promise<T> {
+  public async makeRequest<T>(endpoint: string): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
     const token = this.getToken();
 

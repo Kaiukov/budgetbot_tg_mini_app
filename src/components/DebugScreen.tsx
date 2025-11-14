@@ -1,4 +1,6 @@
 import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import telegramService from '../services/telegram';
 import type { ServiceStatus } from '../utils/serviceStatus';
 
 interface DebugScreenProps {
@@ -7,6 +9,8 @@ interface DebugScreenProps {
   serviceStatuses: ServiceStatus[];
   onBack: () => void;
   onRefresh: () => void;
+  telegramStatus?: ServiceStatus;
+  /* isAvailable is already present, used for arrow button visibility */
 }
 
 const getStatusIcon = (status: 'connected' | 'disconnected' | 'checking') => {
@@ -36,15 +40,24 @@ const DebugScreen: React.FC<DebugScreenProps> = ({
   isAvailable,
   serviceStatuses,
   onBack,
-  onRefresh
+  onRefresh,
+  telegramStatus
 }) => {
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-20">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <h2 className="text-base font-semibold">Debug Information</h2>
+      <div className="flex items-center justify-between px-4 pt-8 pb-6 border-b border-gray-800">
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
+        <h1 className="text-2xl font-bold">Debug Information</h1>
       </div>
 
       <div className="p-3">
@@ -52,6 +65,27 @@ const DebugScreen: React.FC<DebugScreenProps> = ({
         <div className="mb-4">
           <h3 className="text-sm font-semibold mb-3 text-white px-1">Services Status</h3>
           <div className="space-y-0">
+            {/* Telegram Status */}
+            {telegramStatus && (
+              <div className="bg-gray-800 border-b border-gray-700 px-3 py-3">
+                <div className="flex items-start">
+                  <div className="mt-0.5 mr-3">
+                    {getStatusIcon(telegramStatus.status)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-medium text-white text-sm">{telegramStatus.name}</h4>
+                      <span className={`text-xs font-medium uppercase ${getStatusColor(telegramStatus.status)}`}>
+                        {telegramStatus.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 leading-tight">{telegramStatus.message}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Other Services */}
             {serviceStatuses.map((service, idx) => (
               <div
                 key={idx}

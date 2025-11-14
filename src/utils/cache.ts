@@ -137,3 +137,56 @@ export class Cache<T> {
     };
   }
 }
+
+/**
+ * Transaction Cache
+ * Provides 5-minute caching for transaction data with proactive refresh
+ */
+
+import type { DisplayTransaction } from '../types/transaction';
+import { fetchTransactions } from '../services/firefly/transactionsFetch';
+
+// Transaction cache instance (5-minute TTL)
+export const transactionCache = new Cache<DisplayTransaction[]>(
+  5 * 60 * 1000, // 5 minutes
+  'firefly_transactions_'
+);
+
+// Cache key constants
+export const TRANSACTION_CACHE_KEYS = {
+  HOME_LATEST: 'home_latest',
+} as const;
+
+/**
+ * Refresh home screen transaction cache
+ * Call this after successful transaction create/edit/delete
+ *
+ * @returns true if cache was refreshed successfully
+ */
+export async function refreshHomeTransactionCache(): Promise<boolean> {
+  try {
+    console.log('🔄 Refreshing transaction cache...');
+    const result = await fetchTransactions(1, 10);
+
+    if (!result.error && result.transactions.length >= 0) {
+      transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
+      console.log('✅ Transaction cache refreshed with', result.transactions.length, 'transactions');
+      return true;
+    }
+
+    console.warn('⚠️ Failed to refresh cache:', result.error);
+    return false;
+  } catch (error) {
+    console.error('❌ Error refreshing transaction cache:', error);
+    return false;
+  }
+}
+
+/**
+ * Clear transaction cache
+ * Use when needed for manual cache invalidation
+ */
+export function clearTransactionCache(): void {
+  transactionCache.clear();
+  console.log('🗑️ Transaction cache cleared');
+}

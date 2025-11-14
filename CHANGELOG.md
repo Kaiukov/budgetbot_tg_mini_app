@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2025-11-13
+
+### Fixed
+- **Telegram User Profile**: Display full Telegram name and user bio on home page
+- **Auth Headers**: Fixed `/api/sync/tgUser` endpoint to use Tier 2 authentication
+  - Replace `Authorization: Bearer` with `X-Anonymous-Key` header
+  - Add `X-Telegram-Init-Data` for Telegram signature validation
+  - Proper multi-tier auth implementation for frontend clients
+
+### Changed
+- **Bio Display**: Removed hardcoded "Manage finances" fallback text
+- **User Data**: Show actual Telegram bio instead of placeholder text
+- **Authentication**: Implement Tier 2 (Authorized Telegram User) for profile endpoint
+
+### Technical Improvements
+- fetchUserData.ts now uses correct authentication tier headers
+- useTelegramUser hook updated to remove default bio fallback
+- HomeScreen bio display logic improved to show actual user data
+
+## [1.2.4] - 2025-11-10
+
+### Changed
+- **Deployment Config**: Configure Vite base path for reverse proxy deployment at `/app/`
+
+### Technical Improvements
+- Vite config updated to support nginx reverse proxy routing
+- App accessible via https://dev.neon-chuckwalla.ts.net/app/
+
+## [1.2.3] - 2025-11-03
+
+### Added
+- **Balance Caching**: 5-minute cache for current balance API calls to reduce backend load
+- **Proactive Cache Refresh**: Automatic transaction list refresh after deletion
+- **API Documentation**: Comprehensive Sync API documentation update with balance endpoint
+- **Project Documentation**: CLAUDE.md files across project structure for better navigation
+
+### Changed
+- **User Data Sync**: Removed unused avatar_url field from backend sync flow
+- **HomeScreen Optimization**: Removed redundant account preloading logic
+
+### Performance
+- **API Call Reduction**: Balance data cached for 5 minutes
+- **UX Improvement**: Transaction list auto-refreshes after deletions for consistency
+- **Data Efficiency**: Streamlined user sync without unnecessary avatar field
+
+### Technical Improvements
+- Cache<CurrentBalanceResponse> implementation in sync.ts
+- fetchCurrentBalance() method with intelligent caching
+- refreshHomeTransactionCache() integration on transaction delete
+- Comprehensive API.md with balance endpoint documentation
+
+## [1.2.2] - 2025-11-02
+
+### Changed
+- **UI Standardization**: Unified header design pattern across all 14 screens
+- **Header Spacing**: Standardized to text-2xl font-bold with pt-8 pb-6 px-4
+- **iOS Safe Area**: Fixed UI mixing on AccountsScreen (improved top padding from pt-2 to pt-8)
+- **Theme Update**: Added universal header pattern to layouts.ts
+- **Back Button Consistency**: Added conditional back buttons to TransactionDetail and TransactionEdit screens
+
+### Fixed
+- iOS status bar overlap issue on AccountsScreen
+- Inconsistent title font sizes across screens (now all text-2xl/24px)
+- Mixed spacing patterns in screen headers
+
+### Removed
+- Outdated documentation files (GEMINI.md, PLAN.md)
+
+### Technical Details
+- Total top spacing: ~107px on iPhone with notch, ~68px on iPhone SE
+- Back buttons only visible in browser mode (!isAvailable)
+- All headers now use flex items-center justify-between layout
+
 ## [1.2.1] - 2025-10-31
 
 ### Added

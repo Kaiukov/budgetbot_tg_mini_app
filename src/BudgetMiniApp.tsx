@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Check } from 'lucide-react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
+import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
+import { refreshHomeTransactionCache } from './utils/cache';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -18,14 +19,18 @@ import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
 import DebugScreen from './components/DebugScreen';
+import TransactionsListScreen from './components/TransactionsListScreen';
+import TransactionDetailScreen from './components/TransactionDetailScreen';
+import TransactionEditScreen from './components/TransactionEditScreen';
+import type { DisplayTransaction, TransactionData } from './types/transaction';
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [showSuccess, setShowSuccess] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
 
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>(getInitialServiceStatuses());
+  const [telegramStatus, setTelegramStatus] = useState<ServiceStatus | null>(null);
 
   // Accounts state
   const [accounts, setAccounts] = useState<AccountUsage[]>([]);
@@ -49,6 +54,11 @@ const BudgetMiniApp = () => {
   const [transferExitFee, setTransferExitFee] = useState('');
   const [transferEntryFee, setTransferEntryFee] = useState('');
   const [transferComment, setTransferComment] = useState('');
+
+  // Transaction view/edit state
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedTransactionData, setSelectedTransactionData] = useState<TransactionData | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<DisplayTransaction | null>(null);
 
   // Get Telegram user data
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
@@ -101,15 +111,17 @@ const BudgetMiniApp = () => {
     return () => clearTimeout(timer);
   }, [userName]);
 
-  // Preload accounts when on home screen (background optimization)
+
+
+  // Handle transaction detail navigation from sessionStorage
   useEffect(() => {
-    if (currentScreen === 'home' && userName) {
-      console.log('🚀 Preloading accounts in background...');
-      fetchAccounts().catch(error => {
-        console.warn('⚠️ Background account preload failed:', error);
-      });
+    if (currentScreen === 'transaction-detail') {
+      const transactionId = sessionStorage.getItem('selectedTransactionId');
+      if (transactionId) {
+        setSelectedTransactionId(transactionId);
+      }
     }
-  }, [currentScreen, userName]);
+  }, [currentScreen]);
 
   // Manage Telegram BackButton visibility and behavior
   useEffect(() => {
@@ -302,6 +314,16 @@ const BudgetMiniApp = () => {
     // Reset all to checking state
     setServiceStatuses(getInitialServiceStatuses());
 
+    // Check Telegram SDK readiness
+    setTimeout(() => {
+      const isReady = telegramService.isReady();
+      setTelegramStatus({
+        name: 'Telegram SDK',
+        status: isReady ? 'connected' : 'disconnected',
+        message: telegramService.getConnectionStatus()
+      });
+    }, 300);
+
     // Check Telegram Bot connection
     setTimeout(() => {
       setServiceStatuses(prev => prev.map(service =>
@@ -408,17 +430,74 @@ const BudgetMiniApp = () => {
   };
 
   const handleConfirmTransaction = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      resetTransactionData();
-      setTransactionType('expense'); // Reset to default
-      setCurrentScreen('home');
-    }, 2000);
+    resetTransactionData();
+    setTransactionType('expense'); // Reset to default
+    setCurrentScreen('home');
+  };
+
+  // Transaction handlers
+  const handleSelectTransaction = (transactionId: string) => {
+    setSelectedTransactionId(transactionId);
+    sessionStorage.setItem('selectedTransactionId', transactionId);
+    setCurrentScreen('transaction-detail');
+  };
+
+  const handleEditTransaction = async (transactionId: string, rawData: TransactionData) => {
+    setSelectedTransactionData(rawData);
+    // Get the display transaction from session or reconstruct from raw data
+    const storedId = sessionStorage.getItem('selectedTransactionId');
+    if (storedId) {
+      // We'll need to fetch the display transaction - for now use raw data to reconstruct
+      // In a real scenario, we'd have already fetched this
+      setEditingTransaction({
+        id: transactionId,
+        type: rawData.type === 'deposit' ? 'income' : rawData.type === 'withdrawal' ? 'expense' : 'transfer',
+        date: rawData.date,
+        amount: parseFloat(rawData.amount),
+        currency: rawData.currency_code,
+        currencySymbol: rawData.currency_symbol,
+        foreignAmount: rawData.foreign_amount ? parseFloat(rawData.foreign_amount) : undefined,
+        foreignCurrency: rawData.foreign_currency_code,
+        foreignCurrencySymbol: rawData.foreign_currency_symbol,
+        categoryName: rawData.category_name,
+        sourceName: rawData.source_name,
+        destinationName: rawData.destination_name,
+        description: rawData.description,
+        username: rawData.tags?.[0] || 'Unknown',
+        journalId: rawData.transaction_journal_id,
+      });
+      setCurrentScreen('transaction-edit');
+    }
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    try {
+      const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
+      if (response.success) {
+        // Proactively refresh transaction cache
+        await refreshHomeTransactionCache();
+
+        sessionStorage.removeItem('selectedTransactionId');
+        setSelectedTransactionId(null);
+        setCurrentScreen('transactions');
+      } else {
+        console.error('Failed to delete transaction:', response.error);
+        alert(`Failed to delete transaction: ${response.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      alert('Failed to delete transaction');
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-900 min-h-screen pt-8">
+    <div
+      className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)'
+      }}
+    >
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
@@ -436,6 +515,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             resetTransactionData();
             setCurrentScreen('home');
@@ -450,6 +530,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             resetTransactionData();
             setTransactionType('expense'); // Reset to default
@@ -468,6 +549,7 @@ const BudgetMiniApp = () => {
           account={transactionData.account}
           amount={transactionData.amount}
           transactionData={transactionData}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
@@ -480,6 +562,7 @@ const BudgetMiniApp = () => {
           categoriesLoading={categoriesLoading}
           categoriesError={categoriesError}
           transactionType={transactionType}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('amount')}
           onSelectCategory={(category) => {
             updateCategory(category);
@@ -493,6 +576,7 @@ const BudgetMiniApp = () => {
         <CommentScreen
           comment={transactionData.comment}
           category={transactionData.category}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('category')}
           onCommentChange={updateComment}
           onNext={() => setCurrentScreen('confirm')}
@@ -507,6 +591,7 @@ const BudgetMiniApp = () => {
           comment={transactionData.comment}
           transactionData={transactionData}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
@@ -530,6 +615,7 @@ const BudgetMiniApp = () => {
           comment={transactionData.comment}
           transactionData={transactionData}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
@@ -552,6 +638,7 @@ const BudgetMiniApp = () => {
           accounts={accounts}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             // Reset transfer state
             setTransferSourceAccount('');
@@ -586,6 +673,7 @@ const BudgetMiniApp = () => {
           accounts={accounts.filter(acc => acc.account_name !== transferSourceAccount)}
           accountsLoading={accountsLoading}
           accountsError={accountsError}
+          isAvailable={isAvailable}
           onBack={() => {
             // Clear amounts when going back to source account selection
             setTransferExitAmount('');
@@ -615,6 +703,7 @@ const BudgetMiniApp = () => {
           destCurrency={transferDestCurrency}
           exitAmount={transferExitAmount}
           entryAmount={transferEntryAmount}
+          isAvailable={isAvailable}
           onBack={() => {
             // Clear amounts when going back to destination account selection
             setTransferExitAmount('');
@@ -637,6 +726,7 @@ const BudgetMiniApp = () => {
           destCurrency={transferDestCurrency}
           exitFee={transferExitFee}
           entryFee={transferEntryFee}
+          isAvailable={isAvailable}
           onBack={() => {
             // Preserve fees when going back to amount screen
             setCurrentScreen('transfer-amount');
@@ -656,6 +746,7 @@ const BudgetMiniApp = () => {
         <CommentScreen
           comment={transferComment}
           category="Transfer"
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-fees')}
           onCommentChange={setTransferComment}
           onNext={() => setCurrentScreen('transfer-confirm')}
@@ -674,6 +765,7 @@ const BudgetMiniApp = () => {
           entryFee={transferEntryFee}
           comment={transferComment}
           userName={userName}
+          isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-comment')}
           onCancel={() => {
             // Reset all transfer state
@@ -691,23 +783,19 @@ const BudgetMiniApp = () => {
             setCurrentScreen('home');
           }}
           onConfirm={() => {
-            setShowSuccess(true);
-            setTimeout(() => {
-              setShowSuccess(false);
-              // Reset all transfer state
-              setTransferSourceAccount('');
-              setTransferSourceAccountId('');
-              setTransferSourceCurrency('');
-              setTransferDestAccount('');
-              setTransferDestAccountId('');
-              setTransferDestCurrency('');
-              setTransferExitAmount('');
-              setTransferEntryAmount('');
-              setTransferExitFee('0');
-              setTransferEntryFee('0');
-              setTransferComment('');
-              setCurrentScreen('home');
-            }, 2000);
+            // Reset all transfer state
+            setTransferSourceAccount('');
+            setTransferSourceAccountId('');
+            setTransferSourceCurrency('');
+            setTransferDestAccount('');
+            setTransferDestAccountId('');
+            setTransferDestCurrency('');
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('0');
+            setTransferEntryFee('0');
+            setTransferComment('');
+            setCurrentScreen('home');
           }}
           onSuccess={() => {
             // Success handled by onConfirm
@@ -720,20 +808,50 @@ const BudgetMiniApp = () => {
           userName={userName}
           isAvailable={isAvailable}
           serviceStatuses={serviceStatuses}
+          telegramStatus={telegramStatus || undefined}
           onBack={() => setCurrentScreen('home')}
           onRefresh={checkServiceConnections}
         />
       )}
 
-      {/* Success Toast */}
-      {showSuccess && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in">
-          <Check size={20} />
-          <span className="font-medium">
-            {currentScreen.startsWith('transfer') ? 'Transfer' : transactionType === 'income' ? 'Income' : 'Expense'} saved successfully!
-          </span>
-        </div>
+      {/* Transactions List Screen */}
+      {currentScreen === 'transactions' && (
+        <TransactionsListScreen
+          onBack={() => setCurrentScreen('home')}
+          onSelectTransaction={handleSelectTransaction}
+          isAvailable={isAvailable}
+        />
       )}
+
+      {/* Transaction Detail Screen */}
+      {currentScreen === 'transaction-detail' && selectedTransactionId && (
+        <TransactionDetailScreen
+          transactionId={selectedTransactionId}
+          onBack={() => {
+            sessionStorage.removeItem('selectedTransactionId');
+            setCurrentScreen('transactions');
+          }}
+          onEdit={handleEditTransaction}
+          onDelete={handleDeleteTransaction}
+          isAvailable={isAvailable}
+        />
+      )}
+
+      {/* Transaction Edit Screen */}
+      {currentScreen === 'transaction-edit' && editingTransaction && selectedTransactionData && (
+        <TransactionEditScreen
+          transaction={editingTransaction}
+          rawData={selectedTransactionData}
+          onBack={() => setCurrentScreen('transaction-detail')}
+          onSuccess={() => {
+            setEditingTransaction(null);
+            setSelectedTransactionData(null);
+            setCurrentScreen('transaction-detail');
+          }}
+          isAvailable={isAvailable}
+        />
+      )}
+
     </div>
   );
 };

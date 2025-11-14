@@ -72,11 +72,12 @@ export async function fetchUserData(userId?: number): Promise<UserDataResponse> 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-Anonymous-Key': apiKey,                    // Tier 2: Anonymous key
+        'X-Telegram-Init-Data': initData,             // Tier 2: Telegram validation
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         initData,
         ...(userId && { userId }) // Include userId in the request if provided
       }),

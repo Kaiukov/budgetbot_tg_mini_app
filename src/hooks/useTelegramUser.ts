@@ -26,7 +26,7 @@ export function useTelegramUser(): TelegramUserData {
     userFullName: 'Guest',
     userPhotoUrl: null,
     userInitials: 'G',
-    userBio: 'Manage finances and create reports',
+    userBio: '',
     isAvailable: false,
     colorScheme: 'dark',
   });
@@ -41,7 +41,7 @@ export function useTelegramUser(): TelegramUserData {
       let userPhotoUrl = telegramService.getUserPhotoUrl();
       const userInitials = telegramService.getUserInitials();
       const colorScheme = telegramService.getColorScheme();
-      const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
+      const userBio = telegramService.getUserBio() || '';
 
       // Set initial data
       setUserData({
@@ -74,7 +74,6 @@ export function useTelegramUser(): TelegramUserData {
               ...prev,
               userName: backendData.userData.username || prev.userName,      // Username for API
               userFullName: backendData.userData.name || prev.userFullName,  // Full name for display
-              userPhotoUrl: backendData.userData.avatar_url || prev.userPhotoUrl,
               userBio: backendData.userData.bio || prev.userBio,
             }));
             console.log('✅ Updated comprehensive user data from backend:', {

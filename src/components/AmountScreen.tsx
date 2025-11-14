@@ -1,12 +1,15 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
+import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface AmountScreenProps {
   account: string;
   amount: string;
   transactionData: TransactionData;
+  isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
   onNext: () => void;
@@ -16,12 +19,19 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
   transactionData,
+  isAvailable,
   onBack,
   onAmountChange,
   onNext
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(null);
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   // Get currency code, default to empty string if not available
   const currencyCode = transactionData.account_currency?.toUpperCase() || '';
@@ -87,16 +97,18 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   const isValidAmount = amount && parseFloat(amount) > 0;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <h2 className="text-base font-semibold">Enter Amount</h2>
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
+        <h1 className="text-2xl font-bold">Enter Amount</h1>
       </div>
 
-      <div className="p-4">
-        <div className="bg-gray-800 rounded-lg p-4 mb-3">
+      <div className={layouts.contentWide}>
+        <div className={`${cardStyles.container} mb-3`}>
           <p className="text-xs text-gray-400 mb-2">Account: {account}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
