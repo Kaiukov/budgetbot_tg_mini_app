@@ -19,6 +19,204 @@ A Telegram Mini App for managing personal finances, integrated with Firefly III 
 
 This document provides a high-level overview of the "Budget Mini App" project, a Telegram Mini App for personal finance management.
 
+## Testing & Development
+
+### Prerequisites
+```bash
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration:
+# - VITE_SYNC_API_KEY: Backend Sync API key
+# - Other API credentials as needed
+```
+
+### Development Server
+```bash
+# Start local development server (runs on http://localhost:5173)
+npm run dev
+
+# The app will:
+✅ Hot-reload on file changes
+✅ Proxy API requests to backend (see vite.config.ts)
+✅ Serve with Telegram Mini App SDK
+```
+
+### Code Quality Checks
+
+**Type Safety** (TypeScript compilation)
+```bash
+# Check for TypeScript errors
+npx tsc --noEmit
+
+# Fix TypeScript errors
+npx tsc --noEmit --pretty false  # verbose output
+```
+
+**Linting** (ESLint + code style)
+```bash
+# Check code style and quality
+npm run lint
+
+# Auto-fix fixable issues
+npm run lint -- --fix
+
+# Check specific directory
+npx eslint src/services/sync/ --ext ts,tsx
+```
+
+### Build Testing
+
+**Production Build**
+```bash
+# Build the project
+npm run build
+
+# Output will be in dist/ directory
+# Preview production build locally:
+npm run preview
+
+# The build includes:
+✅ Minified and optimized code
+✅ Tree-shaken imports
+✅ Optimized bundle size
+```
+
+**Before Deploying**
+```bash
+# Always run these before deployment:
+npm run lint          # Check code quality
+npx tsc --noEmit     # Verify types
+npm run build        # Build for production
+npm run preview      # Test production build
+```
+
+### Manual Testing in Telegram
+
+**1. Using Web Preview**
+```bash
+npm run dev
+# Open browser to http://localhost:5173
+# Browser DevTools will show most functionality
+```
+
+**2. Using Telegram Bot Web App**
+```
+1. Add test bot to Telegram
+2. Use web_app parameter in command
+3. Mini App opens in Telegram client
+4. Can test mobile UI and full integration
+```
+
+**3. Key Testing Scenarios**
+- [ ] Login with Telegram user
+- [ ] View account list and balances
+- [ ] Create new transaction (expense/income/transfer)
+- [ ] Switch between categories
+- [ ] Currency conversion works correctly
+- [ ] Dark mode toggles properly
+- [ ] API errors handled gracefully
+- [ ] Cache works (check Network tab)
+
+### API Testing
+
+**Sync API Endpoints** (see [API.md](API.md) for details)
+```bash
+# Test account fetch
+curl -H "X-Anonymous-Key: YOUR_API_KEY" \
+  "http://localhost:5173/api/sync/get_accounts_usage"
+
+# Test with specific user
+curl -H "X-Anonymous-Key: YOUR_API_KEY" \
+  "http://localhost:5173/api/sync/get_accounts_usage?user_name=testuser"
+
+# Check current balance
+curl -H "X-Anonymous-Key: YOUR_API_KEY" \
+  "http://localhost:5173/api/sync/get_current_balance"
+```
+
+**Browser DevTools Network Tab**
+```
+1. Open DevTools (F12)
+2. Go to Network tab
+3. Perform action (load accounts, etc.)
+4. View request/response
+5. Check headers (X-Anonymous-Key, Authorization)
+6. Monitor cache hits (console logs)
+```
+
+### Debugging
+
+**Console Logging**
+- Sync API: 🔄 🔧  💾 ✅ ❌
+- Telegram: 👤 📸 📱
+- Transactions: 💰 📝
+- Errors: 💥
+
+**Browser DevTools**
+```bash
+# Open DevTools
+F12 or Cmd+Option+I (Mac)
+
+# Check:
+✅ Console for errors/logs
+✅ Network tab for API calls
+✅ Application tab for localStorage (caches)
+✅ Sources tab for debugging (set breakpoints)
+```
+
+**VS Code Debugging**
+```json
+// Add to .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}"
+    }
+  ]
+}
+```
+
+### Common Issues & Fixes
+
+| Issue | Solution |
+|-------|----------|
+| **Module not found error** | Run `npm install` and check import paths |
+| **API key not configured** | Set VITE_SYNC_API_KEY in .env |
+| **Types errors in IDE** | Run `npx tsc --noEmit` to see all errors |
+| **Changes not showing** | Check browser cache, hard refresh (Cmd+Shift+R) |
+| **Proxy not working** | Check vite.config.ts proxy settings |
+| **Build fails** | Run `npm run lint` to find issues first |
+
+### Continuous Integration
+
+**Pre-commit Checks** (before pushing)
+```bash
+# Run all quality checks
+npm run lint        # Linting
+npx tsc --noEmit   # Type checking
+npm run build       # Build test
+```
+
+**Quick Validation Script**
+```bash
+#!/bin/bash
+echo "Running type check..."
+npx tsc --noEmit || exit 1
+echo "Running linter..."
+npm run lint || exit 1
+echo "Building..."
+npm run build || exit 1
+echo "✅ All checks passed!"
+```
+
 ## Core Components
 
 - **[src/](src/)**: The heart of the application, containing all the React components, hooks, services, and utilities. See the detailed breakdown in `src/CLAUDE.md`. (Check code with `npm run lint` and `npx tsc --noEmit`).
