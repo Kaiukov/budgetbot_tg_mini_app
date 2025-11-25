@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2025-11-25
+
+### Fixed
+- **Account Usage 403 Error**: Resolved authentication and CORS issues preventing account data retrieval
+  - Fixed environment detection to properly use Vite proxy in development (localhost/Tailscale)
+  - Production mode now uses `VITE_BASE_URL` from environment configuration
+  - Development mode always uses empty baseUrl to force Vite proxy routing
+  - Added hostname to debug logging for better troubleshooting
+- **Authentication Tier Issue**: GET requests now properly authenticate as Tier 2 users
+  - `X-Telegram-Init-Data` header now sent for ALL requests (GET and POST)
+  - Previously only POST requests included Telegram authentication
+  - Fixes "Read-only access - write operations require Telegram authorization" error
+  - Enables proper authenticated user context for all Sync API calls
+- **Telegram User Profile Endpoint**: Corrected API endpoint and request structure
+  - Updated endpoint: `/api/sync/tgUser` → `/api/v1/tgUser`
+  - Fixed request body structure to include `{ initData }` field
+  - Avatar URL now properly synced from backend response
+  - Hook now uses `syncService.getTelegramUser()` instead of legacy utility
+
+### Technical Improvements
+- `SyncServiceCore` environment detection properly handles all deployment scenarios
+- CORS handling improved through consistent Vite proxy usage in development
+- Authentication tier properly maintained (Tier 2) for Telegram Mini App users
+- Debug logging enhanced with hostname information for environment diagnosis
+
 ## [1.2.6] - 2025-11-14
 
 ### Added
