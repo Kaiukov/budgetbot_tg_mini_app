@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
-import { fireflyService } from './services/firefly';
+
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
@@ -78,7 +78,7 @@ const BudgetMiniApp = () => {
   // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
     if (currentScreen === 'accounts' || currentScreen === 'income-accounts' ||
-        currentScreen === 'transfer-source-accounts' || currentScreen === 'transfer-dest-accounts') {
+      currentScreen === 'transfer-source-accounts' || currentScreen === 'transfer-dest-accounts') {
       fetchAccounts();
     }
   }, [currentScreen, userName]);
@@ -226,12 +226,12 @@ const BudgetMiniApp = () => {
       setServiceStatuses(prev => prev.map(service =>
         service.name === 'Telegram Bot'
           ? {
-              ...service,
-              status: isAvailable ? 'connected' : 'disconnected',
-              message: isAvailable
-                ? 'Connected to Telegram Mini App'
-                : 'Not running in Telegram environment'
-            }
+            ...service,
+            status: isAvailable ? 'connected' : 'disconnected',
+            message: isAvailable
+              ? 'Connected to Telegram Mini App'
+              : 'Not running in Telegram environment'
+          }
           : service
       ));
     }, 500);
@@ -243,50 +243,26 @@ const BudgetMiniApp = () => {
         setServiceStatuses(prev => prev.map(service =>
           service.name === 'Sync API'
             ? {
-                ...service,
-                status: result.success ? 'connected' : 'disconnected',
-                message: result.message
-              }
+              ...service,
+              status: result.success ? 'connected' : 'disconnected',
+              message: result.message
+            }
             : service
         ));
       } catch (error) {
         setServiceStatuses(prev => prev.map(service =>
           service.name === 'Sync API'
             ? {
-                ...service,
-                status: 'disconnected',
-                message: error instanceof Error ? error.message : 'Connection failed'
-              }
+              ...service,
+              status: 'disconnected',
+              message: error instanceof Error ? error.message : 'Connection failed'
+            }
             : service
         ));
       }
     }, 1000);
 
-    // Check Firefly API (real check)
-    setTimeout(async () => {
-      try {
-        const result = await fireflyService.checkConnection();
-        setServiceStatuses(prev => prev.map(service =>
-          service.name === 'Firefly API'
-            ? {
-                ...service,
-                status: result.success ? 'connected' : 'disconnected',
-                message: result.message
-              }
-            : service
-        ));
-      } catch (error) {
-        setServiceStatuses(prev => prev.map(service =>
-          service.name === 'Firefly API'
-            ? {
-                ...service,
-                status: 'disconnected',
-                message: error instanceof Error ? error.message : 'Connection failed'
-              }
-            : service
-        ));
-      }
-    }, 1500);
+
   };
 
   // Navigation handlers
@@ -369,7 +345,7 @@ const BudgetMiniApp = () => {
 
   const handleDeleteTransaction = async (transactionId: string) => {
     try {
-      const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
+      const response = await syncService.deleteTransaction(transactionId);
       if (response.success) {
         // Proactively refresh transaction cache
         await refreshHomeTransactionCache();

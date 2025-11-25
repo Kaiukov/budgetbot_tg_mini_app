@@ -35,8 +35,8 @@ export class SyncServiceAccounts extends SyncServiceBalance {
 
       // Build URL with optional user_name query parameter
       const endpoint = userName
-        ? `/api/sync/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/sync/get_accounts_usage';
+        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/v1/get_accounts_usage';
 
       const data = await this.makeRequest<AccountsUsageResponse>(
         endpoint,

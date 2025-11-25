@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Save, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { fireflyService } from '../services/firefly/firefly';
+import { syncService } from '../services/sync';
 import type { TransactionData, DisplayTransaction } from '../types/transaction';
 import { formatTransactionDate } from '../utils/transactionHelpers';
 import { refreshHomeTransactionCache } from '../utils/cache';
@@ -111,8 +111,8 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
         ],
       };
 
-      const response = await fireflyService.putRequest(
-        `/api/v1/transactions/${transaction.journalId}`,
+      const response = await syncService.updateTransaction(
+        String(transaction.journalId),
         payload
       );
 

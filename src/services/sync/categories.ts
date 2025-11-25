@@ -40,8 +40,8 @@ export class SyncServiceCategories extends SyncServiceAccounts {
 
       // Build URL with optional user_name query parameter
       const endpoint = userName
-        ? `/api/sync/get_categories_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/sync/get_categories_usage';
+        ? `/api/v1/get_categories_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/v1/get_categories_usage';
 
       const data = await this.makeRequest<CategoriesUsageResponse>(
         endpoint,

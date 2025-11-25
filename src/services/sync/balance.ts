@@ -28,7 +28,7 @@ export class SyncServiceBalance extends SyncServiceCache {
       console.log('🔄 Fetching fresh balance');
 
       const data = await this.makeRequest<CurrentBalanceResponse>(
-        '/api/sync/get_current_balance',
+        '/api/v1/get_current_balance',
         { method: 'GET' }
       );
 
@@ -84,7 +84,7 @@ export class SyncServiceBalance extends SyncServiceCache {
         amount: String(amount)
       });
 
-      const endpoint = `/api/sync/exchange_rate?${params.toString()}`;
+      const endpoint = `/api/v1/exchange_rate?${params.toString()}`;
 
       console.log('💱 Fetching fresh exchange rate:', {
         from: fromCode,

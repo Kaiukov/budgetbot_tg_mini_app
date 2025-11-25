@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { fetchTransactionById } from '../services/firefly/transactionsFetch';
+import { syncService } from '../services/sync';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import {
   formatTransactionForDisplay,
@@ -42,13 +42,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
       setLoading(true);
       setError(null);
 
-      const result = await fetchTransactionById(transactionId);
+      const response = await syncService.fetchTransactionById(transactionId);
 
-      if (result.error) {
-        setError(result.error);
+      if (response.error) {
+        setError(response.error);
       } else {
-        setTransaction(result.transaction || null);
-        setRawData(result.rawData || null);
+        setTransaction(response.transaction || null);
+        setRawData(response.rawData || null);
       }
 
       setLoading(false);

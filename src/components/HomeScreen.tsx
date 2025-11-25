@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
 import { syncService } from '../services/sync';
 import type { DisplayTransaction } from '../types/transaction';
-import { fetchTransactions } from '../services/firefly/transactionsFetch';
 import { transactionCache, TRANSACTION_CACHE_KEYS } from '../utils/cache';
 import TransactionCard from './TransactionCard';
 
@@ -65,10 +64,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
       // Cache miss - fetch from API
       try {
-        const result = await fetchTransactions(1, 10);
-        if (!result.error) {
-          setLatestTransactions(result.transactions);
-          transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
+        const response = await syncService.fetchTransactions(1, 5);
+        if (!response.error) {
+          setLatestTransactions(response.transactions);
+          transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, response.transactions);
         }
       } catch (error) {
         console.warn('Failed to load latest transactions:', error);

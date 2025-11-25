@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2025-11-25
+
+### Added
+- **Transaction CRUD Operations**: Complete transaction management via Sync API
+  - `deleteTransaction()` - Delete transactions with Tier 2 authentication
+  - `updateTransaction()` - Update transactions with full payload support
+  - `fetchTransactions()` - Paginated transaction retrieval with display mapping
+  - `fetchTransactionById()` - Single transaction lookup with data transformation
+- **Transaction Mapping Utility**: `mapTransactionToDisplay()` helper in transaction-utils
+  - Converts API `TransactionRead` format to frontend `DisplayTransaction` format
+  - Handles income, expense, and transfer type detection
+  - Supports foreign currency amounts and multi-currency transactions
+  - Extracts journal IDs, usernames, and transaction metadata
+
+### Changed
+- **Complete Firefly API Migration**: Removed entire legacy Firefly service layer (~1,600 lines)
+  - Deleted `src/services/firefly/` directory and all modules
+  - All transaction operations now route through Sync API (`/api/v1/transactions`)
+  - UI components migrated: HomeScreen, TransactionList, TransactionDetail, TransactionEdit
+  - Cache utilities updated to use `syncService.fetchTransactions()`
+- **Sync Service Expansion**: Enhanced type definitions and response structures
+  - Added `ServiceTransactionsResponse` and `ServiceSingleTransactionResponse` types
+  - Added `TransactionsResponse`, `TransactionRead`, and `TransactionMeta` types
+  - Added `TransactionLink` for pagination navigation
+  - Enhanced `TelegramUserData` with complete user profile structure
+- **Transaction Endpoints Updated**: All API calls now use `/api/v1/*` standard paths
+  - Transaction creation: `/api/sync/transactions` → `/api/v1/transactions`
+  - Transaction operations now consistently use Sync API v1 namespace
+- **Code Formatting**: Standardized indentation and whitespace across modified components
+  - BudgetMiniApp.tsx: Consistent 2-space indentation for service status objects
+  - Improved code readability and maintainability
+
+### Fixed
+- **Account Usage 403 Error**: Resolved authentication and CORS issues preventing account data retrieval
+  - Fixed environment detection to properly use Vite proxy in development (localhost/Tailscale)
+  - Production mode now uses `VITE_BASE_URL` from environment configuration
+  - Development mode always uses empty baseUrl to force Vite proxy routing
+  - Added hostname to debug logging for better troubleshooting
+- **Authentication Tier Issue**: GET requests now properly authenticate as Tier 2 users
+  - `X-Telegram-Init-Data` header now sent for ALL requests (GET and POST)
+  - Previously only POST requests included Telegram authentication
+  - Fixes "Read-only access - write operations require Telegram authorization" error
+  - Enables proper authenticated user context for all Sync API calls
+- **Telegram User Profile Endpoint**: Corrected API endpoint and request structure
+  - Updated endpoint: `/api/sync/tgUser` → `/api/v1/tgUser`
+  - Fixed request body structure to include `{ initData }` field
+  - Avatar URL now properly synced from backend response
+  - Hook now uses `syncService.getTelegramUser()` instead of legacy utility
+
+### Removed
+- **Firefly API Service Layer**: Complete removal of legacy Firefly III direct integration
+  - `src/services/firefly/firefly.ts` (302 lines) - Base Firefly API client
+  - `src/services/firefly/transactions.ts` (648 lines) - Transaction operations
+  - `src/services/firefly/transactionsFetch.ts` (217 lines) - Transaction fetching
+  - `src/services/firefly/types.ts` (135 lines) - Firefly type definitions
+  - `src/services/firefly/utils.ts` (259 lines) - Firefly utilities
+  - `src/services/firefly/index.ts` (39 lines) - Service exports
+  - `src/services/firefly/CLAUDE.md` (9 lines) - Documentation
+- **Firefly Service Connection Check**: Removed Firefly API health check from BudgetMiniApp
+  - App now exclusively uses Sync API for all backend operations
+  - Service status monitoring simplified to Telegram + Sync API only
+
+### Technical Improvements
+- **Architecture Consolidation**: Single source of truth for all backend operations (Sync API)
+- **Type Safety**: Enhanced TypeScript types for transaction responses and pagination
+- **Authentication Flow**: Consistent Tier 2 authentication across all API operations
+- **Code Quality**: Reduced codebase by ~1,600 lines through legacy code removal
+- **API Consistency**: All endpoints now follow `/api/v1/*` standard namespace
+- `SyncServiceCore` environment detection properly handles all deployment scenarios
+- CORS handling improved through consistent Vite proxy usage in development
+- Debug logging enhanced with hostname information for environment diagnosis
+
 ## [1.2.6] - 2025-11-14
 
 ### Added

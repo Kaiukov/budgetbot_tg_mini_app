@@ -3,6 +3,8 @@
  * All interfaces for Sync API responses and data structures
  */
 
+import type { TransactionData, DisplayTransaction, PaginationMeta } from '../../types/transaction';
+
 export interface AccountUsage {
   account_id: string;
   user_name: string;
@@ -77,9 +79,13 @@ export interface TelegramUserData {
   message: string;
   timestamp: string;
   userData: {
-    photo_url: string | null;
+    id: number;
+    name: string;
+    username: string;
     bio: string;
-    user_id: number;
+    avatar_url: string | null;
+    language_code: string;
+    bot_blocked: boolean;
   } | null;
 }
 
@@ -87,6 +93,7 @@ export interface ExchangeRateCache {
   rate: number;
   timestamp: number;
 }
+
 
 /**
  * Base transaction data - common to all transaction types
@@ -212,4 +219,61 @@ export interface VerificationResponse {
   verified: boolean;
   transactionId?: string;
   error?: string;
+}
+
+export interface TransactionLink {
+  self: string;
+  first: string;
+  last: string;
+  prev?: string;
+  next?: string;
+}
+
+export interface TransactionMeta {
+  current_page: number;
+  total_pages: number;
+  per_page: number;
+  total: number;
+  count: number;
+}
+
+export interface TransactionRead {
+  type: string;
+  id: string;
+  attributes: {
+    created_at: string;
+    updated_at: string;
+    user: string;
+    group_title: string | null;
+    transactions: FireflyTransactionPayload[];
+  };
+  links: {
+    self: string;
+  };
+}
+
+export interface TransactionsResponse {
+  data: TransactionRead[];
+  meta: {
+    pagination: TransactionMeta;
+  };
+  links: TransactionLink;
+}
+
+export interface SingleTransactionResponse {
+  data: TransactionRead;
+}
+
+export interface ServiceTransactionsResponse {
+  success: boolean;
+  error?: string;
+  transactions: DisplayTransaction[];
+  pagination: PaginationMeta;
+}
+
+export interface ServiceSingleTransactionResponse {
+  success: boolean;
+  error?: string;
+  transaction?: DisplayTransaction;
+  rawData?: TransactionData;
 }
