@@ -93,33 +93,23 @@ export class SyncServiceBalance extends SyncServiceCache {
         endpoint
       });
 
-      const response = await fetch(`${this.getBaseUrl()}${endpoint}`, {
-        method: 'GET',
-        headers: {
-          'X-Anonymous-Key': this.getAnonKey() || '',
-          'Accept': 'application/json',
-        },
+      // Use makeRequest to include Telegram initData authentication
+      const data = await this.makeRequest<Record<string, unknown>>(endpoint, {
+        method: 'GET'
       });
-
-      if (!response.ok) {
-        console.error('❌ Exchange rate API error:', {
-          status: response.status,
-          statusText: response.statusText
-        });
-        return null;
-      }
-
-      const data = await response.json();
 
       // Extract converted amount from response
       // API returns: { success: true, exchangeData: { exchangeAmount: number } }
       let convertedAmount: number | null = null;
 
-      if (data.exchangeData && typeof data.exchangeData.exchangeAmount === 'number') {
-        convertedAmount = data.exchangeData.exchangeAmount;
-      } else if (data.result && typeof data.result === 'number') {
+      if ('exchangeData' in data && data.exchangeData && typeof data.exchangeData === 'object' && data.exchangeData !== null) {
+        const exchangeData = data.exchangeData as Record<string, unknown>;
+        if ('exchangeAmount' in exchangeData && typeof exchangeData.exchangeAmount === 'number') {
+          convertedAmount = exchangeData.exchangeAmount;
+        }
+      } else if ('result' in data && typeof data.result === 'number') {
         convertedAmount = data.result;
-      } else if (data.converted_amount && typeof data.converted_amount === 'number') {
+      } else if ('converted_amount' in data && typeof data.converted_amount === 'number') {
         convertedAmount = data.converted_amount;
       }
 
