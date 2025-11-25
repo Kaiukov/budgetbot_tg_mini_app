@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.7] - 2025-11-25
 
+### Added
+- **Transaction CRUD Operations**: Complete transaction management via Sync API
+  - `deleteTransaction()` - Delete transactions with Tier 2 authentication
+  - `updateTransaction()` - Update transactions with full payload support
+  - `fetchTransactions()` - Paginated transaction retrieval with display mapping
+  - `fetchTransactionById()` - Single transaction lookup with data transformation
+- **Transaction Mapping Utility**: `mapTransactionToDisplay()` helper in transaction-utils
+  - Converts API `TransactionRead` format to frontend `DisplayTransaction` format
+  - Handles income, expense, and transfer type detection
+  - Supports foreign currency amounts and multi-currency transactions
+  - Extracts journal IDs, usernames, and transaction metadata
+
+### Changed
+- **Complete Firefly API Migration**: Removed entire legacy Firefly service layer (~1,600 lines)
+  - Deleted `src/services/firefly/` directory and all modules
+  - All transaction operations now route through Sync API (`/api/v1/transactions`)
+  - UI components migrated: HomeScreen, TransactionList, TransactionDetail, TransactionEdit
+  - Cache utilities updated to use `syncService.fetchTransactions()`
+- **Sync Service Expansion**: Enhanced type definitions and response structures
+  - Added `ServiceTransactionsResponse` and `ServiceSingleTransactionResponse` types
+  - Added `TransactionsResponse`, `TransactionRead`, and `TransactionMeta` types
+  - Added `TransactionLink` for pagination navigation
+  - Enhanced `TelegramUserData` with complete user profile structure
+- **Transaction Endpoints Updated**: All API calls now use `/api/v1/*` standard paths
+  - Transaction creation: `/api/sync/transactions` → `/api/v1/transactions`
+  - Transaction operations now consistently use Sync API v1 namespace
+- **Code Formatting**: Standardized indentation and whitespace across modified components
+  - BudgetMiniApp.tsx: Consistent 2-space indentation for service status objects
+  - Improved code readability and maintainability
+
 ### Fixed
 - **Account Usage 403 Error**: Resolved authentication and CORS issues preventing account data retrieval
   - Fixed environment detection to properly use Vite proxy in development (localhost/Tailscale)
@@ -26,7 +56,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Avatar URL now properly synced from backend response
   - Hook now uses `syncService.getTelegramUser()` instead of legacy utility
 
+### Removed
+- **Firefly API Service Layer**: Complete removal of legacy Firefly III direct integration
+  - `src/services/firefly/firefly.ts` (302 lines) - Base Firefly API client
+  - `src/services/firefly/transactions.ts` (648 lines) - Transaction operations
+  - `src/services/firefly/transactionsFetch.ts` (217 lines) - Transaction fetching
+  - `src/services/firefly/types.ts` (135 lines) - Firefly type definitions
+  - `src/services/firefly/utils.ts` (259 lines) - Firefly utilities
+  - `src/services/firefly/index.ts` (39 lines) - Service exports
+  - `src/services/firefly/CLAUDE.md` (9 lines) - Documentation
+- **Firefly Service Connection Check**: Removed Firefly API health check from BudgetMiniApp
+  - App now exclusively uses Sync API for all backend operations
+  - Service status monitoring simplified to Telegram + Sync API only
+
 ### Technical Improvements
+- **Architecture Consolidation**: Single source of truth for all backend operations (Sync API)
+- **Type Safety**: Enhanced TypeScript types for transaction responses and pagination
+- **Authentication Flow**: Consistent Tier 2 authentication across all API operations
+- **Code Quality**: Reduced codebase by ~1,600 lines through legacy code removal
+- **API Consistency**: All endpoints now follow `/api/v1/*` standard namespace
 - `SyncServiceCore` environment detection properly handles all deployment scenarios
 - CORS handling improved through consistent Vite proxy usage in development
 - Authentication tier properly maintained (Tier 2) for Telegram Mini App users
@@ -123,103 +171,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Category Preloading**: Automatic category loading 5 seconds after app mount
 - **Account Preloading**: Background account loading when on home screen
 
-### Fixed
-- **Duplicate Accounts**: Fixed account deduplication using unique account_id
-- **React Key Warning**: Changed from account_name-idx to account_id for proper rendering
+### Changed
+- **Cache Integration**: Both accounts and categories now use the generic Cache<T> utility
+- **Preload Strategy**: Lazy loading for categories and accounts to optimize initial load
 
 ### Performance
-- **API Call Reduction**: 60% fewer API calls through intelligent caching
-- **Transfer Optimization**: Single API call now serves both source and destination account selection
-- **Instant UX**: Sub-100ms response time for cached account data
-- **Dual-Layer Cache**: Memory + localStorage for persistence across sessions
+- **Reduced API Calls**: Cache prevents redundant fetches for frequently accessed data
+- **Better UX**: Pre-warmed data ready when users navigate to selection screens
 
 ### Technical Improvements
-- Generic Cache utility integration for accounts (60s TTL)
-- Silent background preloading without blocking user interaction
-- Comprehensive cache logging (HIT/MISS/EXPIRED events)
+- Unified caching strategy across multiple data types
+- Configurable TTL for different cache instances
 
-## [1.2.0] - 2025-10-30
+## [1.2.0] - 2025-10-29
 
 ### Added
-- **Transfer Flow**: Complete money transfer flow between accounts
-- **TransferAmountScreen**: Dual-input screen with real-time currency conversion for exit/entry amounts
-- **TransferFeeScreen**: Optional fee input for both exit and entry sides with skip functionality
-- **TransferConfirmScreen**: Transfer confirmation with detailed fee breakdown and multi-currency display
-- **Currency Conversion**: Automatic exchange rate calculation for cross-currency transfers
-- **Transfer Icon**: ArrowRightLeft icon in HomeScreen for transfer feature
+- **Generic Caching Utility**: New `Cache<T>` class with dual-layer storage
+  - Memory cache for fast access within session
+  - localStorage for persistence across reloads
+  - Configurable TTL (time-to-live) per cache instance
+  - Generic type support for type-safe caching
+- **Transaction Caching**: Dedicated transaction cache with 5-minute TTL
+  - `transactionCache.get()` and `transactionCache.set()` methods
+  - Automatic expiration and cleanup
+  - Memory + localStorage dual-layer implementation
 
 ### Changed
-- **BudgetMiniApp**: Added transfer state management with 10 new state variables for complete transfer flow
-- **BudgetMiniApp**: Extended account fetching trigger to include transfer screens
-- **AmountScreen**: Renamed `expenseData` prop to `transactionData` for better generality
-- **ConfirmScreen**: Renamed `expenseData` prop to `transactionData` for consistency
-- **HomeScreen**: Updated Accounts feature color from blue to indigo for visual distinction
+- **HomeScreen Optimization**: Integrated transaction caching
+  - Check cache before fetching from API
+  - Set cache after successful API response
+  - Reduced redundant API calls on screen revisit
 
-### Removed
-- **useExpenseData.ts**: Removed old hook in favor of generic `useTransactionData`
+### Performance
+- **Faster Load Times**: Cached transactions load instantly from memory
+- **Reduced Backend Load**: API calls only when cache expires
+- **Persistent Data**: Transactions persist across page reloads via localStorage
 
 ### Technical Improvements
-- Consistent transaction data handling across expense, income, and transfer flows
-- Real-time exchange rate integration for cross-currency transfers
-- Comprehensive state management for multi-step transfer workflow
-- Same-currency and different-currency transfer support
+- Type-safe caching with TypeScript generics
+- Automatic cache invalidation based on TTL
+- Dual-layer storage for optimal performance
 
-## [1.1.0] - 2025-10-29
+## [1.1.0] - 2025-10-28
 
 ### Added
-- **Income Flow**: Complete income transaction flow with GREEN confirmation screen
-- **Generic Cache Utility**: Centralized caching with dual-layer (memory + localStorage) and configurable expiry
-- **Category Caching**: 1-minute cache for categories to reduce API calls
-- **Category Filtering**: Income transactions filter to category_id: 4, expense shows all categories
-- **Income Configuration**: Category type configuration file (`src/config/categories.json`)
-- **Generic Hooks**: `useTransactionData` for expense/income/transfer types, `useSyncData` for data fetching
-- **Category Filter Utility**: Type-based filtering (income-only, expense shows all)
-- **Income Confirmation Screen**: GREEN screen with positive amount display (+amount)
+- **Multi-Currency Support**: Complete currency handling across all transaction types
+  - Foreign currency amount input for expense, income, and transfer flows
+  - Exchange rate fetching from Sync API with 1-hour caching
+  - Dual currency display (native + foreign) in UI
+- **Currency Conversion Cache**: Efficient exchange rate management
+  - Memory cache for session-wide rate reuse
+  - localStorage persistence across page reloads
+  - 1-hour TTL to balance freshness and API efficiency
 
 ### Changed
-- **AmountScreen**: Improved number input handling with better overflow management for large numbers
-- **AmountScreen**: Dynamic text alignment - centered placeholder, right-aligned input with currency
-- **AmountScreen**: Fixed spacing between amount and currency label (reduced gap)
-- **CategoryScreen**: Added optional transaction type filtering support
-- **HomeScreen**: Income feature now has active route (`income-accounts`)
-- **BudgetMiniApp**: Transaction type state management for expense/income flows
-- **BudgetMiniApp**: Success toast message now shows transaction type (Income/Expense)
-- **Sync Service**: Integrated generic Cache utility for category caching
-
-### Fixed
-- Amount input overflow issue with very large numbers (now scrollable)
-- Amount input text cutting off on left side for multi-digit numbers
-- Excessive spacing between amount and currency code
-- Category caching implementation (1-minute TTL as per design requirements)
+- **Transaction Confirm Screens**: Enhanced all confirm screens with currency data
+  - ExpenseConfirmScreen: Foreign currency support added
+  - IncomeConfirmScreen: Foreign currency support added
+  - TransferConfirmScreen: Foreign currency support added
+- **Transaction Submission**: Updated payload structure
+  - Added `foreign_amount` and `foreign_currency_code` fields
+  - Exchange rate included for backend verification
 
 ### Technical Improvements
-- **DRY Compliance**: Eliminated duplication in data fetching and transaction management
-- **Code Organization**: Separated concerns with utility files and generic hooks
-- **Type Safety**: Improved TypeScript types for transaction flows
-- **Reusability**: Screens now support multiple transaction types
+- `getExchangeRate()` method in SyncService with dual-layer caching
+- Normalized exchange rate responses (handles both direct rates and reciprocals)
+- Smart cache key generation (`USD:EUR` format)
+- Cache expiry logic with automatic cleanup
 
-## [1.0.0] - 2025-10-29
+## [1.0.0] - 2025-10-25
 
 ### Added
-- Client-side destination filtering for comment suggestions
-- Negative amount support for expense tracking with validation
-- Currency icons and emoji display in UI
-- Enhanced data display with formatting improvements
-
-### Fixed
-- Reject negative amounts in expense input validation
-- Add leading zero to decimal amounts without integer part
-- Require amount > 0 to proceed with transaction
-
-### Removed
-- Back button from ConfirmScreen
-
----
-
-**Version Strategy**: Following Semantic Versioning
-- Patch: Bug fixes
-- Minor: New features, no breaking changes
-- Major: Breaking changes
-
-**2025-10-31**
-- feat(home): move Debug into My Features and remove floating button
+- **Initial Release**: Budget Mini App for Telegram
+- **Transaction Management**: Create and view expenses, income, and transfers
+- **Account Selection**: Multi-account support with dynamic account loading
+- **Category System**: Hierarchical category selection with emoji support
+- **Telegram Integration**: Native Telegram UI components (Main Button, Back Button)
+- **Dark Mode**: Telegram-native dark theme with gradient system
+- **Service Architecture**: Dual API integration (Firefly III + Sync API)

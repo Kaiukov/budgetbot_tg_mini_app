@@ -144,7 +144,7 @@ export class Cache<T> {
  */
 
 import type { DisplayTransaction } from '../types/transaction';
-import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import { syncService } from '../services/sync';
 
 // Transaction cache instance (5-minute TTL)
 export const transactionCache = new Cache<DisplayTransaction[]>(
@@ -166,15 +166,15 @@ export const TRANSACTION_CACHE_KEYS = {
 export async function refreshHomeTransactionCache(): Promise<boolean> {
   try {
     console.log('🔄 Refreshing transaction cache...');
-    const result = await fetchTransactions(1, 10);
+    const response = await syncService.fetchTransactions(1, 5);
 
-    if (!result.error && result.transactions.length >= 0) {
-      transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
-      console.log('✅ Transaction cache refreshed with', result.transactions.length, 'transactions');
+    if (!response.error && response.transactions.length >= 0) {
+      transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, response.transactions);
+      console.log('✅ Transaction cache refreshed with', response.transactions.length, 'transactions');
       return true;
     }
 
-    console.warn('⚠️ Failed to refresh cache:', result.error);
+    console.warn('⚠️ Failed to refresh cache:', response.error);
     return false;
   } catch (error) {
     console.error('❌ Error refreshing transaction cache:', error);

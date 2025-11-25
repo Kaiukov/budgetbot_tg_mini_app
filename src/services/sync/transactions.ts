@@ -13,7 +13,12 @@ import type {
   FireflyCreateTransactionRequest,
   FireflyTransactionPayload,
   TransactionResult,
+  ServiceTransactionsResponse,
+  ServiceSingleTransactionResponse,
+  TransactionsResponse,
+  SingleTransactionResponse,
 } from './types';
+import type { TransactionData } from '../../types/transaction';
 import {
   generateExternalId,
   removeNullValues,
@@ -27,6 +32,7 @@ import {
   logTransactionOperation,
   OperationTimer,
   TransactionType,
+  mapTransactionToDisplay,
 } from './transaction-utils';
 
 /**
@@ -56,7 +62,7 @@ export class SyncServiceTransactions extends SyncServiceCore {
     request: FireflyCreateTransactionRequest
   ): Promise<FireflyTransactionPayload | { error: string }> {
     try {
-      const url = `${this.getBaseUrl()}/api/sync/transactions`;
+      const url = `${this.getBaseUrl()}/api/v1/transactions`;
       const anonKey = this.getAnonKey();
 
       if (!anonKey) {
@@ -730,5 +736,241 @@ export class SyncServiceTransactions extends SyncServiceCore {
     // This will be overridden by SyncServiceBalance
     // For now, return null to indicate not implemented at this level
     return null;
+  }
+  /**
+   * Delete transaction via Sync API
+   */
+  public async deleteTransaction(transactionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const url = `${this.getBaseUrl()}/api/v1/transactions/${transactionId}`;
+      const anonKey = this.getAnonKey();
+
+      if (!anonKey) {
+        return { success: false, error: 'Sync anonymous API key not configured' };
+      }
+
+      // Get Telegram initData for Tier 2 authentication
+      const { default: telegramService } = await import('../telegram');
+      const initData = telegramService.getInitData();
+
+      console.log('🗑️ Deleting transaction via Sync API:', {
+        url,
+        hasAnonKey: !!anonKey,
+        hasInitData: !!initData,
+        transactionId
+      });
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'X-Anonymous-Key': anonKey,
+          'X-Telegram-Init-Data': initData,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Sync API Error Response:', errorText);
+        return {
+          success: false,
+          error: `Sync API request failed: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Transaction deletion error:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Update transaction via Sync API
+   */
+  public async updateTransaction(
+    transactionId: string,
+    payload: unknown
+  ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+    try {
+      const url = `${this.getBaseUrl()}/api/v1/transactions/${transactionId}`;
+      const anonKey = this.getAnonKey();
+
+      if (!anonKey) {
+        return { success: false, error: 'Sync anonymous API key not configured' };
+      }
+
+      // Get Telegram initData for Tier 2 authentication
+      const { default: telegramService } = await import('../telegram');
+      const initData = telegramService.getInitData();
+
+      console.log('✏️ Updating transaction via Sync API:', {
+        url,
+        hasAnonKey: !!anonKey,
+        hasInitData: !!initData,
+        transactionId
+      });
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'X-Anonymous-Key': anonKey,
+          'X-Telegram-Init-Data': initData,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Sync API request failed: ${response.status} ${response.statusText}`,
+          data,
+        };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Transaction update error:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }
+  /**
+   * Fetch transactions via Sync API
+   */
+  public async fetchTransactions(page: number = 1, limit: number = 50): Promise<ServiceTransactionsResponse> {
+    try {
+      const url = `${this.getBaseUrl()}/api/v1/transactions?page=${page}&limit=${limit}`;
+      const anonKey = this.getAnonKey();
+
+      if (!anonKey) {
+        return { success: false, error: 'Sync anonymous API key not configured', transactions: [], pagination: { total: 0, count: 0, per_page: limit, current_page: page, total_pages: 0 } };
+      }
+
+      // Get Telegram initData for Tier 2 authentication
+      const { default: telegramService } = await import('../telegram');
+      const initData = telegramService.getInitData();
+
+      console.log('📥 Fetching transactions via Sync API:', {
+        url,
+        hasAnonKey: !!anonKey,
+        hasInitData: !!initData,
+        page,
+        limit
+      });
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Anonymous-Key': anonKey,
+          'X-Telegram-Init-Data': initData,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Sync API Error Response:', errorText);
+        return {
+          success: false,
+          error: `Sync API request failed: ${response.status} ${response.statusText}`,
+          transactions: [],
+          pagination: { total: 0, count: 0, per_page: limit, current_page: page, total_pages: 0 }
+        };
+      }
+
+      const data = await response.json() as TransactionsResponse;
+      
+      // Map transactions
+      const transactions = data.data
+        .map(mapTransactionToDisplay)
+        .filter((t): t is NonNullable<typeof t> => t !== null);
+
+      return {
+        success: true,
+        transactions,
+        pagination: data.meta.pagination
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Transaction fetch error:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+        transactions: [],
+        pagination: { total: 0, count: 0, per_page: limit, current_page: page, total_pages: 0 }
+      };
+    }
+  }
+
+  /**
+   * Fetch single transaction by ID via Sync API
+   */
+  public async fetchTransactionById(id: string): Promise<ServiceSingleTransactionResponse> {
+    try {
+      const url = `${this.getBaseUrl()}/api/v1/transactions/${id}`;
+      const anonKey = this.getAnonKey();
+
+      if (!anonKey) {
+        return { success: false, error: 'Sync anonymous API key not configured' };
+      }
+
+      // Get Telegram initData for Tier 2 authentication
+      const { default: telegramService } = await import('../telegram');
+      const initData = telegramService.getInitData();
+
+      console.log('📥 Fetching transaction by ID via Sync API:', {
+        url,
+        hasAnonKey: !!anonKey,
+        hasInitData: !!initData,
+        id
+      });
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Anonymous-Key': anonKey,
+          'X-Telegram-Init-Data': initData,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Sync API Error Response:', errorText);
+        return {
+          success: false,
+          error: `Sync API request failed: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      const data = await response.json() as SingleTransactionResponse;
+      const transaction = mapTransactionToDisplay(data.data);
+      
+      if (!transaction) {
+        return { success: false, error: 'Failed to map transaction data' };
+      }
+
+      // Cast raw data to TransactionData (best effort)
+      const rawData = data.data.attributes.transactions[0] as unknown as TransactionData;
+
+      return {
+        success: true,
+        transaction,
+        rawData
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ Transaction fetch error:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
   }
 }

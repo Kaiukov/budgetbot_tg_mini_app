@@ -8,6 +8,9 @@ export enum TransactionType {
   TRANSFER = 'transfer',
 }
 
+import type { TransactionRead } from './types';
+import type { DisplayTransaction } from '../../types/transaction';
+
 /**
  * Generate external ID for transaction deduplication
  * Format: tg-{type}-{username}-{unix_timestamp}
@@ -259,5 +262,51 @@ export class OperationTimer {
 
   public reset(): void {
     this.startTime = Date.now();
+  }
+}
+
+/**
+ * Map API transaction to DisplayTransaction
+ */
+export function mapTransactionToDisplay(transaction: TransactionRead): DisplayTransaction | null {
+  try {
+    const attrs = transaction.attributes;
+    const txData = attrs.transactions[0] as any;
+
+    if (!txData) return null;
+
+    // Determine type
+    let type: 'income' | 'expense' | 'transfer' = 'expense';
+    if (txData.type === 'deposit') type = 'income';
+    else if (txData.type === 'transfer') type = 'transfer';
+
+    // Parse amounts
+    const amount = parseFloat(txData.amount);
+    const foreignAmount = txData.foreign_amount ? parseFloat(txData.foreign_amount) : undefined;
+
+    return {
+      id: transaction.id,
+      type,
+      date: txData.date,
+      amount,
+      currency: txData.currency_code,
+      currencySymbol: txData.currency_symbol || txData.currency_code,
+
+      foreignAmount,
+      foreignCurrency: txData.foreign_currency_code,
+      foreignCurrencySymbol: txData.foreign_currency_symbol,
+
+      categoryName: txData.category_name,
+      sourceName: txData.source_name,
+      destinationName: txData.destination_name,
+
+      description: txData.description,
+      username: attrs.user || 'Unknown',
+
+      journalId: txData.transaction_journal_id || transaction.id,
+    } as DisplayTransaction;
+  } catch (error) {
+    console.error('Error mapping transaction:', error);
+    return null;
   }
 }

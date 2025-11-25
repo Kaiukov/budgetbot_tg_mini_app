@@ -22,7 +22,7 @@ export class SyncServiceDestinations extends SyncServiceCategories {
 
       // Fetch all destinations without query parameters
       // Avoids backend filtering issues with special characters (Cyrillic, emoji)
-      const endpoint = '/api/sync/get_destination_name_usage';
+      const endpoint = '/api/v1/get_destination_name_usage';
 
       const data = await this.makeRequest<DestinationNameUsageResponse>(
         endpoint,
