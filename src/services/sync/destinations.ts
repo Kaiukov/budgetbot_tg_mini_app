@@ -8,28 +8,38 @@ import { SyncServiceCategories } from './categories';
 
 export class SyncServiceDestinations extends SyncServiceCategories {
   /**
-   * Get all destination name usage data (no filtering)
-   * Returns complete destination list from all users and categories
-   * Client-side filtering is preferred over backend filtering to avoid encoding issues with Cyrillic/emoji
+   * Get destination name usage data with optional filtering
    *
-   * @returns Full destination list for client-side filtering
+   * @param userName - Optional username to filter by user
+   * @param categoryId - Optional category ID to filter by category
+   * @returns Destination list (filtered if params provided)
    */
-  public async getDestinationNameUsage(): Promise<DestinationNameUsageResponse> {
+  public async getDestinationNameUsage(userName?: string, categoryId?: string | number): Promise<DestinationNameUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
-      // Fetch all destinations without query parameters
-      // Avoids backend filtering issues with special characters (Cyrillic, emoji)
-      const endpoint = '/api/v1/get_destination_name_usage';
+      const params = new URLSearchParams();
+      if (userName) params.set('user_name', userName);
+      if (categoryId !== undefined) params.set('category_id', String(categoryId));
 
-      const data = await this.makeRequest<DestinationNameUsageResponse>(
+      const endpoint = `/api/v1/get_destination_name_usage${params.toString() ? `?${params.toString()}` : ''}`;
+
+      const rawData = await this.makeRequest<DestinationNameUsageResponse>(
         endpoint,
         { method: 'GET' }
       );
 
+      const total = rawData.total ?? rawData.total_sync ?? rawData.get_destination_name_usage.length;
+      const data: DestinationNameUsageResponse = {
+        ...rawData,
+        total
+      };
+
       console.log('🏪 Fetched all destinations from API:', {
+        userName,
+        categoryId,
         total: data.total,
         sample: data.get_destination_name_usage.slice(0, 3).map(d => ({
           name: d.destination_name,

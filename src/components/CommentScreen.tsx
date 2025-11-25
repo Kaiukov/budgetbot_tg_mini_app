@@ -8,6 +8,7 @@ import { gradients, layouts } from '../theme/dark';
 interface CommentScreenProps {
   comment: string;
   category: string;
+  categoryId?: number | string | null;
   isAvailable?: boolean;
   onBack: () => void;
   onCommentChange: (comment: string) => void;
@@ -17,6 +18,7 @@ interface CommentScreenProps {
 const CommentScreen: React.FC<CommentScreenProps> = ({
   comment,
   category,
+  categoryId,
   isAvailable,
   onBack,
   onCommentChange,
@@ -48,13 +50,14 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
       setError(null);
 
       try {
-        console.log('🏪 Fetching all destinations for client-side filtering:', {
+        console.log('🏪 Fetching destinations for user/category:', {
           requestedUser: userName,
-          requestedCategory: category
+          requestedCategory: category,
+          requestedCategoryId: categoryId
         });
 
-        // Fetch all destinations (no backend filtering)
-        const data = await syncService.getDestinationNameUsage();
+        // Fetch destinations filtered by user/category when possible
+        const data = await syncService.getDestinationNameUsage(userName, categoryId ?? undefined);
 
         if (data.total === 0) {
           console.log('⚠️ No destinations available in API');
@@ -65,15 +68,21 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
 
         // Client-side filtering: filter by category and separate by user
         const allDestinations = data.get_destination_name_usage;
+        const matchesCategory = (d: DestinationSuggestion) => {
+          if (categoryId !== null && categoryId !== undefined) {
+            return String(d.category_id ?? '') === String(categoryId);
+          }
+          return d.category_name === category;
+        };
 
         // Group 1: User's destinations in this category
         const userDestinations = allDestinations.filter(
-          d => d.user_name === userName && d.category_name === category
+          d => d.user_name === userName && matchesCategory(d)
         );
 
         // Group 2: Other users' destinations in this category (for discovery)
         const communityDestinations = allDestinations.filter(
-          d => d.category_name === category && d.user_name !== userName
+          d => matchesCategory(d) && d.user_name !== userName
         );
 
         // Sort both groups by usage_count DESC
@@ -117,7 +126,7 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
     };
 
     fetchDestinationSuggestions();
-  }, [category, userName]);
+  }, [category, categoryId, userName]);
 
   // Get display suggestions - use dynamic if available, otherwise empty list
   const displaySuggestions = useDynamicSuggestions && suggestions.length > 0

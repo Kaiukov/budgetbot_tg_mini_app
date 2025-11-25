@@ -52,7 +52,9 @@ export interface CategoriesUsageResponse {
 
 export interface DestinationSuggestion {
   user_name: string;
+  destination_id?: string;
   destination_name: string;
+  category_id?: string | number;
   category_name: string;
   usage_count: number;
   global_usage?: number;
@@ -67,6 +69,7 @@ export interface DestinationNameUsageResponse {
   timestamp: string;
   get_destination_name_usage: DestinationSuggestion[];
   total: number;
+  total_sync?: number;
 }
 
 export interface CurrentBalanceResponse {

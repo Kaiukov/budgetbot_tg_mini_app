@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accounts screen shows the per-user usage status with an “Unused” pill, and the subtitle now only contains your usage + balance (removed the “All users X” community metric).
 - Category usage requests now forward the transaction type (`withdrawal`/`deposit`) to `/api/v1/get_categories_usage`, caching results per user + type and respecting new response fields.
 - Category screen mirrors accounts UI with an “Unused” badge and clearer “Not used yet” text when a user hasn’t touched a category.
+- Destination suggestions now call `/api/v1/get_destination_name_usage` with `user_name` + `category_id`, normalize `total_sync`, and surface unused placeholders consistently.
 
 ## [1.2.7] - 2025-11-25
 

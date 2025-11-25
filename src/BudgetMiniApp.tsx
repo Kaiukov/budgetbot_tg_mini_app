@@ -41,6 +41,7 @@ const BudgetMiniApp = () => {
   const [categories, setCategories] = useState<CategoryUsage[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   // Transfer-specific state
   const [transferSourceAccount, setTransferSourceAccount] = useState('');
@@ -74,6 +75,11 @@ const BudgetMiniApp = () => {
     setUserData,
     resetTransactionData
   } = useTransactionData(transactionType);
+
+  const resetAllTransactionData = () => {
+    resetTransactionData();
+    setSelectedCategoryId(null);
+  };
 
   // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
@@ -276,7 +282,7 @@ const BudgetMiniApp = () => {
 
   const handleSelectAccount = (accountName: string) => {
     // Clear previous transaction data before starting new one
-    resetTransactionData();
+    resetAllTransactionData();
 
     // Find the selected account from accounts list to get full details
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
@@ -307,7 +313,7 @@ const BudgetMiniApp = () => {
   };
 
   const handleConfirmTransaction = () => {
-    resetTransactionData();
+    resetAllTransactionData();
     setTransactionType('expense'); // Reset to default
     setCurrentScreen('home');
   };
@@ -394,7 +400,7 @@ const BudgetMiniApp = () => {
           accountsError={accountsError}
           isAvailable={isAvailable}
           onBack={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setCurrentScreen('home');
           }}
           onSelectAccount={handleSelectAccount}
@@ -409,7 +415,7 @@ const BudgetMiniApp = () => {
           accountsError={accountsError}
           isAvailable={isAvailable}
           onBack={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setTransactionType('expense'); // Reset to default
             setCurrentScreen('home');
           }}
@@ -443,6 +449,8 @@ const BudgetMiniApp = () => {
           onBack={() => setCurrentScreen('amount')}
           onSelectCategory={(category) => {
             updateCategory(category);
+            const selected = categories.find(cat => cat.category_name === category);
+            setSelectedCategoryId(selected?.category_id ?? null);
             setCurrentScreen('comment');
           }}
           onRetry={fetchCategories}
@@ -453,6 +461,7 @@ const BudgetMiniApp = () => {
         <CommentScreen
           comment={transactionData.comment}
           category={transactionData.category}
+          categoryId={selectedCategoryId}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('category')}
           onCommentChange={updateComment}
@@ -471,13 +480,13 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setTransactionType('expense');
             setCurrentScreen('home');
           }}
           onConfirm={handleConfirmTransaction}
           onSuccess={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setTransactionType('expense');
             setCurrentScreen('home');
           }}
@@ -495,13 +504,13 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setTransactionType('expense');
             setCurrentScreen('home');
           }}
           onConfirm={handleConfirmTransaction}
           onSuccess={() => {
-            resetTransactionData();
+            resetAllTransactionData();
             setTransactionType('expense');
             setCurrentScreen('home');
           }}
