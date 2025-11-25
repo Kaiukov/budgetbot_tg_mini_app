@@ -14,18 +14,22 @@ export class SyncServiceCore {
 
   constructor() {
     // Detect environment
+    // Only Cloudflare deployments (workers.dev/pages.dev) are true production
+    // Tailscale domains and localhost should use Vite proxy to avoid CORS issues
     const isProduction = typeof window !== 'undefined' &&
       (window.location.hostname.includes('workers.dev') ||
        window.location.hostname.includes('pages.dev'));
 
-    // In production: call backend directly (middleware not working)
-    // In development: use Vite proxy (empty baseUrl)
-    this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
+    // In production (Cloudflare): call backend directly
+    // In development (localhost/Tailscale): ALWAYS use Vite proxy (empty baseUrl)
+    // This ensures proper CORS handling and authentication flow
+    this.baseUrl = isProduction ? import.meta.env.VITE_BASE_URL || '' : '';
 
     this.anonKey = import.meta.env.VITE_SYNC_API_KEY || null;
 
     console.log('🔧 Sync Service Config:', {
       environment: isProduction ? 'production' : 'development',
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
       baseUrl: this.baseUrl || '(using proxy)',
       hasApiKey: !!this.anonKey
     });
@@ -155,7 +159,8 @@ export class SyncServiceCore {
         method,
         headers: {
           'X-Anonymous-Key': anonKey,
-          ...(method === 'POST' && { 'X-Telegram-Init-Data': initData }),
+          // Include Telegram initData for both GET and POST to enable Tier 2 (authenticated) access
+          ...(initData && { 'X-Telegram-Init-Data': initData }),
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
