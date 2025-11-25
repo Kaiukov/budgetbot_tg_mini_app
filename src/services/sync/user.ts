@@ -29,7 +29,14 @@ export class SyncServiceUser extends SyncServiceDestinations {
 
       console.log('📸 Fetching Telegram user data from backend');
 
-      const data = await this.makeRequest<TelegramUserData>('/api/sync/tgUser', { method: 'POST' });
+      // Get Telegram initData for the request body
+      const { default: telegramService } = await import('../telegram');
+      const initData = telegramService.getInitData();
+
+      const data = await this.makeRequest<TelegramUserData>('/api/v1/tgUser', {
+        method: 'POST',
+        body: { initData }
+      });
 
       if (data.success) {
         console.log('✅ Successfully fetched Telegram user data:', data.userData);
@@ -88,5 +95,33 @@ export class SyncServiceUser extends SyncServiceDestinations {
     enableVerification: boolean = true
   ) {
     return this.transactionService.addTransaction(body, transactionType, enableVerification);
+  }
+
+  /**
+   * Delegate transaction deletion to transaction service
+   */
+  public async deleteTransaction(transactionId: string) {
+    return this.transactionService.deleteTransaction(transactionId);
+  }
+
+  /**
+   * Delegate transaction update to transaction service
+   */
+  public async updateTransaction(transactionId: string, payload: unknown) {
+    return this.transactionService.updateTransaction(transactionId, payload);
+  }
+
+  /**
+   * Delegate transaction fetching to transaction service
+   */
+  public async fetchTransactions(page: number = 1, limit: number = 50) {
+    return this.transactionService.fetchTransactions(page, limit);
+  }
+
+  /**
+   * Delegate single transaction fetching to transaction service
+   */
+  public async fetchTransactionById(id: string) {
+    return this.transactionService.fetchTransactionById(id);
   }
 }
