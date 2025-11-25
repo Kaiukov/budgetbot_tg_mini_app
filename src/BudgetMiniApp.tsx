@@ -96,6 +96,22 @@ const BudgetMiniApp = () => {
     }
   }, [currentScreen, userName, transactionType]);
 
+  // Keep selectedCategoryId in sync with the chosen category name
+  useEffect(() => {
+    if (!transactionData.category) {
+      setSelectedCategoryId(null);
+      return;
+    }
+
+    const match = categories.find(cat => cat.category_name === transactionData.category);
+    const derivedCategoryId = match?.category_id ?? match?.category_id1 ?? null;
+    setSelectedCategoryId(
+      derivedCategoryId !== undefined && derivedCategoryId !== null
+        ? Number(derivedCategoryId)
+        : null
+    );
+  }, [transactionData.category, categories]);
+
   // Check service connections when debug screen is opened
   useEffect(() => {
     if (currentScreen === 'debug') {
@@ -450,7 +466,12 @@ const BudgetMiniApp = () => {
           onSelectCategory={(category) => {
             updateCategory(category);
             const selected = categories.find(cat => cat.category_name === category);
-            setSelectedCategoryId(selected?.category_id ?? null);
+            const derivedCategoryId = selected?.category_id ?? selected?.category_id1 ?? null;
+            setSelectedCategoryId(
+              derivedCategoryId !== undefined && derivedCategoryId !== null
+                ? Number(derivedCategoryId)
+                : null
+            );
             setCurrentScreen('comment');
           }}
           onRetry={fetchCategories}

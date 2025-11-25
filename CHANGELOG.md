@@ -9,10 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Account usage now reads from the new `/api/v1/get_account_usage` endpoint with legacy fallback, normalizing singular/plural payloads and new fields (`global_usage`, `user_has_used`).
-- Accounts screen shows the per-user usage status with an “Unused” pill, and the subtitle now only contains your usage + balance (removed the “All users X” community metric).
+- Accounts screen shows the per-user usage status with an "Unused" pill, and the subtitle now only contains your usage + balance (removed the "All users X" community metric).
 - Category usage requests now forward the transaction type (`withdrawal`/`deposit`) to `/api/v1/get_categories_usage`, caching results per user + type and respecting new response fields.
-- Category screen mirrors accounts UI with an “Unused” badge and clearer “Not used yet” text when a user hasn’t touched a category.
-- Destination suggestions now call `/api/v1/get_destination_name_usage` with `user_name` + `category_id`, normalize `total_sync`, and surface unused placeholders consistently.
+- Category screen mirrors accounts UI with an "Unused" badge and clearer "Not used yet" text when a user hasn't touched a category.
+- Destination suggestions now call `/api/v1/get_destination_name_usage` with `user_name` + `category_id` from `get_categories_usage`, normalize `total_sync`, and surface unused placeholders consistently.
+- **Category ID Synchronization**: Enhanced category selection logic to handle dual ID fields (`category_id` and `category_id1`)
+  - Added `useEffect` hook to keep `selectedCategoryId` in sync with `transactionData.category`
+  - Category selection now checks both `category_id` and `category_id1` fields with fallback logic
+  - Ensures proper destination filtering when categories have multiple ID representations
+
+### Fixed
+- **Category Selection Flow**: Fixed issue where destination suggestions were filtered by wrong category ID
+  - Category selection now properly derives ID from either `category_id` or `category_id1` field
+  - Unused categories now correctly include `category_id1` mapping for comprehensive filtering
+  - Type definitions updated to make `category_id1` optional and `created_at`/`updated_at` nullable
 
 ## [1.2.7] - 2025-11-25
 

@@ -32,14 +32,15 @@ export interface AccountsUsageResponse {
 
 export interface CategoryUsage {
   user_name: string;
-  category_name: string;
   category_id: number;
+  category_id1?: number | string;
+  category_name: string;
   type?: 'withdrawal' | 'deposit';
   usage_count: number;
   global_usage?: number;
   user_has_used?: boolean;
-  created_at: string | null;
-  updated_at: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface CategoriesUsageResponse {

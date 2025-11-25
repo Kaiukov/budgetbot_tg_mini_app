@@ -108,11 +108,15 @@ export class SyncServiceCategories extends SyncServiceAccounts {
       const categoryIdMap = new Map(
         allCategories.map(cat => [cat.category_name, cat.category_id])
       );
+      const categoryId1Map = new Map(
+        allCategories.map(cat => [cat.category_name, (cat as any).category_id1])
+      );
 
       const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(categoryName => ({
         user_name: userName,
         category_name: categoryName,
         category_id: categoryIdMap.get(categoryName) || 0,
+        category_id1: categoryId1Map.get(categoryName),
         type: transactionType,
         usage_count: 0,
         global_usage: 0,
