@@ -88,7 +88,7 @@ const BudgetMiniApp = () => {
     if (currentScreen === 'category') {
       fetchCategories();
     }
-  }, [currentScreen, userName]);
+  }, [currentScreen, userName, transactionType]);
 
   // Check service connections when debug screen is opened
   useEffect(() => {
@@ -109,7 +109,7 @@ const BudgetMiniApp = () => {
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [userName]);
+  }, [userName, transactionType]);
 
 
 
@@ -182,7 +182,11 @@ const BudgetMiniApp = () => {
       // Otherwise, return all categories
       // Treat "User" and "Guest" as unknown users (browser mode)
       const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getCategoriesUsage(isUnknownUser ? undefined : userName);
+      const categoryType = transactionType === 'income' ? 'deposit' : 'withdrawal';
+      const data = await syncService.getCategoriesUsage(
+        isUnknownUser ? undefined : userName,
+        categoryType
+      );
 
       console.log('📊 Fetched categories:', {
         total: data.total,

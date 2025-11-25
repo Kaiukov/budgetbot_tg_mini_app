@@ -34,7 +34,10 @@ export interface CategoryUsage {
   user_name: string;
   category_name: string;
   category_id: number;
+  type?: 'withdrawal' | 'deposit';
   usage_count: number;
+  global_usage?: number;
+  user_has_used?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }

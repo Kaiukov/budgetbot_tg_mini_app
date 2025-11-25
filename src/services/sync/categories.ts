@@ -19,15 +19,16 @@ export class SyncServiceCategories extends SyncServiceAccounts {
    * Uses 1-minute cache to reduce API calls
    *
    * @param userName - Optional username to sort categories by usage
+   * @param transactionType - Optional transaction type filter (withdrawal/deposit)
    */
-  public async getCategoriesUsage(userName?: string): Promise<CategoriesUsageResponse> {
+  public async getCategoriesUsage(userName?: string, transactionType?: 'withdrawal' | 'deposit'): Promise<CategoriesUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
       // Generate cache key
-      const cacheKey = userName || 'all';
+      const cacheKey = `${userName || 'all'}:${transactionType || 'all'}`;
 
       // Check cache first
       const cachedData = this.getCategoryCache().get(cacheKey);
@@ -38,10 +39,12 @@ export class SyncServiceCategories extends SyncServiceAccounts {
 
       console.log('🔄 Fetching fresh categories for:', cacheKey);
 
-      // Build URL with optional user_name query parameter
-      const endpoint = userName
-        ? `/api/v1/get_categories_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/v1/get_categories_usage';
+      // Build URL with optional user_name and type query parameters
+      const params = new URLSearchParams();
+      if (userName) params.set('user_name', userName);
+      if (transactionType) params.set('type', transactionType);
+
+      const endpoint = `/api/v1/get_categories_usage${params.toString() ? `?${params.toString()}` : ''}`;
 
       const data = await this.makeRequest<CategoriesUsageResponse>(
         endpoint,
@@ -50,6 +53,7 @@ export class SyncServiceCategories extends SyncServiceAccounts {
 
       console.log('📋 Raw categories API data:', {
         userName,
+        transactionType,
         total: data.total,
         categoryCount: data.get_categories_usage.length,
         firstCategory: data.get_categories_usage[0]
@@ -109,7 +113,10 @@ export class SyncServiceCategories extends SyncServiceAccounts {
         user_name: userName,
         category_name: categoryName,
         category_id: categoryIdMap.get(categoryName) || 0,
+        type: transactionType,
         usage_count: 0,
+        global_usage: 0,
+        user_has_used: false,
         created_at: null,
         updated_at: null,
       }));

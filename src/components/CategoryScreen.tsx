@@ -75,6 +75,8 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
               const color = getCategoryColor(category.category_name);
               const emoji = extractEmoji(category.category_name);
               const categoryNameWithoutEmoji = getCategoryNameWithoutEmoji(category.category_name);
+              const isUnused = category.user_has_used === false || category.usage_count === 0;
+              const usageText = isUnused ? 'Unused' : `Used ${category.usage_count} times`;
 
               return (
                 <div
@@ -93,9 +95,16 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
                     )}
                   </div>
                   <div className={cardStyles.textWrapper}>
-                    <h3 className="font-medium text-white text-sm leading-tight">{categoryNameWithoutEmoji}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-white text-sm leading-tight">{categoryNameWithoutEmoji}</h3>
+                      {isUnused && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300">
+                          Unused
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
-                      Used {category.usage_count} times
+                      {usageText}
                     </p>
                   </div>
                   <ChevronRight size={16} className={cardStyles.chevron} />
