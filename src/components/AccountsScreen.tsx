@@ -71,6 +71,13 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
             {accounts.map((account) => {
               const color = getAccountColor(account.account_currency, account.account_name);
               const Icon = getAccountIcon(account.account_currency, account.account_name);
+              const usageText = account.user_has_used === false
+                ? 'Not used yet'
+                : `Used ${account.usage_count}`;
+              const subtitleParts = [
+                usageText,
+                formatCurrency(account.current_balance, account.account_currency)
+              ].filter(Boolean);
 
               return (
                 <div
@@ -85,9 +92,16 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
                     <Icon size={20} style={{ color }} />
                   </div>
                   <div className={cardStyles.textWrapper}>
-                    <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
+                      {account.user_has_used === false && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300">
+                          Unused
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
-                      Used {account.usage_count} • {formatCurrency(account.current_balance, account.account_currency)}
+                      {subtitleParts.join(' • ')}
                     </p>
                   </div>
                   <ChevronRight size={16} className={cardStyles.chevron} />

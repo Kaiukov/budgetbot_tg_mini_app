@@ -16,6 +16,8 @@ export interface AccountUsage {
   owner: string;
   owner_id: string;
   usage_count: number;
+  global_usage?: number;
+  user_has_used?: boolean;
   created_at: string;
   updated_at: string;
 }

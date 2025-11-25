@@ -8,6 +8,38 @@ import { SyncServiceBalance } from './balance';
 
 export class SyncServiceAccounts extends SyncServiceBalance {
   /**
+   * Build account usage endpoints with singular → plural fallback
+   */
+  private getAccountUsageEndpoints(userName?: string): string[] {
+    const query = userName ? `?user_name=${encodeURIComponent(userName)}` : '';
+    return [
+      `/api/v1/get_account_usage${query}`,   // new endpoint with richer payload
+      `/api/v1/get_accounts_usage${query}`, // legacy endpoint
+    ];
+  }
+
+  /**
+   * Normalize account usage payload shape (singular/plural)
+   */
+  private normalizeAccountUsageResponse(response: Record<string, unknown>): AccountsUsageResponse {
+    const pluralPayload = response as unknown as AccountsUsageResponse;
+    if (Array.isArray((pluralPayload as any).get_accounts_usage)) {
+      return pluralPayload;
+    }
+
+    const singularList = (response as any).get_account_usage;
+    if (Array.isArray(singularList)) {
+      return {
+        ...(response as any),
+        get_accounts_usage: singularList,
+        total: (response as any).total ?? singularList.length,
+      } as AccountsUsageResponse;
+    }
+
+    throw new Error('Invalid account usage response shape');
+  }
+
+  /**
    * Get accounts usage for a specific user or all accounts
    * Returns all existing accounts with smart sorting:
    * - Top: Accounts user has used (usage_count > 0), sorted high to low
@@ -33,21 +65,40 @@ export class SyncServiceAccounts extends SyncServiceBalance {
 
       console.log('🔄 Fetching fresh accounts for:', cacheKey);
 
-      // Build URL with optional user_name query parameter
-      const endpoint = userName
-        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/v1/get_accounts_usage';
+      const endpoints = this.getAccountUsageEndpoints(userName);
+      let data: AccountsUsageResponse | null = null;
+      let selectedEndpoint = '';
+      let lastError: unknown = null;
 
-      const data = await this.makeRequest<AccountsUsageResponse>(
-        endpoint,
-        { method: 'GET' }
-      );
+      for (const endpoint of endpoints) {
+        try {
+          const rawData = await this.makeRequest<Record<string, unknown>>(
+            endpoint,
+            { method: 'GET' }
+          );
+          data = this.normalizeAccountUsageResponse(rawData);
+          selectedEndpoint = endpoint;
+          break;
+        } catch (error) {
+          lastError = error;
+          console.warn('⚠️ Account usage endpoint failed, trying fallback:', {
+            endpoint,
+            message: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      if (!data) {
+        throw lastError instanceof Error ? lastError : new Error('Failed to fetch account usage');
+      }
 
       console.log('📋 Raw API data:', {
         userName,
+        endpoint: selectedEndpoint,
         total: data.total,
         accountCount: data.get_accounts_usage.length,
-        firstAccount: data.get_accounts_usage[0]
+        firstAccount: data.get_accounts_usage[0],
+        hasGlobalUsage: typeof data.get_accounts_usage[0]?.global_usage !== 'undefined'
       });
 
       // If no username provided, return all accounts as-is

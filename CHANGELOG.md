@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Account usage now reads from the new `/api/v1/get_account_usage` endpoint with legacy fallback, normalizing singular/plural payloads and new fields (`global_usage`, `user_has_used`).
+- Accounts screen shows the per-user usage status with an “Unused” pill and keeps the balance line concise (removed community usage line).
+
 ## [1.2.7] - 2025-11-25
 
 ### Added
