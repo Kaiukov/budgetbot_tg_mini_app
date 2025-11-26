@@ -145,6 +145,109 @@ const BudgetMiniApp = () => {
     }
   }, [currentScreen]);
 
+  // Manage Telegram BackButton visibility and behavior
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+
+    const getBackHandler = (): (() => void) | null => {
+      switch (currentScreen) {
+        case 'home':
+          return null; // No back button on home screen
+
+        case 'accounts':
+          return () => {
+            resetTransactionData();
+            setCurrentScreen('home');
+          };
+
+        case 'income-accounts':
+          return () => {
+            resetTransactionData();
+            setTransactionType('expense');
+            setCurrentScreen('home');
+          };
+
+        case 'amount':
+          return () => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts');
+
+        case 'category':
+          return () => setCurrentScreen('amount');
+
+        case 'comment':
+          return () => setCurrentScreen('category');
+
+        case 'confirm':
+          return () => setCurrentScreen('comment');
+
+        case 'transfer-source-accounts':
+          return () => {
+            setTransferSourceAccount('');
+            setTransferSourceAccountId('');
+            setTransferSourceCurrency('');
+            setTransferDestAccount('');
+            setTransferDestAccountId('');
+            setTransferDestCurrency('');
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setTransferComment('');
+            setCurrentScreen('home');
+          };
+
+        case 'transfer-dest-accounts':
+          return () => {
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setCurrentScreen('transfer-source-accounts');
+          };
+
+        case 'transfer-amount':
+          return () => {
+            setTransferExitAmount('');
+            setTransferEntryAmount('');
+            setTransferExitFee('');
+            setTransferEntryFee('');
+            setCurrentScreen('transfer-dest-accounts');
+          };
+
+        case 'transfer-fees':
+          return () => setCurrentScreen('transfer-amount');
+
+        case 'transfer-comment':
+          return () => setCurrentScreen('transfer-fees');
+
+        case 'transfer-confirm':
+          return () => setCurrentScreen('transfer-comment');
+
+        case 'debug':
+          return () => setCurrentScreen('home');
+
+        default:
+          return null;
+      }
+    };
+
+    const backHandler = getBackHandler();
+
+    if (backHandler) {
+      // Show back button and set handler
+      tg.BackButton.show();
+      tg.BackButton.onClick(backHandler);
+
+      return () => {
+        // Cleanup: remove handler
+        tg.BackButton.offClick(backHandler);
+      };
+    } else {
+      // Hide back button on home screen
+      tg.BackButton.hide();
+    }
+  }, [currentScreen, transactionType, resetTransactionData, setTransactionType]);
+
   const fetchAccounts = async () => {
     setAccountsLoading(true);
     setAccountsError(null);
