@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
-import { refreshHomeTransactionCache } from './utils/cache';
+import { refreshHomeTransactionCache, accountsCache, categoriesCache, clearAllDataCaches } from './utils/cache';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -25,6 +25,8 @@ import TransactionEditScreen from './components/TransactionEditScreen';
 import type { DisplayTransaction, TransactionData } from './types/transaction';
 
 const BudgetMiniApp = () => {
+  console.log('🚀 BudgetMiniApp LOADED - Version with enhanced logging');
+
   const [currentScreen, setCurrentScreen] = useState('home');
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
 
@@ -81,6 +83,72 @@ const BudgetMiniApp = () => {
     setSelectedCategoryId(null);
   };
 
+  // Fetch categories - wrapped in useCallback to avoid stale closure bug
+  const fetchCategories = useCallback(async () => {
+    console.log('🔍 fetchCategories START:', {
+      transactionType,
+      currentScreen,
+      timestamp: new Date().toISOString()
+    });
+
+    const categoryType = transactionType === 'income' ? 'deposit' : 'withdrawal';
+    const cacheKey = `${userName || 'all'}_${categoryType}`;
+
+    console.log('🔑 Cache key:', cacheKey, 'for transactionType:', transactionType);
+
+    // Try cache first
+    const cached = categoriesCache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Using cached categories:', {
+        count: cached.length,
+        categoryType,
+        categoryNames: cached.slice(0, 3).map(c => c.category_name)
+      });
+      setCategories(cached);
+      return;
+    }
+
+    setCategoriesLoading(true);
+    setCategoriesError(null);
+
+    try {
+      console.log('🔍 Fetching categories for user:', userName);
+
+      // If userName is known and matches users in the system, filter by userName
+      // Otherwise, return all categories
+      // Treat "User" and "Guest" as unknown users (browser mode)
+      const isUnknownUser = userName === 'User' || userName === 'Guest';
+      const data = await syncService.getCategoriesUsage(
+        isUnknownUser ? undefined : userName,
+        categoryType
+      );
+
+      console.log('📊 Fetched categories:', {
+        total: data.total,
+        count: data.get_categories_usage.length
+      });
+
+      // Cache the result
+      categoriesCache.set(cacheKey, data.get_categories_usage);
+
+      // Categories are already sorted by syncService.getCategoriesUsage()
+      // Used categories (high → low by usage_count) followed by unused categories (usage_count = 0)
+      setCategories(data.get_categories_usage);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories';
+      console.error('❌ Failed to fetch categories:', {
+        error,
+        message: errorMessage,
+        userName,
+        syncConfigured: syncService.isConfigured(),
+        baseUrl: syncService.getBaseUrl()
+      });
+      setCategoriesError(errorMessage);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [userName, transactionType]);
+
   // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
     if (currentScreen === 'accounts' || currentScreen === 'income-accounts' ||
@@ -94,7 +162,7 @@ const BudgetMiniApp = () => {
     if (currentScreen === 'category') {
       fetchCategories();
     }
-  }, [currentScreen, userName, transactionType]);
+  }, [currentScreen, fetchCategories]);
 
   // Keep selectedCategoryId in sync with the chosen category name
   useEffect(() => {
@@ -146,6 +214,16 @@ const BudgetMiniApp = () => {
   }, [currentScreen]);
 
   const fetchAccounts = async () => {
+    const cacheKey = userName || 'all';
+
+    // Try cache first
+    const cached = accountsCache.get(cacheKey);
+    if (cached) {
+      console.log('✅ Using cached accounts');
+      setAccounts(cached);
+      return;
+    }
+
     setAccountsLoading(true);
     setAccountsError(null);
 
@@ -175,6 +253,9 @@ const BudgetMiniApp = () => {
         duplicatesRemoved: data.get_accounts_usage.length - uniqueAccounts.length
       });
 
+      // Cache the result
+      accountsCache.set(cacheKey, uniqueAccounts);
+
       // Accounts are already sorted by syncService.getAccountsUsage()
       // Used accounts (high → low by usage_count) followed by unused accounts (usage_count = 0)
       setAccounts(uniqueAccounts);
@@ -190,46 +271,6 @@ const BudgetMiniApp = () => {
       setAccountsError(errorMessage);
     } finally {
       setAccountsLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    setCategoriesLoading(true);
-    setCategoriesError(null);
-
-    try {
-      console.log('🔍 Fetching categories for user:', userName);
-
-      // If userName is known and matches users in the system, filter by userName
-      // Otherwise, return all categories
-      // Treat "User" and "Guest" as unknown users (browser mode)
-      const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const categoryType = transactionType === 'income' ? 'deposit' : 'withdrawal';
-      const data = await syncService.getCategoriesUsage(
-        isUnknownUser ? undefined : userName,
-        categoryType
-      );
-
-      console.log('📊 Fetched categories:', {
-        total: data.total,
-        count: data.get_categories_usage.length
-      });
-
-      // Categories are already sorted by syncService.getCategoriesUsage()
-      // Used categories (high → low by usage_count) followed by unused categories (usage_count = 0)
-      setCategories(data.get_categories_usage);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories';
-      console.error('❌ Failed to fetch categories:', {
-        error,
-        message: errorMessage,
-        userName,
-        syncConfigured: syncService.isConfigured(),
-        baseUrl: syncService.getBaseUrl()
-      });
-      setCategoriesError(errorMessage);
-    } finally {
-      setCategoriesLoading(false);
     }
   };
 
@@ -293,13 +334,18 @@ const BudgetMiniApp = () => {
 
   // Navigation handlers
   const handleNavigate = (screen: string) => {
+    // Set transaction type based on screen
+    if (screen === 'income-accounts') {
+      console.log('🔄 Navigating to income-accounts, setting transactionType to income');
+      setTransactionType('income');
+    } else if (screen === 'accounts' || screen === 'transfer-source-accounts') {
+      console.log('🔄 Navigating to', screen, ', setting transactionType to expense');
+      setTransactionType('expense'); // Reset to expense for regular flows
+    }
     setCurrentScreen(screen);
   };
 
   const handleSelectAccount = (accountName: string) => {
-    // Clear previous transaction data before starting new one
-    resetAllTransactionData();
-
     // Find the selected account from accounts list to get full details
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
 
@@ -329,6 +375,8 @@ const BudgetMiniApp = () => {
   };
 
   const handleConfirmTransaction = () => {
+    // Clear all caches to fetch fresh data (accounts may have new balances, categories may have new usage)
+    clearAllDataCaches();
     resetAllTransactionData();
     setTransactionType('expense'); // Reset to default
     setCurrentScreen('home');
@@ -376,6 +424,9 @@ const BudgetMiniApp = () => {
         // Proactively refresh transaction cache
         await refreshHomeTransactionCache();
 
+        // Clear all data caches to fetch fresh account/category data
+        clearAllDataCaches();
+
         sessionStorage.removeItem('selectedTransactionId');
         setSelectedTransactionId(null);
         setCurrentScreen('transactions');
@@ -417,6 +468,7 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => {
             resetAllTransactionData();
+            setTransactionType('expense'); // Defensive: ensure expense type
             setCurrentScreen('home');
           }}
           onSelectAccount={handleSelectAccount}
@@ -432,13 +484,10 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => {
             resetAllTransactionData();
-            setTransactionType('expense'); // Reset to default
+            setTransactionType('expense'); // Reset to expense
             setCurrentScreen('home');
           }}
-          onSelectAccount={(accountName) => {
-            setTransactionType('income'); // Set transaction type to income
-            handleSelectAccount(accountName);
-          }}
+          onSelectAccount={handleSelectAccount}
           onRetry={fetchAccounts}
         />
       )}
@@ -449,7 +498,11 @@ const BudgetMiniApp = () => {
           amount={transactionData.amount}
           transactionData={transactionData}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
+          onBack={() => {
+            // Clear all transaction data when going back to select different account
+            resetAllTransactionData();
+            setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts');
+          }}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
         />
@@ -484,7 +537,22 @@ const BudgetMiniApp = () => {
           category={transactionData.category}
           categoryId={selectedCategoryId}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen('category')}
+          onBack={() => {
+            console.log('📍 CommentScreen.onBack - transactionType:', transactionType, 'currentScreen:', currentScreen);
+
+            // Clear comment and categoryId when going back to select different category
+            updateComment('');
+            setSelectedCategoryId(null);
+
+            // Clear ALL category caches to force fresh fetch with correct type
+            console.log('🗑️ Clearing ALL category caches to force fresh fetch');
+            categoriesCache.clear();
+
+            // Clear stale categories from state
+            setCategories([]);
+
+            setCurrentScreen('category');
+          }}
           onCommentChange={updateComment}
           onNext={() => setCurrentScreen('confirm')}
         />

@@ -27,6 +27,19 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   onSelectCategory,
   onRetry
 }) => {
+  // Log component mount with transactionType
+  useEffect(() => {
+    console.log('📋 CategoryScreen MOUNTED with transactionType:', transactionType, 'categories count:', categories.length);
+    return () => {
+      console.log('📋 CategoryScreen UNMOUNTED');
+    };
+  }, []);
+
+  // Log transactionType changes
+  useEffect(() => {
+    console.log('🔄 CategoryScreen transactionType changed to:', transactionType);
+  }, [transactionType]);
+
   // Show Telegram back button
   useEffect(() => {
     telegramService.showBackButton(onBack);
@@ -35,6 +48,8 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
 
   // Filter categories based on transaction type (income only filters, expense shows all)
   const displayCategories = filterCategoriesByType(categories, transactionType);
+
+  console.log('📊 CategoryScreen render - transactionType:', transactionType, 'displayCategories:', displayCategories.length);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>

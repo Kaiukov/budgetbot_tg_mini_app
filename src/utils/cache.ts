@@ -144,12 +144,25 @@ export class Cache<T> {
  */
 
 import type { DisplayTransaction } from '../types/transaction';
+import type { AccountUsage, CategoryUsage } from '../services/sync';
 import { syncService } from '../services/sync';
 
 // Transaction cache instance (5-minute TTL)
 export const transactionCache = new Cache<DisplayTransaction[]>(
   5 * 60 * 1000, // 5 minutes
   'firefly_transactions_'
+);
+
+// Accounts cache instance (5-minute TTL)
+export const accountsCache = new Cache<AccountUsage[]>(
+  5 * 60 * 1000, // 5 minutes
+  'sync_accounts_'
+);
+
+// Categories cache instance (5-minute TTL)
+export const categoriesCache = new Cache<CategoryUsage[]>(
+  5 * 60 * 1000, // 5 minutes
+  'sync_categories_'
 );
 
 // Cache key constants
@@ -189,4 +202,31 @@ export async function refreshHomeTransactionCache(): Promise<boolean> {
 export function clearTransactionCache(): void {
   transactionCache.clear();
   console.log('🗑️ Transaction cache cleared');
+}
+
+/**
+ * Clear accounts cache
+ */
+export function clearAccountsCache(): void {
+  accountsCache.clear();
+  console.log('🗑️ Accounts cache cleared');
+}
+
+/**
+ * Clear categories cache
+ */
+export function clearCategoriesCache(): void {
+  categoriesCache.clear();
+  console.log('🗑️ Categories cache cleared');
+}
+
+/**
+ * Clear all data caches (accounts, categories, transactions)
+ * Call this after successful transaction create/edit/delete to ensure fresh data
+ */
+export function clearAllDataCaches(): void {
+  clearAccountsCache();
+  clearCategoriesCache();
+  clearTransactionCache();
+  console.log('🗑️ All data caches cleared');
 }
