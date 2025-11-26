@@ -30,9 +30,16 @@ export default defineConfig({
             res.writeHead(500, {
               'Content-Type': 'text/plain'
             });
-            res.end('Proxy error: ' + err.message);
+          res.end('Proxy error: ' + err.message);
           });
         }
+      },
+      '/log': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: false,
+        rewrite: (path) => path.replace(/^\/log/, '/log')
       }
     }
   },

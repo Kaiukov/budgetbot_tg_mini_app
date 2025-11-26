@@ -32,6 +32,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const currencyCode = transactionData.account_currency || 'EUR';
 
   // Show Telegram back button
   useEffect(() => {
@@ -71,7 +72,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
         <div className={`${cardStyles.container} mb-4`}>
           <div className="text-center mb-4">
             <div className="text-3xl font-bold text-red-500 mb-1">
-              -{getCurrencySymbol(transactionData.account_currency)}{amount}
+              -{getCurrencySymbol(currencyCode)}{amount} <span className="text-sm text-gray-400">{currencyCode}</span>
             </div>
             <p className="text-xs text-gray-400">Expense</p>
           </div>
@@ -80,6 +81,10 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Account:</span>
               <span className="text-xs font-medium text-white">{account}</span>
+            </div>
+            <div className="flex justify-between py-2.5 border-b border-gray-700">
+              <span className="text-xs text-gray-400">Currency:</span>
+              <span className="text-xs font-medium text-white">{currencyCode}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Category:</span>

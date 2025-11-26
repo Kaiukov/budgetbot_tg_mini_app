@@ -115,9 +115,11 @@ const BudgetMiniApp = () => {
     if (flow === 'income') {
       setIncomeCategoryId(null);
       setIncomeReview(null);
+      incomeAmountRef.current = '';
     } else {
       setExpenseCategoryId(null);
       setExpenseReview(null);
+      expenseAmountRef.current = '';
     }
   }, [expenseFlow, incomeFlow]);
 
@@ -262,13 +264,14 @@ const BudgetMiniApp = () => {
 
   // Restore last typed amount when coming back from category -> amount
   useEffect(() => {
-    if (currentScreen === 'income-amount' && !incomeFlow.transactionData.amount && incomeAmountRef.current) {
+    if (currentScreen === 'income-amount' && incomeAmountRef.current) {
       incomeFlow.updateAmount(incomeAmountRef.current);
     }
-    if (currentScreen === 'expense-amount' && !expenseFlow.transactionData.amount && expenseAmountRef.current) {
+    if (currentScreen === 'expense-amount' && expenseAmountRef.current) {
       expenseFlow.updateAmount(expenseAmountRef.current);
     }
-  }, [currentScreen, expenseFlow, incomeFlow]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScreen]);
 
   // Handle transaction detail navigation from sessionStorage
   useEffect(() => {
@@ -625,6 +628,7 @@ const BudgetMiniApp = () => {
             expenseFlow.updateAmount('');
             expenseFlow.updateCategory('');
             expenseFlow.updateComment('');
+            expenseAmountRef.current = '';
             setCurrentScreen('expense-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
@@ -644,6 +648,7 @@ const BudgetMiniApp = () => {
             incomeFlow.updateAmount('');
             incomeFlow.updateCategory('');
             incomeFlow.updateComment('');
+            incomeAmountRef.current = '';
             setCurrentScreen('income-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('income', value)}
