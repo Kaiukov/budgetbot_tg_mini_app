@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionData as FlowTransactionData } from './hooks/useTransactionData';
 
@@ -79,6 +79,8 @@ const BudgetMiniApp = () => {
 
   // Comment reset key (forces comment screen remount when backing out)
   const [commentResetKey, setCommentResetKey] = useState(0);
+  const expenseAmountRef = useRef<string>('');
+  const incomeAmountRef = useRef<string>('');
 
   // Transfer-specific state
   const [transferSourceAccount, setTransferSourceAccount] = useState('');
@@ -257,6 +259,16 @@ const BudgetMiniApp = () => {
       fetchCategories('income');
     }
   }, [currentScreen, fetchCategories]);
+
+  // Restore last typed amount when coming back from category -> amount
+  useEffect(() => {
+    if (currentScreen === 'income-amount' && !incomeFlow.transactionData.amount && incomeAmountRef.current) {
+      incomeFlow.updateAmount(incomeAmountRef.current);
+    }
+    if (currentScreen === 'expense-amount' && !expenseFlow.transactionData.amount && expenseAmountRef.current) {
+      expenseFlow.updateAmount(expenseAmountRef.current);
+    }
+  }, [currentScreen, expenseFlow, incomeFlow]);
 
   // Handle transaction detail navigation from sessionStorage
   useEffect(() => {
@@ -487,6 +499,11 @@ const BudgetMiniApp = () => {
 
   const handleAmountChange = (flow: FlowType, value: string) => {
     getFlowApi(flow).updateAmount(value);
+    if (flow === 'income') {
+      incomeAmountRef.current = value;
+    } else {
+      expenseAmountRef.current = value;
+    }
   };
 
   const handleCategorySelect = (flow: FlowType, category: string) => {
@@ -602,7 +619,14 @@ const BudgetMiniApp = () => {
           amount={expenseFlow.transactionData.amount}
           transactionData={expenseFlow.transactionData}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen('expense-accounts')}
+          onBack={() => {
+            setExpenseReview(null);
+            setExpenseCategoryId(null);
+            expenseFlow.updateAmount('');
+            expenseFlow.updateCategory('');
+            expenseFlow.updateComment('');
+            setCurrentScreen('expense-accounts');
+          }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
           onNext={() => setCurrentScreen('expense-category')}
         />
@@ -614,7 +638,14 @@ const BudgetMiniApp = () => {
           amount={incomeFlow.transactionData.amount}
           transactionData={incomeFlow.transactionData}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen('income-accounts')}
+          onBack={() => {
+            setIncomeReview(null);
+            setIncomeCategoryId(null);
+            incomeFlow.updateAmount('');
+            incomeFlow.updateCategory('');
+            incomeFlow.updateComment('');
+            setCurrentScreen('income-accounts');
+          }}
           onAmountChange={(value) => handleAmountChange('income', value)}
           onNext={() => setCurrentScreen('income-category')}
         />
