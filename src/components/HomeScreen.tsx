@@ -145,7 +145,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="grid grid-cols-3 gap-2">
           {/* Expense Card */}
           <div
-            onClick={() => onNavigate('accounts')}
+            onClick={() => onNavigate('expense-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'

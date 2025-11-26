@@ -73,6 +73,28 @@ export interface DestinationNameUsageResponse {
   total_sync?: number;
 }
 
+export interface SourceSuggestion {
+  user_name: string;
+  source_id?: string;
+  source_name: string;
+  category_id?: string | number;
+  category_name: string;
+  usage_count: number;
+  global_usage?: number;
+  user_has_used?: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SourceNameUsageResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  get_source_name_usage: SourceSuggestion[];
+  total: number;
+  total_sync?: number;
+}
+
 export interface CurrentBalanceResponse {
   success: boolean;
   message: string;

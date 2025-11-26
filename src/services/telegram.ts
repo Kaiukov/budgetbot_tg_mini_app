@@ -130,10 +130,14 @@ class TelegramService {
 
   /**
    * Show back button
+   * WARNING: This method should only be called from BudgetMiniApp centralized handler
+   * to avoid multiple handler registrations
    */
   public showBackButton(onClick: () => void): void {
     if (!this.webApp) return;
 
+    // Note: Telegram SDK onClick() replaces previous handler automatically
+    // but it's better to have only ONE source registering handlers (BudgetMiniApp)
     this.webApp.BackButton.onClick(onClick);
     this.webApp.BackButton.show();
   }

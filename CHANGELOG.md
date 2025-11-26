@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `useEffect` hook to keep `selectedCategoryId` in sync with `transactionData.category`
   - Category selection now checks both `category_id` and `category_id1` fields with fallback logic
   - Ensures proper destination filtering when categories have multiple ID representations
+- Expense/Income flows restructured with distinct state per flow, cached accounts/categories, and Telegram back-button routes aligned to the new screens.
+- Confirmation screens are placeholders only (no Firefly submit) to focus on flow wiring; state snapshotting preserves account/amount/category/comment when navigating back and forth.
+- Income comment suggestions now use `/get_source_name_usage?user_name=Kaiukov&category_id=<id>` and show only source names.
 
 ### Fixed
 - **Category Selection Flow**: Fixed issue where destination suggestions were filtered by wrong category ID

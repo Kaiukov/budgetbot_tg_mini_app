@@ -1,65 +1,44 @@
-import { ArrowLeft, ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
+import { ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
 import { useEffect } from 'react';
-import telegramService from '../services/telegram';
 import type { CategoryUsage } from '../services/sync';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
-import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
+import { filterCategoriesByType } from '../utils/categoryFilter';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
-interface CategoryScreenProps {
+interface IncomeCategoryScreenProps {
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
-  transactionType?: TransactionType;
-  isAvailable?: boolean;
-  onBack: () => void;
   onSelectCategory: (categoryName: string) => void;
   onRetry: () => void;
 }
 
-const CategoryScreen: React.FC<CategoryScreenProps> = ({
+const IncomeCategoryScreen: React.FC<IncomeCategoryScreenProps> = ({
   categories,
   categoriesLoading,
   categoriesError,
-  transactionType = 'expense',
-  isAvailable,
-  onBack,
   onSelectCategory,
   onRetry
 }) => {
-  // Log component mount with transactionType
+  const transactionType = 'income';
+
+  // Log component mount
   useEffect(() => {
-    console.log('📋 CategoryScreen MOUNTED with transactionType:', transactionType, 'categories count:', categories.length);
+    console.log('📋 IncomeCategoryScreen MOUNTED');
     return () => {
-      console.log('📋 CategoryScreen UNMOUNTED');
+      console.log('📋 IncomeCategoryScreen UNMOUNTED');
     };
   }, []);
 
-  // Log transactionType changes
-  useEffect(() => {
-    console.log('🔄 CategoryScreen transactionType changed to:', transactionType);
-  }, [transactionType]);
-
-  // Show Telegram back button
-  useEffect(() => {
-    telegramService.showBackButton(onBack);
-    return () => telegramService.hideBackButton();
-  }, [onBack]);
-
-  // Filter categories based on transaction type (income only filters, expense shows all)
+  // Filter categories for income
   const displayCategories = filterCategoriesByType(categories, transactionType);
 
-  console.log('📊 CategoryScreen render - transactionType:', transactionType, 'displayCategories:', displayCategories.length);
+  console.log('📊 IncomeCategoryScreen render - displayCategories:', displayCategories.length);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
       <div className={`${layouts.header} ${gradients.header}`}>
-        {!isAvailable && (
-          <button onClick={onBack} className="mr-3">
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-        )}
-        <h1 className="text-2xl font-bold">Select Category</h1>
+        <h1 className="text-2xl font-bold">Select Income Category</h1>
       </div>
 
       <div className={layouts.content}>
@@ -133,11 +112,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
         {!categoriesLoading && !categoriesError && displayCategories.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8">
             <Folder size={48} className="text-gray-600 mb-3" />
-            <p className="text-gray-400 text-sm">
-              {transactionType === 'income'
-                ? 'No income categories found'
-                : 'No categories found'}
-            </p>
+            <p className="text-gray-400 text-sm">No income categories found</p>
           </div>
         )}
       </div>
@@ -145,4 +120,4 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   );
 };
 
-export default CategoryScreen;
+export default IncomeCategoryScreen;

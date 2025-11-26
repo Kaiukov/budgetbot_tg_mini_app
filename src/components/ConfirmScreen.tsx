@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService, addTransaction } from '../services/sync';
-import { extractBudgetName } from '../services/sync/transaction-utils';
 import telegramService from '../services/telegram';
-import type { ExpenseTransactionData } from '../services/sync/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
-import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface ConfirmScreenProps {
@@ -15,7 +11,6 @@ interface ConfirmScreenProps {
   category: string;
   comment: string;
   transactionData: TransactionData;
-  userName: string;
   isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
@@ -29,7 +24,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   category,
   comment,
   transactionData,
-  userName,
   isAvailable,
   onBack,
   onCancel,
@@ -51,97 +45,15 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     setIsSubmitting(true);
     setSubmitMessage(null);
 
-    try {
-      console.log('💳 Starting transaction submission:', {
-        account,
-        amount,
-        category,
-        transactionData
-      });
+    setSubmitMessage({
+      type: 'success',
+      text: 'Placeholder only. Ready to send to Firefly once wired.'
+    });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
-
-      // Build transaction payload
-      const budgetName = extractBudgetName(category);
-      const transactionPayload: ExpenseTransactionData = {
-        account: transactionData.account,
-        account_id: parseInt(transactionData.account_id || '0'),
-        account_currency: transactionData.account_currency || 'EUR',
-        currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: category,
-        comment: comment || '',
-        date: new Date().toISOString(),
-        user_id: transactionData.user_id || 0,
-        username: userName || transactionData.username || 'unknown',
-        // Only include budget_name if it's not empty (excludes Cyrillic/non-ASCII names)
-        ...(budgetName && { budget_name: budgetName })
-      };
-
-      console.log('📝 Transaction payload built:', transactionPayload);
-
-      // Submit to Firefly
-      const [success, response] = await addTransaction(transactionPayload, 'expense', true);
-
-      if (success) {
-        console.log('✅ Transaction submitted successfully:', response);
-
-        // Proactively refresh transaction cache
-        await refreshHomeTransactionCache();
-
-        // Show Telegram alert for success
-        telegramService.showAlert('✅ Expense saved successfully!', () => {
-          onSuccess();
-          onConfirm();
-        });
-      } else {
-        console.error('❌ Transaction submission failed:', response);
-        const errorMessage = typeof response === 'object' && response !== null && 'error' in response
-          ? (response as { error: string }).error
-          : 'Failed to save transaction';
-
-        // Show Telegram alert for error
-        telegramService.showAlert(`❌ Error: ${errorMessage}`);
-
-        setSubmitMessage({
-          type: 'error',
-          text: `Error: ${errorMessage}`
-        });
-      }
-    } catch (error) {
-      console.error('💥 Transaction submission error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-      // Show Telegram alert for error
-      telegramService.showAlert(`❌ Error: ${errorMessage}`);
-
-      setSubmitMessage({
-        type: 'error',
-        text: `Error: ${errorMessage}`
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    telegramService.showAlert('✅ Flow complete (placeholder only)');
+    onSuccess();
+    onConfirm();
+    setIsSubmitting(false);
   };
 
   return (
