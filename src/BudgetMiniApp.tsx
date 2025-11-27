@@ -232,11 +232,12 @@ const BudgetMiniApp = () => {
   }, [currentScreen, fetchCategories]);
 
   // Restore last typed amount when coming back from category -> amount
+  // Only restore if amount is currently empty (means we're coming from category, not account change)
   useEffect(() => {
-    if (currentScreen === 'income-amount' && incomeAmountRef.current) {
+    if (currentScreen === 'income-amount' && !incomeFlow.transactionData.amount && incomeAmountRef.current) {
       incomeFlow.updateAmount(incomeAmountRef.current);
     }
-    if (currentScreen === 'expense-amount' && expenseAmountRef) {
+    if (currentScreen === 'expense-amount' && !expenseTransaction.amount && expenseAmountRef) {
       expenseFlow.updateAmount(expenseAmountRef);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -618,7 +619,10 @@ const BudgetMiniApp = () => {
           transactionData={expenseTransaction}
           isAvailable={isAvailable}
           onBack={() => {
-            // Back to accounts (preserve data)
+            // Back to accounts:
+            // - If user selects different account, amount state is erased
+            // - If user selects same account, amount is preserved
+            // We don't clear here; clearing happens in account selection handler if account changes
             setCurrentScreen('expense-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
