@@ -24,6 +24,7 @@ export interface ExpenseFlowHandlers {
     account_currency: string,
     username: string
   ) => void;
+  selectAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => void;
   updateCategory: (category: string) => void;
   updateComment: (comment: string) => void;
   setUserData: (user_id: number, username: string) => void;
@@ -52,6 +53,7 @@ export const useExpenseFlow = (): ExpenseFlowAPI => {
   const setExpenseCategoryId = useBudgetStore((state) => state.setExpenseCategoryId);
   const setExpenseReview = useBudgetStore((state) => state.setExpenseReview);
   const setExpenseAmountRef = useBudgetStore((state) => state.setExpenseAmountRef);
+  const selectExpenseAccountAction = useBudgetStore((state) => state.selectExpenseAccount);
   const fetchExpenseCategories = useBudgetStore((state) => state.fetchExpenseCategories);
   const resetExpenseFlowState = useBudgetStore((state) => state.resetExpenseFlow);
   const buildExpenseReview = useBudgetStore((state) => state.buildExpenseReview);
@@ -81,6 +83,12 @@ export const useExpenseFlow = (): ExpenseFlowAPI => {
     (account: string, account_id: string, account_currency: string, username: string) =>
       setTransaction({ account, account_id, account_currency, username }),
     [setTransaction]
+  );
+
+  const selectAccount = useCallback(
+    (accountName: string, accountId: string, accountCurrency: string, userName: string) =>
+      selectExpenseAccountAction(accountName, accountId, accountCurrency, userName),
+    [selectExpenseAccountAction]
   );
 
   const updateCategory = useCallback(
@@ -143,6 +151,7 @@ export const useExpenseFlow = (): ExpenseFlowAPI => {
     updateAmountForeign,
     updateAccount,
     updateAccountWithDetails,
+    selectAccount,
     updateCategory,
     updateComment,
     setUserData,

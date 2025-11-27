@@ -449,35 +449,46 @@ const BudgetMiniApp = () => {
   };
 
   const handleSelectAccount = (flow: FlowType, accountName: string) => {
-    const flowApi = getFlowApi(flow);
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
-    const previousAccountId = flowApi.transactionData.account_id;
 
-    if (selectedAccount) {
-      flowApi.updateAccountWithDetails(
+    if (!selectedAccount) {
+      const flowApi = getFlowApi(flow);
+      flowApi.updateAccount(accountName);
+      setCurrentScreen(flow === 'income' ? 'income-amount' : 'expense-amount');
+      return;
+    }
+
+    // Use flow-specific smart account selection handler
+    if (flow === 'expense') {
+      expenseFlow.selectAccount(
         selectedAccount.account_name,
         selectedAccount.account_id,
         selectedAccount.account_currency,
         userName
       );
       if (user?.id) {
-        flowApi.setUserData(user.id, userName);
+        expenseFlow.setUserData(user.id, userName);
       }
     } else {
-      flowApi.updateAccount(accountName);
-    }
-
-    if (selectedAccount?.account_id !== previousAccountId) {
-      flowApi.updateAmount('');
-      flowApi.updateCategory('');
-      flowApi.updateComment('');
-      flowApi.updateAmountForeign('');
-      if (flow === 'income') {
+      // Income flow: manual handling for now
+      incomeFlow.updateAccountWithDetails(
+        selectedAccount.account_name,
+        selectedAccount.account_id,
+        selectedAccount.account_currency,
+        userName
+      );
+      if (user?.id) {
+        incomeFlow.setUserData(user.id, userName);
+      }
+      // Clear data if account changed
+      const previousAccountId = incomeFlow.transactionData.account_id;
+      if (selectedAccount.account_id !== previousAccountId) {
+        incomeFlow.updateAmount('');
+        incomeFlow.updateCategory('');
+        incomeFlow.updateComment('');
+        incomeFlow.updateAmountForeign('');
         setIncomeCategoryId(null);
         incomeAmountRef.current = '';
-      } else {
-        expenseFlow.setCategoryId(null);
-        expenseFlow.setAmountRef('');
       }
     }
 

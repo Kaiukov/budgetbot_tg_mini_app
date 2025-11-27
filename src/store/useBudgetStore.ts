@@ -64,6 +64,7 @@ interface ExpenseFlowSlice {
   setExpenseCategoryId: (id: number | null) => void;
   setExpenseReview: (review: TransactionData | null) => void;
   setExpenseAmountRef: (amount: string) => void;
+  selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => void;
   resetExpenseFlow: () => void;
   buildExpenseReview: () => TransactionData;
 }
@@ -197,6 +198,36 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   setExpenseCategoryId: (id) => set({ expenseCategoryId: id }),
   setExpenseReview: (review) => set({ expenseReview: review }),
   setExpenseAmountRef: (amount) => set({ expenseAmountRef: amount }),
+  selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => {
+    const { transaction } = get();
+    const previousAccountId = transaction.account_id;
+
+    // Update account details
+    set((state) => ({
+      transaction: {
+        ...state.transaction,
+        account: accountName,
+        account_id: accountId,
+        account_currency: accountCurrency,
+        username: userName,
+      },
+    }));
+
+    // If account changed, clear amount/category/comment (user is selecting a new account)
+    if (accountId !== previousAccountId) {
+      set((state) => ({
+        transaction: {
+          ...state.transaction,
+          amount: '',
+          amount_foreign: '',
+          category: '',
+          comment: '',
+        },
+        expenseCategoryId: null,
+        expenseAmountRef: '',
+      }));
+    }
+  },
   resetExpenseFlow: () => set({
     transaction: initialTransaction,
     expenseCategoryId: null,
