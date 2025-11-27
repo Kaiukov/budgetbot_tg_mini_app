@@ -201,32 +201,31 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => {
     const { transaction } = get();
     const previousAccountId = transaction.account_id;
+    const accountChanged = accountId !== previousAccountId;
 
-    // Update account details
-    set((state) => ({
-      transaction: {
+    // Single atomic update: update account + conditionally clear amount/category
+    set((state) => {
+      const updatedTransaction = {
         ...state.transaction,
         account: accountName,
         account_id: accountId,
         account_currency: accountCurrency,
         username: userName,
-      },
-    }));
+      };
 
-    // If account changed, clear amount/category/comment (user is selecting a new account)
-    if (accountId !== previousAccountId) {
-      set((state) => ({
-        transaction: {
-          ...state.transaction,
-          amount: '',
-          amount_foreign: '',
-          category: '',
-          comment: '',
-        },
-        expenseCategoryId: null,
-        expenseAmountRef: '',
-      }));
-    }
+      // If account changed, also clear amount/category/comment and refs
+      if (accountChanged) {
+        updatedTransaction.amount = '';
+        updatedTransaction.amount_foreign = '';
+        updatedTransaction.category = '';
+        updatedTransaction.comment = '';
+      }
+
+      return {
+        transaction: updatedTransaction,
+        ...(accountChanged && { expenseCategoryId: null, expenseAmountRef: '' }),
+      };
+    });
   },
   resetExpenseFlow: () => set({
     transaction: initialTransaction,
