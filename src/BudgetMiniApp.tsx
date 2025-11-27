@@ -117,6 +117,7 @@ const BudgetMiniApp = () => {
   }, [incomeFlow, expenseFlow]);
 
   const handleFlowExitToHome = useCallback((flow: FlowType, clearCaches?: boolean) => {
+    // Reset all flow state when exiting to home (user canceling the flow)
     resetFlowState(flow);
     if (flow === 'income') {
       setIncomeReview(null);
@@ -128,6 +129,7 @@ const BudgetMiniApp = () => {
     }
     setCurrentScreen('home');
   }, [resetFlowState, setCurrentScreen, expenseFlow, setIncomeReview]);
+
 
   const fetchAccounts = useCallback(async () => {
     await fetchAccountsFromStore(userName);
@@ -269,6 +271,8 @@ const BudgetMiniApp = () => {
         case 'expense-accounts':
           return () => handleFlowExitToHome('expense');
         case 'expense-amount':
+          // Back from amount: go back to accounts, OR exit to home if canceling
+          // For now: navigate back to accounts. Long-press or double-tap would exit.
           return () => setCurrentScreen('expense-accounts');
         case 'expense-category':
           return () => {
@@ -614,12 +618,7 @@ const BudgetMiniApp = () => {
           transactionData={expenseTransaction}
           isAvailable={isAvailable}
           onBack={() => {
-            expenseFlow.setReview(null);
-            expenseFlow.setCategoryId(null);
-            expenseFlow.updateAmount('');
-            expenseFlow.updateCategory('');
-            expenseFlow.updateComment('');
-            expenseFlow.setAmountRef('');
+            // Back to accounts (preserve data)
             setCurrentScreen('expense-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
