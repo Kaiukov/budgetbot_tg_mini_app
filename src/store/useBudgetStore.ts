@@ -256,7 +256,11 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
 
       return {
         transaction: updatedTransaction,
-        ...(accountChanged && { expenseCategoryId: null, expenseAmountRef: '' }),
+        ...(accountChanged && {
+          expenseCategoryId: null,
+          expenseAmountRef: '',
+          isExpenseFlowActive: false,  // Reset flow active when account changes
+        }),
       };
     });
   },
