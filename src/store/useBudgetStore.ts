@@ -194,21 +194,30 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   expenseCategoryId: null,
   expenseReview: null,
   expenseAmountRef: '',
-  setTransaction: (patch) => set((state) => ({ transaction: { ...state.transaction, ...patch } })),
+  setTransaction: (patch) => {
+    console.log('📝 setTransaction called with patch:', patch);
+    set((state) => {
+      const newTransaction = { ...state.transaction, ...patch };
+      if (patch.amount !== undefined) {
+        console.log('  → amount changed:', { from: state.transaction.amount, to: patch.amount });
+      }
+      return { transaction: newTransaction };
+    });
+  },
   setExpenseCategoryId: (id) => set({ expenseCategoryId: id }),
   setExpenseReview: (review) => set({ expenseReview: review }),
   setExpenseAmountRef: (amount) => set({ expenseAmountRef: amount }),
   selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => {
     const { transaction } = get();
-    const previousAccountId = String(transaction.account_id);
-    const newAccountId = String(accountId);
+    const previousAccountId = String(transaction.account_id || '');
+    const newAccountId = String(accountId || '');
     const accountChanged = newAccountId !== previousAccountId;
 
     console.log('🔄 selectExpenseAccount:', {
-      accountName,
-      newAccountId,
-      previousAccountId,
+      newAccountId: `"${newAccountId}"`,
+      previousAccountId: `"${previousAccountId}"`,
       accountChanged,
+      'accountChanged?': accountChanged ? 'YES WILL CLEAR' : 'NO WILL PRESERVE',
       currentAmount: transaction.amount,
     });
 
@@ -228,6 +237,9 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
         updatedTransaction.amount_foreign = '';
         updatedTransaction.category = '';
         updatedTransaction.comment = '';
+        console.log('  ✓ CLEARED amount (account changed)');
+      } else {
+        console.log('  ✓ KEPT amount (account same)');
       }
 
       return {

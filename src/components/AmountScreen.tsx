@@ -4,6 +4,7 @@ import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { gradients, cardStyles, layouts } from '../theme/dark';
+import ComposeDataDebugPanel from './ComposeDataDebugPanel';
 
 interface AmountScreenProps {
   account: string;
@@ -62,7 +63,9 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
 
         const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
         setConversionAmount(converted);
-        onAmountForeignChange?.(converted.toFixed(2));
+        if (converted) {
+          onAmountForeignChange?.(converted.toFixed(2));
+        }
       } catch (error) {
         console.error('Failed to fetch conversion:', error);
         setConversionAmount(null);
@@ -164,6 +167,9 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
         >
           Next
         </button>
+
+        {/* Debug Panel */}
+        <ComposeDataDebugPanel transactionData={transactionData} title="Amount Entry State" />
       </div>
     </div>
   );

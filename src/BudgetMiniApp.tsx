@@ -608,6 +608,7 @@ const BudgetMiniApp = () => {
           onBack={() => handleFlowExitToHome('expense')}
           onSelectAccount={(accountName) => handleSelectAccount('expense', accountName)}
           onRetry={fetchAccounts}
+          transactionData={expenseTransaction}
         />
       )}
 
@@ -620,6 +621,7 @@ const BudgetMiniApp = () => {
           onBack={() => handleFlowExitToHome('income')}
           onSelectAccount={(accountName) => handleSelectAccount('income', accountName)}
           onRetry={fetchAccounts}
+          transactionData={incomeFlow.transactionData}
         />
       )}
 
