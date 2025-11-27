@@ -200,8 +200,17 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   setExpenseAmountRef: (amount) => set({ expenseAmountRef: amount }),
   selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => {
     const { transaction } = get();
-    const previousAccountId = transaction.account_id;
-    const accountChanged = accountId !== previousAccountId;
+    const previousAccountId = String(transaction.account_id);
+    const newAccountId = String(accountId);
+    const accountChanged = newAccountId !== previousAccountId;
+
+    console.log('🔄 selectExpenseAccount:', {
+      accountName,
+      newAccountId,
+      previousAccountId,
+      accountChanged,
+      currentAmount: transaction.amount,
+    });
 
     // Single atomic update: update account + conditionally clear amount/category
     set((state) => {
