@@ -1,14 +1,15 @@
 import { Loader } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { syncService, type DestinationSuggestion } from '../services/sync';
+import { useEffect } from 'react';
+import { type DestinationSuggestion } from '../services/sync';
 import { useTelegramUser } from '../hooks/useTelegramUser';
+import { useBudgetStore } from '../store/useBudgetStore';
 import { gradients, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
   category: string;
   categoryId?: number | string | null;
-  onCommentChange: (comment: string) => void;
+  onCommentChange: (comment: string, destinationId?: string) => void;
   onNext: () => void;
 }
 
@@ -20,106 +21,25 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
   onNext
 }) => {
   const { userName } = useTelegramUser();
-  const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [useDynamicSuggestions, setUseDynamicSuggestions] = useState(false);
+  const destinations = useBudgetStore(state => state.destinations);
+  const destinationsLoading = useBudgetStore(state => state.destinationsLoading);
+  const destinationsError = useBudgetStore(state => state.destinationsError);
+  const fetchDestinations = useBudgetStore(state => state.fetchDestinations);
+  const clearDestinations = useBudgetStore(state => state.clearDestinations);
 
   // Fetch destination suggestions when category changes
   useEffect(() => {
     if (!category || !userName || userName === 'User' || userName === 'Guest') {
-      // If no category or unknown user, don't fetch dynamic suggestions
-      setSuggestions([]);
-      setUseDynamicSuggestions(false);
+      clearDestinations();
       return;
     }
 
-    const fetchDestinationSuggestions = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        console.log('🏪 Fetching destinations for user/category:', {
-          requestedUser: userName,
-          requestedCategory: category,
-          requestedCategoryId: categoryId
-        });
-
-        // Fetch destinations filtered by user/category when possible
-        const data = await syncService.getDestinationNameUsage(userName, categoryId ?? undefined);
-
-        if (data.total === 0) {
-          console.log('⚠️ No destinations available in API');
-          setSuggestions([]);
-          setUseDynamicSuggestions(false);
-          return;
-        }
-
-        // Client-side filtering: filter by category and separate by user
-        const allDestinations = data.get_destination_name_usage;
-        const matchesCategory = (d: DestinationSuggestion) => {
-          if (categoryId !== null && categoryId !== undefined) {
-            return String(d.category_id ?? '') === String(categoryId);
-          }
-          return d.category_name === category;
-        };
-
-        // Group 1: User's destinations in this category
-        const userDestinations = allDestinations.filter(
-          d => d.user_name === userName && matchesCategory(d)
-        );
-
-        // Group 2: Other users' destinations in this category (for discovery)
-        const communityDestinations = allDestinations.filter(
-          d => matchesCategory(d) && d.user_name !== userName
-        );
-
-        // Sort both groups by usage_count DESC
-        userDestinations.sort((a, b) => b.usage_count - a.usage_count);
-        communityDestinations.sort((a, b) => b.usage_count - a.usage_count);
-
-        // Combine: user's first, then community
-        const combinedSuggestions = [...userDestinations, ...communityDestinations];
-
-        console.log('✅ Client-side filtered destinations:', {
-          requestedUser: userName,
-          requestedCategory: category,
-          totalFetched: allDestinations.length,
-          userDestinations: userDestinations.length,
-          communityDestinations: communityDestinations.length,
-          combined: combinedSuggestions.length,
-          sample: combinedSuggestions.slice(0, 3).map(d => ({
-            name: d.destination_name,
-            user: d.user_name,
-            usage: d.usage_count
-          }))
-        });
-
-        if (combinedSuggestions.length > 0) {
-          setSuggestions(combinedSuggestions);
-          setUseDynamicSuggestions(true);
-        } else {
-          console.log('⚠️ No destinations found for this category, using empty list');
-          setSuggestions([]);
-          setUseDynamicSuggestions(false);
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load suggestions';
-        console.error('❌ Error fetching destination suggestions:', errorMessage);
-        setError(errorMessage);
-        setSuggestions([]);
-        setUseDynamicSuggestions(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDestinationSuggestions();
-  }, [category, categoryId, userName]);
+    fetchDestinations(userName, categoryId ?? category);
+  }, [category, categoryId, clearDestinations, fetchDestinations, userName]);
 
   // Get display suggestions - use dynamic if available, otherwise empty list
-  const displaySuggestions = useDynamicSuggestions && suggestions.length > 0
-    ? suggestions.map(s => s.destination_name)
+  const displaySuggestions = destinations.length > 0
+    ? destinations.map((s: DestinationSuggestion) => s.destination_name)
     : [];
 
   return (
@@ -131,7 +51,7 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
       <div className={layouts.content}>
         <textarea
           value={comment}
-          onChange={(e) => onCommentChange(e.target.value)}
+          onChange={(e) => onCommentChange(e.target.value, undefined)}
           placeholder="Add comment (optional)"
           className="w-full h-28 p-3 text-sm bg-gray-800 text-white rounded-lg border-none focus:ring-1 focus:ring-gray-700 outline-none resize-none placeholder-gray-500"
         />
@@ -141,14 +61,17 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
             <>
               <div className="flex items-center gap-2 mb-2">
                 <p className="text-xs text-gray-400">Quick destinations:</p>
-                {loading && <Loader size={12} className="animate-spin text-gray-400" />}
+                {destinationsLoading && <Loader size={12} className="animate-spin text-gray-400" />}
               </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {displaySuggestions.slice(0, 50).map((suggestion, idx) => (
                   <button
                     key={idx}
-                    onClick={() => onCommentChange(suggestion)}
+                    onClick={() => {
+                      const selected = destinations.find(d => d.destination_name === suggestion);
+                      onCommentChange(suggestion, selected?.destination_id);
+                    }}
                     className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-full text-xs hover:bg-gray-700 transition active:scale-95"
                     title={suggestion}
                   >
@@ -157,16 +80,16 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
                 ))}
               </div>
 
-              {suggestions.length > 0 && (
+              {destinations.length > 0 && (
                 <p className="text-xs text-gray-500 mt-2">
-                  {suggestions.filter(s => s.user_name === userName).length} of your favorites
-                  {suggestions.filter(s => s.user_name !== userName).length > 0 && ` + ${suggestions.filter(s => s.user_name !== userName).length} community suggestions`}
+                  {destinations.filter(s => s.user_name === userName).length} of your favorites
+                  {destinations.filter(s => s.user_name !== userName).length > 0 && ` + ${destinations.filter(s => s.user_name !== userName).length} community suggestions`}
                 </p>
               )}
             </>
           )}
 
-          {error && (
+          {destinationsError && (
             <p className="text-xs text-red-400">Failed to load suggestions</p>
           )}
         </div>

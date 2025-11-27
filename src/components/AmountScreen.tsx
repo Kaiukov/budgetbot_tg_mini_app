@@ -12,6 +12,7 @@ interface AmountScreenProps {
   isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
+  onAmountForeignChange?: (value: string) => void;
   onNext: () => void;
 }
 
@@ -22,6 +23,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   isAvailable,
   onBack,
   onAmountChange,
+  onAmountForeignChange,
   onNext
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(null);
@@ -45,19 +47,26 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       // 3. Currency is NOT EUR (no conversion needed for same currency)
       if (!amount || !currencyCode || currencyCode === 'EUR') {
         setConversionAmount(null);
+        onAmountForeignChange?.('');
         return;
       }
 
       setIsLoadingConversion(true);
       try {
         const numAmount = parseFloat(amount);
-        if (numAmount > 0) {
-          const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
-          setConversionAmount(converted);
+        if (!(numAmount > 0)) {
+          setConversionAmount(null);
+          onAmountForeignChange?.('');
+          return;
         }
+
+        const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
+        setConversionAmount(converted);
+        onAmountForeignChange?.(converted.toFixed(2));
       } catch (error) {
         console.error('Failed to fetch conversion:', error);
         setConversionAmount(null);
+        onAmountForeignChange?.('');
       } finally {
         setIsLoadingConversion(false);
       }
@@ -66,7 +75,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     // Debounce the conversion fetch
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [amount, currencyCode]);
+  }, [amount, currencyCode, onAmountForeignChange]);
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 

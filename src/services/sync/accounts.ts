@@ -53,17 +53,8 @@ export class SyncServiceAccounts extends SyncServiceBalance {
         throw new Error('Sync API not configured');
       }
 
-      // Generate cache key
-      const cacheKey = userName || 'all';
-
-      // Check cache first
-      const cachedData = this.getAccountCache().get(cacheKey);
-      if (cachedData) {
-        console.log('💾 Using cached accounts for:', cacheKey);
-        return cachedData;
-      }
-
-      console.log('🔄 Fetching fresh accounts for:', cacheKey);
+      // NOTE: Caching now handled at utility layer (utils/cache.ts)
+      console.log('🔄 Fetching accounts for:', userName || 'all');
 
       const endpoints = this.getAccountUsageEndpoints(userName);
       let data: AccountsUsageResponse | null = null;
@@ -150,9 +141,7 @@ export class SyncServiceAccounts extends SyncServiceBalance {
         total: sortedAccounts.length,
       };
 
-      // Cache the result for 60 seconds
-      this.getAccountCache().set(cacheKey, result);
-
+      // NOTE: Caching now handled at utility layer (utils/cache.ts)
       return result;
     } catch (error) {
       console.error('Failed to get accounts usage:', error);

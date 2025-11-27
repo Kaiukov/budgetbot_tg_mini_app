@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionData as FlowTransactionData } from './hooks/useTransactionData';
+import { useExpenseFlow } from './hooks/useExpenseFlow';
+import { useBudgetStore, type Screen } from './store/useBudgetStore';
 
-import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
+import { syncService, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
-import { refreshHomeTransactionCache, accountsCache, categoriesCache, clearAllDataCaches } from './utils/cache';
+import { refreshHomeTransactionCache, categoriesCache, clearAllDataCaches } from './utils/cache';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -28,47 +30,27 @@ import type { DisplayTransaction, TransactionData as FireflyTransactionData } fr
 
 type FlowType = 'expense' | 'income';
 
-type Screen =
-  | 'home'
-  | 'expense-accounts'
-  | 'expense-amount'
-  | 'expense-category'
-  | 'expense-comment'
-  | 'expense-confirm'
-  | 'income-accounts'
-  | 'income-amount'
-  | 'income-category'
-  | 'income-comment'
-  | 'income-confirm'
-  | 'transfer-source-accounts'
-  | 'transfer-dest-accounts'
-  | 'transfer-amount'
-  | 'transfer-fees'
-  | 'transfer-comment'
-  | 'transfer-confirm'
-  | 'debug'
-  | 'transactions'
-  | 'transaction-detail'
-  | 'transaction-edit';
-
 const BudgetMiniApp = () => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const currentScreen = useBudgetStore(state => state.currentScreen);
+  const setCurrentScreen = useBudgetStore(state => state.setCurrentScreen);
 
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>(getInitialServiceStatuses());
   const [telegramStatus, setTelegramStatus] = useState<ServiceStatus | null>(null);
 
-  // Accounts state
-  const [accounts, setAccounts] = useState<AccountUsage[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [accountsError, setAccountsError] = useState<string | null>(null);
+  // Navigation
+  const commentResetKey = useBudgetStore(state => state.commentResetKey);
+  const bumpCommentResetKey = useBudgetStore(state => state.bumpCommentResetKey);
 
-  // Expense categories
-  const [expenseCategories, setExpenseCategories] = useState<CategoryUsage[]>([]);
-  const [expenseCategoriesLoading, setExpenseCategoriesLoading] = useState(false);
-  const [expenseCategoriesError, setExpenseCategoriesError] = useState<string | null>(null);
-  const [expenseCategoryId, setExpenseCategoryId] = useState<number | null>(null);
-  const [expenseReview, setExpenseReview] = useState<FlowTransactionData | null>(null);
+  // Accounts
+  const accounts = useBudgetStore(state => state.accounts);
+  const accountsLoading = useBudgetStore(state => state.accountsLoading);
+  const accountsError = useBudgetStore(state => state.accountsError);
+  const fetchAccountsFromStore = useBudgetStore(state => state.fetchAccounts);
+
+  // Expense flow (consolidated from Zustand)
+  const expenseFlow = useExpenseFlow();
+  const { transaction: expenseTransaction, amountRef: expenseAmountRef } = expenseFlow;
 
   // Income categories
   const [incomeCategories, setIncomeCategories] = useState<CategoryUsage[]>([]);
@@ -77,10 +59,11 @@ const BudgetMiniApp = () => {
   const [incomeCategoryId, setIncomeCategoryId] = useState<number | null>(null);
   const [incomeReview, setIncomeReview] = useState<FlowTransactionData | null>(null);
 
-  // Comment reset key (forces comment screen remount when backing out)
-  const [commentResetKey, setCommentResetKey] = useState(0);
-  const expenseAmountRef = useRef<string>('');
   const incomeAmountRef = useRef<string>('');
+
+  // Ref to capture latest expense amount for back button handlers
+  const expenseAmountRefLatest = useRef<string>('');
+  expenseAmountRefLatest.current = expenseAmountRef;
 
   // Transfer-specific state
   const [transferSourceAccount, setTransferSourceAccount] = useState('');
@@ -104,85 +87,69 @@ const BudgetMiniApp = () => {
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
 
   // Separate transaction data for each flow
-  const expenseFlow = useTransactionData('expense');
   const incomeFlow = useTransactionData('income');
 
-  const getFlowApi = (flow: FlowType) => (flow === 'income' ? incomeFlow : expenseFlow);
+  // Create expense flow API adapter for compatibility with getFlowApi
+  const expenseFlowApi = useCallback(() => ({
+    transactionData: expenseFlow.transaction,
+    updateAccount: expenseFlow.updateAccount,
+    updateAccountWithDetails: expenseFlow.updateAccountWithDetails,
+    updateAmount: expenseFlow.updateAmount,
+    updateAmountForeign: expenseFlow.updateAmountForeign,
+    updateCategory: expenseFlow.updateCategory,
+    updateComment: expenseFlow.updateComment,
+    setUserData: expenseFlow.setUserData,
+    resetTransactionData: expenseFlow.resetFlow,
+  }), [expenseFlow])();
+
+  const getFlowApi = (flow: FlowType) => (flow === 'income' ? incomeFlow : expenseFlowApi);
 
   const resetFlowState = useCallback((flow: FlowType) => {
-    const api = getFlowApi(flow);
-    api.resetTransactionData();
     if (flow === 'income') {
+      incomeFlow.resetTransactionData();
       setIncomeCategoryId(null);
       setIncomeReview(null);
       incomeAmountRef.current = '';
-    } else {
-      setExpenseCategoryId(null);
-      setExpenseReview(null);
-      expenseAmountRef.current = '';
+      return;
     }
-  }, [expenseFlow, incomeFlow]);
+
+    expenseFlow.resetFlow();
+  }, [incomeFlow, expenseFlow]);
 
   const handleFlowExitToHome = useCallback((flow: FlowType, clearCaches?: boolean) => {
     resetFlowState(flow);
     if (flow === 'income') {
       setIncomeReview(null);
     } else {
-      setExpenseReview(null);
+      expenseFlow.setReview(null);
     }
     if (clearCaches) {
       clearAllDataCaches();
     }
     setCurrentScreen('home');
-  }, [resetFlowState]);
+  }, [resetFlowState, setCurrentScreen, expenseFlow, setIncomeReview]);
 
   const fetchAccounts = useCallback(async () => {
-    const cacheKey = userName || 'all';
+    await fetchAccountsFromStore(userName);
+  }, [fetchAccountsFromStore, userName]);
 
-    const cached = accountsCache.get(cacheKey);
-    if (cached) {
-      setAccounts(cached);
+  const fetchCategories = useCallback(async (flow: FlowType) => {
+    if (flow === 'expense') {
+      await expenseFlow.fetchCategories(userName);
       return;
     }
 
-    setAccountsLoading(true);
-    setAccountsError(null);
-
-    try {
-      const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getAccountsUsage(isUnknownUser ? undefined : userName);
-
-      const uniqueAccounts = data.get_accounts_usage.filter(
-        (account, index, self) =>
-          index === self.findIndex((a) => a.account_id === account.account_id)
-      );
-
-      accountsCache.set(cacheKey, uniqueAccounts);
-      setAccounts(uniqueAccounts);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch accounts';
-      setAccountsError(errorMessage);
-    } finally {
-      setAccountsLoading(false);
-    }
-  }, [userName]);
-
-  const fetchCategories = useCallback(async (flow: FlowType) => {
-    const categoryType = flow === 'income' ? 'deposit' : 'withdrawal';
+    const categoryType = 'deposit';
     const cacheKey = `${userName || 'all'}_${categoryType}`;
-
-    const setData = flow === 'income' ? setIncomeCategories : setExpenseCategories;
-    const setLoading = flow === 'income' ? setIncomeCategoriesLoading : setExpenseCategoriesLoading;
-    const setError = flow === 'income' ? setIncomeCategoriesError : setExpenseCategoriesError;
 
     const cached = categoriesCache.get(cacheKey);
     if (cached) {
-      setData(cached);
+      setIncomeCategories(cached);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setIncomeCategoriesLoading(true);
+    setIncomeCategoriesError(null);
 
     try {
       const isUnknownUser = userName === 'User' || userName === 'Guest';
@@ -192,14 +159,14 @@ const BudgetMiniApp = () => {
       );
 
       categoriesCache.set(cacheKey, data.get_categories_usage);
-      setData(data.get_categories_usage);
+      setIncomeCategories(data.get_categories_usage);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories';
-      setError(errorMessage);
+      setIncomeCategoriesError(errorMessage);
     } finally {
-      setLoading(false);
+      setIncomeCategoriesLoading(false);
     }
-  }, [userName]);
+  }, [expenseFlow, userName]);
 
   const preloadFlowData = useCallback((flow: FlowType) => {
     fetchAccounts();
@@ -207,7 +174,7 @@ const BudgetMiniApp = () => {
   }, [fetchAccounts, fetchCategories]);
 
   const getTransactionDataForFlow = (flow: FlowType): FlowTransactionData => {
-    const data = getFlowApi(flow).transactionData;
+    const data = flow === 'income' ? incomeFlow.transactionData : expenseTransaction;
     return {
       ...data,
       category: data.category,
@@ -224,10 +191,10 @@ const BudgetMiniApp = () => {
   };
 
   const restoreFlowFromReview = useCallback((flow: FlowType) => {
-    const review = flow === 'income' ? incomeReview : expenseReview;
+    const review = flow === 'income' ? incomeReview : expenseFlow.review;
     if (!review) return;
 
-    const api = getFlowApi(flow);
+    const api = flow === 'income' ? incomeFlow : expenseFlowApi;
     api.updateAccount(review.account);
     api.updateAmount(review.amount);
     api.updateCategory(review.category);
@@ -240,7 +207,7 @@ const BudgetMiniApp = () => {
         review.username || ''
       );
     }
-  }, [expenseReview, getFlowApi, incomeReview]);
+  }, [expenseFlowApi, expenseFlow, incomeFlow, incomeReview]);
 
   // Fetch lists when entering account selection screens
   useEffect(() => {
@@ -267,8 +234,8 @@ const BudgetMiniApp = () => {
     if (currentScreen === 'income-amount' && incomeAmountRef.current) {
       incomeFlow.updateAmount(incomeAmountRef.current);
     }
-    if (currentScreen === 'expense-amount' && expenseAmountRef.current) {
-      expenseFlow.updateAmount(expenseAmountRef.current);
+    if (currentScreen === 'expense-amount' && expenseAmountRef) {
+      expenseFlow.updateAmount(expenseAmountRef);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentScreen]);
@@ -304,10 +271,20 @@ const BudgetMiniApp = () => {
         case 'expense-amount':
           return () => setCurrentScreen('expense-accounts');
         case 'expense-category':
-          return () => setCurrentScreen('expense-amount');
+          return () => {
+            // Restore amount when navigating back from categories
+            if (expenseAmountRefLatest.current) {
+              expenseFlow.updateAmount(expenseAmountRefLatest.current);
+            }
+            setCurrentScreen('expense-amount');
+          };
         case 'expense-comment':
           return () => {
-            setCommentResetKey((key) => key + 1);
+            // Restore amount when navigating back from comment
+            if (expenseAmountRefLatest.current) {
+              expenseFlow.updateAmount(expenseAmountRefLatest.current);
+            }
+            bumpCommentResetKey();
             setCurrentScreen('expense-category');
           };
         case 'expense-confirm':
@@ -320,7 +297,7 @@ const BudgetMiniApp = () => {
           return () => setCurrentScreen('income-amount');
         case 'income-comment':
           return () => {
-            setCommentResetKey((key) => key + 1);
+            bumpCommentResetKey();
             setCurrentScreen('income-category');
           };
         case 'income-confirm':
@@ -385,7 +362,7 @@ const BudgetMiniApp = () => {
     }
 
     tg.BackButton.hide();
-  }, [currentScreen, handleFlowExitToHome]);
+  }, [bumpCommentResetKey, currentScreen, handleFlowExitToHome, expenseFlow, setCurrentScreen]);
 
   const checkServiceConnections = async () => {
     setServiceStatuses(getInitialServiceStatuses());
@@ -444,7 +421,7 @@ const BudgetMiniApp = () => {
     if (flow === 'income') {
       setIncomeReview(null);
     } else {
-      setExpenseReview(null);
+      expenseFlow.setReview(null);
     }
     setCurrentScreen(flow === 'income' ? 'income-accounts' : 'expense-accounts');
     preloadFlowData(flow);
@@ -476,7 +453,7 @@ const BudgetMiniApp = () => {
         selectedAccount.account_name,
         selectedAccount.account_id,
         selectedAccount.account_currency,
-        selectedAccount.user_name
+        userName
       );
       if (user?.id) {
         flowApi.setUserData(user.id, userName);
@@ -492,8 +469,10 @@ const BudgetMiniApp = () => {
       flowApi.updateAmountForeign('');
       if (flow === 'income') {
         setIncomeCategoryId(null);
+        incomeAmountRef.current = '';
       } else {
-        setExpenseCategoryId(null);
+        expenseFlow.setCategoryId(null);
+        expenseFlow.setAmountRef('');
       }
     }
 
@@ -505,13 +484,17 @@ const BudgetMiniApp = () => {
     if (flow === 'income') {
       incomeAmountRef.current = value;
     } else {
-      expenseAmountRef.current = value;
+      expenseFlow.setAmountRef(value);
     }
   };
 
-  const handleCategorySelect = (flow: FlowType, category: string) => {
+  const handleAmountForeignChange = (flow: FlowType, value: string) => {
+    getFlowApi(flow).updateAmountForeign(value);
+  };
+
+  const handleCategorySelect = (flow: FlowType, category: string, categoryId?: number | string, budgetName?: string) => {
     const flowApi = getFlowApi(flow);
-    const categories = flow === 'income' ? incomeCategories : expenseCategories;
+    const categories = flow === 'income' ? incomeCategories : expenseFlow.categories;
     const selected = categories.find(cat => cat.category_name === category);
     const derivedCategoryId = selected?.category_id ?? selected?.category_id1 ?? null;
 
@@ -519,7 +502,15 @@ const BudgetMiniApp = () => {
     if (flow === 'income') {
       setIncomeCategoryId(derivedCategoryId !== undefined && derivedCategoryId !== null ? Number(derivedCategoryId) : null);
     } else {
-      setExpenseCategoryId(derivedCategoryId !== undefined && derivedCategoryId !== null ? Number(derivedCategoryId) : null);
+      const resolvedCategoryId = categoryId ?? derivedCategoryId;
+      const numericId = resolvedCategoryId !== undefined && resolvedCategoryId !== null && resolvedCategoryId !== ''
+        ? Number(resolvedCategoryId)
+        : null;
+      expenseFlow.setCategoryId(numericId);
+      expenseFlow.updateTransaction({
+        category_id: resolvedCategoryId ?? undefined,
+        budget_name: budgetName
+      });
     }
     setCurrentScreen(flow === 'income' ? 'income-comment' : 'expense-comment');
   };
@@ -618,21 +609,25 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'expense-amount' && (
         <AmountScreen
-          account={expenseFlow.transactionData.account}
-          amount={expenseFlow.transactionData.amount}
-          transactionData={expenseFlow.transactionData}
+          account={expenseTransaction.account}
+          amount={expenseTransaction.amount}
+          transactionData={expenseTransaction}
           isAvailable={isAvailable}
           onBack={() => {
-            setExpenseReview(null);
-            setExpenseCategoryId(null);
+            expenseFlow.setReview(null);
+            expenseFlow.setCategoryId(null);
             expenseFlow.updateAmount('');
             expenseFlow.updateCategory('');
             expenseFlow.updateComment('');
-            expenseAmountRef.current = '';
+            expenseFlow.setAmountRef('');
             setCurrentScreen('expense-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
-          onNext={() => setCurrentScreen('expense-category')}
+          onAmountForeignChange={(value) => handleAmountForeignChange('expense', value)}
+          onNext={() => {
+            expenseFlow.setAmountRef(expenseTransaction.amount);
+            setCurrentScreen('expense-category');
+          }}
         />
       )}
 
@@ -652,6 +647,7 @@ const BudgetMiniApp = () => {
             setCurrentScreen('income-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('income', value)}
+          onAmountForeignChange={(value) => handleAmountForeignChange('income', value)}
           onNext={() => setCurrentScreen('income-category')}
         />
       )}
@@ -668,10 +664,10 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'expense-category' && (
         <ExpenseCategoryScreen
-          categories={expenseCategories}
-          categoriesLoading={expenseCategoriesLoading}
-          categoriesError={expenseCategoriesError}
-          onSelectCategory={(category) => handleCategorySelect('expense', category)}
+          categories={expenseFlow.categories}
+          categoriesLoading={expenseFlow.categoriesLoading}
+          categoriesError={expenseFlow.categoriesError}
+          onSelectCategory={(category, categoryId, budgetName) => handleCategorySelect('expense', category, categoryId, budgetName)}
           onRetry={() => fetchCategories('expense')}
         />
       )}
@@ -679,12 +675,14 @@ const BudgetMiniApp = () => {
       {currentScreen === 'expense-comment' && (
         <DestinationNameCommentScreen
           key={commentResetKey}
-          comment={expenseFlow.transactionData.comment}
-          category={expenseFlow.transactionData.category}
-          categoryId={expenseCategoryId}
-          onCommentChange={expenseFlow.updateComment}
+          comment={expenseTransaction.comment}
+          category={expenseTransaction.category}
+          categoryId={expenseFlow.categoryId}
+          onCommentChange={(comment, destinationId) =>
+            expenseFlow.updateTransaction({ comment, destination_id: destinationId })
+          }
           onNext={() => {
-            setExpenseReview(buildReview('expense'));
+            expenseFlow.setReview(buildReview('expense'));
             setCurrentScreen('expense-confirm');
           }}
         />
@@ -706,12 +704,13 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'expense-confirm' && (
         <ConfirmScreen
-          account={expenseReview?.account || expenseFlow.transactionData.account}
-          amount={expenseReview?.amount || expenseFlow.transactionData.amount}
-          category={expenseReview?.category || expenseFlow.transactionData.category}
-          comment={expenseReview?.comment || expenseFlow.transactionData.comment}
-          transactionData={expenseReview || getTransactionDataForFlow('expense')}
+          account={expenseFlow.review?.account || expenseTransaction.account}
+          amount={expenseFlow.review?.amount || expenseTransaction.amount}
+          category={expenseFlow.review?.category || expenseTransaction.category}
+          comment={expenseFlow.review?.comment || expenseTransaction.comment}
+          transactionData={expenseFlow.review || getTransactionDataForFlow('expense')}
           isAvailable={isAvailable}
+          onUpdateTransaction={(patch) => expenseFlow.updateTransaction(patch)}
           onBack={() => {
             restoreFlowFromReview('expense');
             setCurrentScreen('expense-comment');
@@ -849,7 +848,7 @@ const BudgetMiniApp = () => {
         <DestinationNameCommentScreen
           comment={transferComment}
           category="Transfer"
-          onCommentChange={setTransferComment}
+          onCommentChange={(value) => setTransferComment(value)}
           onNext={() => setCurrentScreen('transfer-confirm')}
         />
       )}

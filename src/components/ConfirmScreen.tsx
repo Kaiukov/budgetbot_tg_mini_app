@@ -16,6 +16,7 @@ interface ConfirmScreenProps {
   onCancel: () => void;
   onConfirm: () => void;
   onSuccess: () => void;
+  onUpdateTransaction?: (patch: Partial<TransactionData>) => void;
 }
 
 const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
@@ -28,17 +29,25 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   onBack,
   onCancel,
   onConfirm,
-  onSuccess
+  onSuccess,
+  onUpdateTransaction
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const currencyCode = transactionData.account_currency || 'EUR';
+  const displayDate = transactionData.date || new Date().toISOString();
 
   // Show Telegram back button
   useEffect(() => {
     telegramService.showBackButton(onBack);
     return () => telegramService.hideBackButton();
   }, [onBack]);
+
+  // Stamp the transaction date when the screen loads
+  useEffect(() => {
+    const currentDate = new Date().toISOString();
+    onUpdateTransaction?.({ date: currentDate });
+  }, [onUpdateTransaction]);
 
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
@@ -96,7 +105,9 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             </div>
             <div className="flex justify-between py-2.5">
               <span className="text-xs text-gray-400">Date:</span>
-              <span className="text-xs font-medium text-white">{new Date().toLocaleDateString('en-US')}</span>
+              <span className="text-xs font-medium text-white">
+                {new Date(displayDate).toLocaleDateString('en-US')}
+              </span>
             </div>
           </div>
         </div>

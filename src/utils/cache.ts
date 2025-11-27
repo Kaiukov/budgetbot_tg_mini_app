@@ -144,7 +144,7 @@ export class Cache<T> {
  */
 
 import type { DisplayTransaction } from '../types/transaction';
-import type { AccountUsage, CategoryUsage } from '../services/sync';
+import type { AccountUsage, CategoryUsage, DestinationSuggestion } from '../services/sync';
 import { syncService } from '../services/sync';
 
 // Transaction cache instance (5-minute TTL)
@@ -163,6 +163,12 @@ export const accountsCache = new Cache<AccountUsage[]>(
 export const categoriesCache = new Cache<CategoryUsage[]>(
   5 * 60 * 1000, // 5 minutes
   'sync_categories_'
+);
+
+// Destinations cache instance (5-minute TTL)
+export const destinationsCache = new Cache<DestinationSuggestion[]>(
+  5 * 60 * 1000, // 5 minutes
+  'sync_destinations_'
 );
 
 // Cache key constants
@@ -221,12 +227,22 @@ export function clearCategoriesCache(): void {
 }
 
 /**
- * Clear all data caches (accounts, categories, transactions)
+ * Clear destinations cache
+ */
+export function clearDestinationsCache(): void {
+  destinationsCache.clear();
+  console.log('🗑️ Destinations cache cleared');
+}
+
+/**
+ * Clear all data caches (accounts, categories, transactions, destinations)
  * Call this after successful transaction create/edit/delete to ensure fresh data
+ * NOTE: Exchange rates are NOT cleared as they are expensive to fetch and rarely change
  */
 export function clearAllDataCaches(): void {
   clearAccountsCache();
   clearCategoriesCache();
   clearTransactionCache();
-  console.log('🗑️ All data caches cleared');
+  clearDestinationsCache();
+  console.log('🗑️ All data caches cleared (exchange rates preserved)');
 }

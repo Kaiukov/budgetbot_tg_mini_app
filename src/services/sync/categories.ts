@@ -27,17 +27,8 @@ export class SyncServiceCategories extends SyncServiceAccounts {
         throw new Error('Sync API not configured');
       }
 
-      // Generate cache key
-      const cacheKey = `${userName || 'all'}:${transactionType || 'all'}`;
-
-      // Check cache first
-      const cachedData = this.getCategoryCache().get(cacheKey);
-      if (cachedData) {
-        console.log('💾 Using cached categories for:', cacheKey);
-        return cachedData;
-      }
-
-      console.log('🔄 Fetching fresh categories for:', cacheKey);
+      // NOTE: Caching now handled at utility layer (utils/cache.ts)
+      console.log('🔄 Fetching categories for:', `${userName || 'all'}:${transactionType || 'all'}`);
 
       // Build URL with optional user_name and type query parameters
       const params = new URLSearchParams();
@@ -144,9 +135,7 @@ export class SyncServiceCategories extends SyncServiceAccounts {
         total: sortedCategories.length,
       };
 
-      // Cache the result for 1 minute
-      this.getCategoryCache().set(cacheKey, result);
-
+      // NOTE: Caching now handled at utility layer (utils/cache.ts)
       return result;
     } catch (error) {
       console.error('Failed to get categories usage:', error);

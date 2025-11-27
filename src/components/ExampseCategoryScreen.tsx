@@ -9,7 +9,7 @@ interface ExpenseCategoryScreenProps {
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
-  onSelectCategory: (categoryName: string) => void;
+  onSelectCategory: (categoryName: string, categoryId: number | string, budgetName: string) => void;
   onRetry: () => void;
 }
 
@@ -71,11 +71,12 @@ const ExpenseCategoryScreen: React.FC<ExpenseCategoryScreenProps> = ({
               const categoryNameWithoutEmoji = getCategoryNameWithoutEmoji(category.category_name);
               const isUnused = category.user_has_used === false || category.usage_count === 0;
               const usageText = isUnused ? 'Unused' : `Used ${category.usage_count} times`;
+              const categoryId = category.category_id ?? category.category_id1 ?? '';
 
               return (
                 <div
                   key={`${category.category_name}-${idx}`}
-                  onClick={() => onSelectCategory(category.category_name)}
+                  onClick={() => onSelectCategory(category.category_name, categoryId, categoryNameWithoutEmoji)}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div

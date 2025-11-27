@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Remote logging pipeline: client logs/errors and startup events are forwarded to configurable `VITE_LOG_ENDPOINT` (defaults to `/log`) with Telegram `initData` attached.
+- **`useExpenseFlow` Hook**: Consolidated expense flow state management hook
+  - Wraps all Zustand expense state into a single, memoized hook
+  - Provides unified interface for expense transaction data and handlers
+  - Reduces BudgetMiniApp component complexity by 14 Zustand selectors
 
 ### Changed
+- **State Management Refactoring**: Extracted expense flow state from BudgetMiniApp.tsx into dedicated hook
+  - Created `src/hooks/useExpenseFlow.ts` for centralized expense flow logic
+  - Consolidated 14 individual Zustand selectors into single hook call
+  - Removed inline `expenseFlowApi` wrapper pattern from component
+  - Improved code organization and maintainability
 - Account usage now reads from the new `/api/v1/get_account_usage` endpoint with legacy fallback, normalizing singular/plural payloads and new fields (`global_usage`, `user_has_used`).
 - Accounts screen shows the per-user usage status with an "Unused" pill, and the subtitle now only contains your usage + balance (removed the "All users X" community metric).
 - Category usage requests now forward the transaction type (`withdrawal`/`deposit`) to `/api/v1/get_categories_usage`, caching results per user + type and respecting new response fields.
