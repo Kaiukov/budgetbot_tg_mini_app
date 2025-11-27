@@ -60,10 +60,13 @@ interface ExpenseFlowSlice {
   expenseCategoryId: number | null;
   expenseReview: TransactionData | null;
   expenseAmountRef: string;
+  isExpenseFlowActive: boolean;
   setTransaction: (patch: Partial<TransactionData>) => void;
   setExpenseCategoryId: (id: number | null) => void;
   setExpenseReview: (review: TransactionData | null) => void;
   setExpenseAmountRef: (amount: string) => void;
+  setExpenseFlowActive: (active: boolean) => void;
+  preserveExpenseAmountRef: (amount: string) => void;
   selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => void;
   resetExpenseFlow: () => void;
   buildExpenseReview: () => TransactionData;
@@ -194,6 +197,7 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   expenseCategoryId: null,
   expenseReview: null,
   expenseAmountRef: '',
+  isExpenseFlowActive: false,
   setTransaction: (patch) => {
     console.log('📝 setTransaction called with patch:', patch);
     set((state) => {
@@ -207,6 +211,14 @@ export const useBudgetStore = create<BudgetStore>((set, get) => ({
   setExpenseCategoryId: (id) => set({ expenseCategoryId: id }),
   setExpenseReview: (review) => set({ expenseReview: review }),
   setExpenseAmountRef: (amount) => set({ expenseAmountRef: amount }),
+  setExpenseFlowActive: (active) => {
+    console.log('🔀 setExpenseFlowActive:', active);
+    set({ isExpenseFlowActive: active });
+  },
+  preserveExpenseAmountRef: (amount) => {
+    console.log('💾 preserveExpenseAmountRef:', amount);
+    set({ expenseAmountRef: amount });
+  },
   selectExpenseAccount: (accountName: string, accountId: string, accountCurrency: string, userName: string) => {
     const { transaction } = get();
     const previousAccountId = String(transaction.account_id || '');

@@ -460,12 +460,20 @@ const BudgetMiniApp = () => {
 
     // Use flow-specific smart account selection handler
     if (flow === 'expense') {
+      // Store previous account ID for restoration logic
+      const previousAccountId = String(expenseTransaction.account_id || '');
+
+      // Select account (handles clearing amount if different account)
       expenseFlow.selectAccount(
         selectedAccount.account_name,
         selectedAccount.account_id,
         selectedAccount.account_currency,
         userName
       );
+
+      // Try to restore amount if user came back and selected same account
+      expenseFlow.restoreAmountIfSameAccount(previousAccountId);
+
       if (user?.id) {
         expenseFlow.setUserData(user.id, userName);
       }
@@ -632,10 +640,9 @@ const BudgetMiniApp = () => {
           transactionData={expenseTransaction}
           isAvailable={isAvailable}
           onBack={() => {
-            // Back to accounts:
-            // - If user selects different account, amount state is erased
-            // - If user selects same account, amount is preserved
-            // We don't clear here; clearing happens in account selection handler if account changes
+            // Back to accounts: preserve amount for potential restoration
+            // Mark flow as active and save amountRef in case user re-selects same account
+            expenseFlow.preserveOnBack();
             setCurrentScreen('expense-accounts');
           }}
           onAmountChange={(value) => handleAmountChange('expense', value)}
