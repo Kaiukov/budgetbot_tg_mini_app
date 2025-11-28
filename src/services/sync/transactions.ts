@@ -56,77 +56,24 @@ export class SyncServiceTransactions extends SyncServiceCore {
 
   /**
    * Create transaction via Sync API
-   * Handles Tier 2 authentication with X-Telegram-Init-Data header
+   * Uses makeRequest() with Tier 2 authentication (X-Telegram-Init-Data header)
    */
   protected async createTransaction(
     request: FireflyCreateTransactionRequest
   ): Promise<FireflyTransactionPayload | { error: string }> {
     try {
-      const url = `${this.getBaseUrl()}/api/v1/transactions`;
-      const anonKey = this.getAnonKey();
-
-      if (!anonKey) {
-        throw new Error('Sync anonymous API key not configured');
-      }
-
-      // Get Telegram initData for Tier 2 authentication
-      const { default: telegramService } = await import('../telegram');
-      const initData = telegramService.getInitData();
-
-      console.log('🔄 Creating transaction via Sync API:', {
-        url,
-        hasAnonKey: !!anonKey,
-        hasInitData: !!initData,
-        transactionCount: request.transactions.length
-      });
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-Anonymous-Key': anonKey,
-          'X-Telegram-Init-Data': initData,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
-      });
-
-      console.log('📡 Sync API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Sync API Error Response:', errorText);
-        throw new Error(`Sync API request failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      let apiResponse: {
+      const apiResponse = await this.makeRequest<{
         success: boolean;
         status: number;
         message: string;
         data?: FireflyTransactionPayload;
         telegram_user_id?: number;
-      };
-
-      try {
-        apiResponse = await response.json();
-      } catch (parseError) {
-        const text = await response.text();
-        const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
-        console.error('❌ Failed to parse JSON response:', {
-          error: parseErrorMsg,
-          body: text,
-          status: response.status
-        });
-        throw new Error(`Failed to parse API response: ${parseErrorMsg}. Response: ${text.substring(0, 200)}`);
-      }
+      }>('/api/v1/transactions', { method: 'POST', body: request as unknown as Record<string, unknown> });
 
       console.log('✅ Sync API Success:', {
         success: apiResponse.success,
-        telegramUserId: apiResponse.telegram_user_id
+        telegramUserId: apiResponse.telegram_user_id,
+        transactionCount: request.transactions.length
       });
 
       // Return the Firefly transaction data from response
@@ -140,6 +87,7 @@ export class SyncServiceTransactions extends SyncServiceCore {
       console.error('❌ Transaction creation error:', {
         message: errorMessage,
         type: error instanceof Error ? error.constructor.name : typeof error,
+        transactionCount: request.transactions.length,
         error: error
       });
       return { error: errorMessage };
@@ -739,105 +687,38 @@ export class SyncServiceTransactions extends SyncServiceCore {
   }
   /**
    * Delete transaction via Sync API
+   * Uses makeRequest() with Tier 2 authentication (X-Telegram-Init-Data header)
    */
   public async deleteTransaction(transactionId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const url = `${this.getBaseUrl()}/api/v1/transactions/${transactionId}`;
-      const anonKey = this.getAnonKey();
-
-      if (!anonKey) {
-        return { success: false, error: 'Sync anonymous API key not configured' };
-      }
-
-      // Get Telegram initData for Tier 2 authentication
-      const { default: telegramService } = await import('../telegram');
-      const initData = telegramService.getInitData();
-
-      console.log('🗑️ Deleting transaction via Sync API:', {
-        url,
-        hasAnonKey: !!anonKey,
-        hasInitData: !!initData,
-        transactionId
-      });
-
-      const response = await fetch(url, {
-        method: 'DELETE',
-        headers: {
-          'X-Anonymous-Key': anonKey,
-          'X-Telegram-Init-Data': initData,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Sync API Error Response:', errorText);
-        return {
-          success: false,
-          error: `Sync API request failed: ${response.status} ${response.statusText}`,
-        };
-      }
-
+      await this.makeRequest('/api/v1/transactions/' + transactionId, { method: 'DELETE' });
+      console.log('🗑️ Transaction deleted successfully:', { transactionId });
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('❌ Transaction deletion error:', errorMessage);
+      console.error('❌ Transaction deletion error:', { transactionId, error: errorMessage });
       return { success: false, error: errorMessage };
     }
   }
 
   /**
    * Update transaction via Sync API
+   * Uses makeRequest() with Tier 2 authentication (X-Telegram-Init-Data header)
    */
   public async updateTransaction(
     transactionId: string,
     payload: unknown
   ): Promise<{ success: boolean; data?: unknown; error?: string }> {
     try {
-      const url = `${this.getBaseUrl()}/api/v1/transactions/${transactionId}`;
-      const anonKey = this.getAnonKey();
-
-      if (!anonKey) {
-        return { success: false, error: 'Sync anonymous API key not configured' };
-      }
-
-      // Get Telegram initData for Tier 2 authentication
-      const { default: telegramService } = await import('../telegram');
-      const initData = telegramService.getInitData();
-
-      console.log('✏️ Updating transaction via Sync API:', {
-        url,
-        hasAnonKey: !!anonKey,
-        hasInitData: !!initData,
-        transactionId
-      });
-
-      const response = await fetch(url, {
+      const data = await this.makeRequest('/api/v1/transactions/' + transactionId, {
         method: 'PUT',
-        headers: {
-          'X-Anonymous-Key': anonKey,
-          'X-Telegram-Init-Data': initData,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        body: payload as Record<string, unknown>
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `Sync API request failed: ${response.status} ${response.statusText}`,
-          data,
-        };
-      }
-
+      console.log('✏️ Transaction updated successfully:', { transactionId });
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('❌ Transaction update error:', errorMessage);
+      console.error('❌ Transaction update error:', { transactionId, error: errorMessage });
       return { success: false, error: errorMessage };
     }
   }

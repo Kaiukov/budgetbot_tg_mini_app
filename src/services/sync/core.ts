@@ -132,8 +132,16 @@ export class SyncServiceCore {
 
   /**
    * Make API request to Sync API with anonymous key authentication
+   * Supports all HTTP methods (GET, POST, PUT, DELETE, PATCH, HEAD)
+   * Automatically injects X-Anonymous-Key and X-Telegram-Init-Data headers
    */
-  protected async makeRequest<T>(endpoint: string, options?: { method?: string; body?: Record<string, unknown> }): Promise<T> {
+  protected async makeRequest<T>(
+    endpoint: string,
+    options?: {
+      method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
+      body?: Record<string, unknown>;
+    }
+  ): Promise<T> {
     const url = `${this.getBaseUrl()}${endpoint}`;
     const anonKey = this.getAnonKey();
 
@@ -155,20 +163,23 @@ export class SyncServiceCore {
     });
 
     try {
-      const response = await fetch(url, {
+      const requestOptions: RequestInit = {
         method,
         headers: {
           'X-Anonymous-Key': anonKey,
-          // Include Telegram initData for both GET and POST to enable Tier 2 (authenticated) access
+          // Include Telegram initData for all methods to enable Tier 2 (authenticated) access
           ...(initData && { 'X-Telegram-Init-Data': initData }),
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        // Only include body for POST requests (GET cannot have body)
-        ...(method === 'POST' && {
-          body: JSON.stringify(options?.body || {})
-        }),
-      });
+      };
+
+      // Include body for methods that support it (POST, PUT, PATCH, DELETE)
+      if (options?.body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        requestOptions.body = JSON.stringify(options.body);
+      }
+
+      const response = await fetch(url, requestOptions);
 
       console.log('📡 Sync API Response:', {
         status: response.status,
