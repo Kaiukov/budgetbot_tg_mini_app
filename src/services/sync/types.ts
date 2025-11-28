@@ -5,6 +5,17 @@
 
 import type { TransactionData, DisplayTransaction, PaginationMeta } from '../../types/transaction';
 
+/**
+ * HTTP methods supported by makeRequest()
+ * - GET: Retrieve data from server
+ * - POST: Submit data to create new resources
+ * - PUT: Replace entire resource with provided data
+ * - DELETE: Remove resource from server
+ * - PATCH: Partially modify resource
+ * - HEAD: Like GET but without response body
+ */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
+
 export interface AccountUsage {
   account_id: string;
   user_name: string;
