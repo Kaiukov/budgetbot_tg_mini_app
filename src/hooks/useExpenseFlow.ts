@@ -8,6 +8,7 @@ export interface ExpenseFlowState {
   categoryId: number | null;
   review: TransactionData | null;
   amountRef: string;
+  isFlowActive: boolean;
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
@@ -185,6 +186,7 @@ export const useExpenseFlow = (): ExpenseFlowAPI => {
     categoryId: expenseCategoryId,
     review: expenseReview,
     amountRef: expenseAmountRef,
+    isFlowActive: isExpenseFlowActive,
     categories: expenseCategories,
     categoriesLoading: expenseCategoriesLoading,
     categoriesError: expenseCategoriesError,
