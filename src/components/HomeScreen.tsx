@@ -1,17 +1,14 @@
-import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
-import type { DisplayTransaction } from '../types/transaction';
-import { transactionCache, TRANSACTION_CACHE_KEYS } from '../utils/cache';
 import TransactionCard from './TransactionCard';
+import type { DisplayTransaction } from '../types/transaction';
 
 interface HomeScreenProps {
-  userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
-  userPhotoUrl: string | null;
-  userInitials: string;
-  userBio: string;
-  isAvailable: boolean;
-  onNavigate: (screen: string) => void;
+  userFullName?: string;
+  userPhotoUrl?: string | null;
+  userInitials?: string;
+  userBio?: string;
+  isAvailable?: boolean;
+  onNavigate?: (screen: string) => void;
 }
 
 const features = [
@@ -23,66 +20,18 @@ const features = [
 ];
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
-  userFullName,
-  userPhotoUrl,
-  userInitials,
-  userBio,
-  isAvailable,
-  onNavigate
+  userFullName = 'Budget App',
+  userPhotoUrl = null,
+  userInitials = 'BA',
+  userBio = 'Financial Management',
+  isAvailable = false,
+  onNavigate = () => {}
 }) => {
-  const [latestTransactions, setLatestTransactions] = useState<DisplayTransaction[]>([]);
-  const [loadingTransactions, setLoadingTransactions] = useState(false);
-  const [totalBalance, setTotalBalance] = useState(0);
-
-  useEffect(() => {
-    const fetchBalance = async () => {
-      try {
-        const balance = await syncService.fetchCurrentBalance();
-        setTotalBalance(balance);
-      } catch (error) {
-        console.warn('Failed to fetch total balance:', error);
-      }
-    };
-
-    if (isAvailable) {
-      fetchBalance();
-    }
-  }, [isAvailable]);
-
-  // Fetch latest 10 transactions on component mount with caching
-  useEffect(() => {
-    const loadLatestTransactions = async () => {
-      setLoadingTransactions(true);
-
-      // Try cache first
-      const cached = transactionCache.get(TRANSACTION_CACHE_KEYS.HOME_LATEST);
-      if (cached) {
-        setLatestTransactions(cached);
-        setLoadingTransactions(false);
-        return;
-      }
-
-      // Cache miss - fetch from API
-      try {
-        const response = await syncService.fetchTransactions(1, 5);
-        if (!response.error) {
-          setLatestTransactions(response.transactions);
-          transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, response.transactions);
-        }
-      } catch (error) {
-        console.warn('Failed to load latest transactions:', error);
-      } finally {
-        setLoadingTransactions(false);
-      }
-    };
-
-    if (isAvailable) {
-      loadLatestTransactions();
-    }
-  }, [isAvailable]);
+  const latestTransactions: DisplayTransaction[] = [];
+  const totalBalance = 0;
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen text-white bg-gradient-to-b from-slate-900 to-slate-800">
       <div className="flex flex-col items-center pt-8 pb-6 px-4">
         {/* User Avatar */}
         <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
@@ -216,20 +165,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </div>
 
-        {/* Loading State */}
-        {loadingTransactions && (
-          <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
-              <div
-                key={i}
-                className="h-20 bg-slate-800/40 border border-slate-700/50 rounded-xl animate-pulse"
-              />
-            ))}
-          </div>
-        )}
-
         {/* Empty State */}
-        {!loadingTransactions && latestTransactions.length === 0 && (
+        {latestTransactions.length === 0 && (
           <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-6 text-center">
             <p className="text-sm text-gray-400">No transactions yet</p>
             <p className="text-xs text-gray-500 mt-1">Start by creating your first transaction</p>
@@ -237,7 +174,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
 
         {/* Transactions List */}
-        {!loadingTransactions && latestTransactions.length > 0 && (
+        {latestTransactions.length > 0 && (
           <div className="space-y-2">
             {latestTransactions.slice(0, 10).map((transaction) => (
               <TransactionCard
@@ -245,7 +182,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 transaction={transaction}
                 onClick={() => {
                   onNavigate('transaction-detail');
-                  // Store selected transaction ID in sessionStorage for navigation
                   sessionStorage.setItem('selectedTransactionId', transaction.id);
                 }}
               />
@@ -255,7 +191,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Features */}
-      <div className="px-4">
+      <div className="px-4 pb-6">
         <h2 className="text-sm font-semibold mb-3 text-gray-300 px-1">My Features</h2>
 
         <div className="space-y-2">

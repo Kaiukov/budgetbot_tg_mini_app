@@ -10,7 +10,6 @@ import telegramService from '../services/telegram';
 import { syncService } from '../services/sync';
 import type { TransactionData, DisplayTransaction } from '../types/transaction';
 import { formatTransactionDate } from '../utils/transactionHelpers';
-import { refreshHomeTransactionCache } from '../utils/cache';
 
 interface TransactionEditScreenProps {
   transaction: DisplayTransaction;
@@ -120,9 +119,6 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
         setError(response.error || 'Failed to update transaction');
         return;
       }
-
-      // Proactively refresh transaction cache
-      await refreshHomeTransactionCache();
 
       setSuccess(true);
       setTimeout(() => {

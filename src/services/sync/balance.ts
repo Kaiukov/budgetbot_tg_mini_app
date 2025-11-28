@@ -4,9 +4,9 @@
  */
 
 import type { CurrentBalanceResponse } from './types';
-import { SyncServiceCache } from './cache';
+import { SyncServiceCore } from './core';
 
-export class SyncServiceBalance extends SyncServiceCache {
+export class SyncServiceBalance extends SyncServiceCore {
   /**
    * Get current balance from the API with 5-minute caching
    */
@@ -16,24 +16,10 @@ export class SyncServiceBalance extends SyncServiceCache {
         throw new Error('Sync API not configured');
       }
 
-      const cacheKey = 'current_balance';
-
-      // Check cache first
-      const cachedData = this.getBalanceCache().get(cacheKey);
-      if (cachedData) {
-        console.log('💾 Using cached balance');
-        return cachedData.get_current_balance[0]?.balance_in_USD || 0;
-      }
-
-      console.log('🔄 Fetching fresh balance');
-
       const data = await this.makeRequest<CurrentBalanceResponse>(
         '/api/v1/get_current_balance',
         { method: 'GET' }
       );
-
-      // Cache the result for 5 minutes
-      this.getBalanceCache().set(cacheKey, data);
 
       return data.get_current_balance[0]?.balance_in_USD || 0;
     } catch (error) {
@@ -61,21 +47,6 @@ export class SyncServiceBalance extends SyncServiceCache {
       // Normalize currency codes
       const fromCode = from.toUpperCase();
       const toCode = to.toUpperCase();
-
-      // Check cache first
-      const cachedRate = this.getExchangeRateFromCache(fromCode, toCode);
-      if (cachedRate !== null) {
-        // Apply amount to cached rate
-        const convertedAmount = cachedRate * amount;
-        console.log('💱 Using cached exchange rate:', {
-          from: fromCode,
-          to: toCode,
-          amount,
-          rate: cachedRate,
-          convertedAmount
-        });
-        return convertedAmount;
-      }
 
       // Build URL with query parameters
       const params = new URLSearchParams({
@@ -118,9 +89,8 @@ export class SyncServiceBalance extends SyncServiceCache {
         return null;
       }
 
-      // Calculate and cache the exchange rate (1 unit conversion)
+      // Calculate the exchange rate (1 unit conversion)
       const rate = convertedAmount / amount;
-      this.setExchangeRateCache(fromCode, toCode, rate);
 
       console.log('✅ Exchange rate conversion successful:', {
         from: fromCode,
