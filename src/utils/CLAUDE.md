@@ -4,7 +4,42 @@ This directory contains a collection of utility functions and helpers used acros
 
 **[accounts.ts](accounts.ts)**: Provides helper functions to determine the appropriate icon and color for a bank account based on its currency or name.
 
-**[cache.ts](cache.ts)**: Implements a generic, dual-layer (memory + localStorage) caching system with configurable expiration. It is used for caching API responses like transaction data.
+**[cache.ts](cache.ts)**: Implements `DualLayerCache<T>`, a generic dual-layer (memory + localStorage) caching system with configurable TTL. Provides fast in-memory access with persistent storage fallback for cache survival across page reloads.
+- **Memory layer**: Fast access, lost on page reload
+- **localStorage layer**: Persistent across sessions, used as fallback
+- **Graceful degradation**: Works in private/incognito mode (localStorage unavailable)
+- **TTL validation**: Timestamp-based expiry checking with automatic cleanup
+
+**Usage Examples:**
+```typescript
+// Exchange rate cache (1 hour expiry)
+const rates = new DualLayerCache<number>({
+  ttl: 3600000,        // 1 hour in milliseconds
+  prefix: 'exchange_rate_'
+});
+const rate = rates.get('USD:EUR') ?? (await fetchRate('USD', 'EUR'));
+rates.set('USD:EUR', rate);
+
+// Account usage cache (1 minute expiry)
+const accounts = new DualLayerCache<AccountsUsageResponse>({
+  ttl: 60000,
+  prefix: 'accounts_usage_'
+});
+
+// Memory-only cache (sensitive data, no persistence)
+const session = new DualLayerCache<SessionData>({
+  ttl: 300000,
+  useLocalStorage: false  // Disabled for sensitive data
+});
+```
+
+**API:**
+- `get(key)`: Retrieve value (returns `T | null`)
+- `set(key, value)`: Store value in both layers
+- `isExpired(key)`: Check if entry has expired
+- `delete(key)`: Remove from both layers
+- `clear()`: Clear all entries
+- Key normalization: Automatically converts to uppercase for consistency
 
 **[categories.ts](categories.ts)**: Contains utility functions for handling category data, such as extracting emojis from names and assigning a default icon or color based on keywords in the category name.
 

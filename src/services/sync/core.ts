@@ -3,14 +3,15 @@
  * Base configuration and API request logic
  */
 
-import type { ExchangeRateCache } from './types';
+import { DualLayerCache } from '../../utils/cache';
 
 export class SyncServiceCore {
   protected baseUrl: string;
   protected anonKey: string | null = null;
-  protected exchangeRateCache: Map<string, ExchangeRateCache> = new Map();
-  protected readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
-  protected readonly CACHE_KEY_PREFIX = 'exchange_rate_';
+  protected exchangeRateCache = new DualLayerCache<number>({
+    ttl: 3600000, // 1 hour in milliseconds
+    prefix: 'exchange_rate_'
+  });
 
   constructor() {
     // Detect environment
@@ -36,75 +37,20 @@ export class SyncServiceCore {
   }
 
   /**
-   * Generate cache key for exchange rate pair
-   */
-  protected generateCacheKey(from: string, to: string): string {
-    return `${from.toUpperCase()}:${to.toUpperCase()}`;
-  }
-
-  /**
-   * Get exchange rate from cache (memory + localStorage)
-   * Returns null if cache is expired or doesn't exist
+   * Get exchange rate from cache (memory + localStorage fallback)
+   * Normalized cache key format: "FROM:TO" (e.g., "USD:EUR")
    */
   protected getExchangeRateFromCache(from: string, to: string): number | null {
-    const cacheKey = this.generateCacheKey(from, to);
-    const now = Date.now();
-
-    // Check memory cache first
-    const memoryCache = this.exchangeRateCache.get(cacheKey);
-    if (memoryCache && (now - memoryCache.timestamp) < this.CACHE_EXPIRY_MS) {
-      console.log('💾 Exchange rate cache HIT (memory):', { from, to, rate: memoryCache.rate });
-      return memoryCache.rate;
-    }
-
-    // Check localStorage as fallback
-    try {
-      const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
-      const cached = localStorage.getItem(storageKey);
-
-      if (cached) {
-        const data = JSON.parse(cached) as ExchangeRateCache;
-
-        if ((now - data.timestamp) < this.CACHE_EXPIRY_MS) {
-          console.log('💾 Exchange rate cache HIT (localStorage):', { from, to, rate: data.rate });
-          // Restore to memory cache for faster access
-          this.exchangeRateCache.set(cacheKey, data);
-          return data.rate;
-        } else {
-          // Cache expired, remove it
-          localStorage.removeItem(storageKey);
-          this.exchangeRateCache.delete(cacheKey);
-          console.log('💾 Exchange rate cache EXPIRED:', { from, to });
-        }
-      }
-    } catch (error) {
-      console.warn('⚠️ Error reading exchange rate from localStorage:', error);
-    }
-
-    return null;
+    const cacheKey = `${from}:${to}`;
+    return this.exchangeRateCache.get(cacheKey);
   }
 
   /**
-   * Save exchange rate to cache (memory + localStorage)
+   * Save exchange rate to cache (both memory and localStorage)
    */
   protected setExchangeRateCache(from: string, to: string, rate: number): void {
-    const cacheKey = this.generateCacheKey(from, to);
-    const cacheData: ExchangeRateCache = {
-      rate,
-      timestamp: Date.now()
-    };
-
-    // Store in memory cache
-    this.exchangeRateCache.set(cacheKey, cacheData);
-
-    // Store in localStorage for persistence
-    try {
-      const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
-      localStorage.setItem(storageKey, JSON.stringify(cacheData));
-      console.log('💾 Exchange rate cached:', { from, to, rate, expiresIn: '1h' });
-    } catch (error) {
-      console.warn('⚠️ Error saving exchange rate to localStorage:', error);
-    }
+    const cacheKey = `${from}:${to}`;
+    this.exchangeRateCache.set(cacheKey, rate);
   }
 
   /**
