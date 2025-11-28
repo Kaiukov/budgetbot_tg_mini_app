@@ -34,12 +34,18 @@ const session = new DualLayerCache<SessionData>({
 ```
 
 **API:**
-- `get(key)`: Retrieve value (returns `T | null`)
-- `set(key, value)`: Store value in both layers
-- `isExpired(key)`: Check if entry has expired
-- `delete(key)`: Remove from both layers
-- `clear()`: Clear all entries
+```typescript
+get(key): T | null              // Check memory → localStorage → fallback
+set(key, value): void           // Store in both layers
+isExpired(key): boolean         // Check TTL status
+delete(key): void               // Remove from both layers
+clear(): void                   // Clear all entries
+```
+
+**Additional Features:**
 - Key normalization: Automatically converts to uppercase for consistency
+- Error handling: Gracefully handles localStorage unavailability
+- Console logging: Emoji-tracked cache operations (💾 for visibility)
 
 **[categories.ts](categories.ts)**: Contains utility functions for handling category data, such as extracting emojis from names and assigning a default icon or color based on keywords in the category name.
 
