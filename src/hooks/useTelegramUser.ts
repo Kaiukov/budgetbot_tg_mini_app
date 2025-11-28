@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import telegramService from '../services/telegram';
 import type { TelegramWebAppUser } from '../types/telegram';
-import { fetchUserData } from '../utils/fetchUserData';
+import { syncService } from '../services/sync';
 
 export interface TelegramUserData {
   user: TelegramWebAppUser | null;
@@ -26,7 +26,7 @@ export function useTelegramUser(): TelegramUserData {
     userFullName: 'Guest',
     userPhotoUrl: null,
     userInitials: 'G',
-    userBio: 'Manage finances and create reports',
+    userBio: '',
     isAvailable: false,
     colorScheme: 'dark',
   });
@@ -41,7 +41,7 @@ export function useTelegramUser(): TelegramUserData {
       let userPhotoUrl = telegramService.getUserPhotoUrl();
       const userInitials = telegramService.getUserInitials();
       const colorScheme = telegramService.getColorScheme();
-      const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
+      const userBio = telegramService.getUserBio() || '';
 
       // Set initial data
       setUserData({
@@ -65,27 +65,31 @@ export function useTelegramUser(): TelegramUserData {
         fullUserObject: user,
       });
 
-      // Fetch additional user data from backend (full name, photo, bio, and username)
-      if (user?.id) {
-        console.log('📸 Fetching comprehensive user data from backend...');
-        fetchUserData(user.id).then((backendData) => {
+      // Fetch additional user data from backend (bio via new sync service)
+      // Only fetch if we have a valid Telegram user context
+      if (user?.id && isAvailable) {
+        console.log('📸 Fetching comprehensive user data from backend via sync service...');
+        syncService.getTelegramUser().then((backendData) => {
           if (backendData?.success && backendData.userData) {
+            const userData = backendData.userData;
             setUserData((prev) => ({
               ...prev,
-              userName: backendData.userData.username || prev.userName,      // Username for API
-              userFullName: backendData.userData.name || prev.userFullName,  // Full name for display
-              userPhotoUrl: backendData.userData.avatar_url || prev.userPhotoUrl,
-              userBio: backendData.userData.bio || prev.userBio,
+              userName: userData.username || prev.userName,
+              userFullName: userData.name || prev.userFullName,
+              userBio: userData.bio || prev.userBio,
+              userPhotoUrl: userData.avatar_url || prev.userPhotoUrl,
             }));
-            console.log('✅ Updated comprehensive user data from backend:', {
-              username: backendData.userData.username,      // "Kaiukov"
-              fullName: backendData.userData.name,          // "Oleksandr 🇺🇦 Kaiukov"
-              avatar_url: backendData.userData.avatar_url,
-              bio: backendData.userData.bio,
+            console.log('✅ Updated user data from sync service:', {
+              id: userData.id,
+              username: userData.username,
+              name: userData.name,
+              bio: userData.bio,
+              avatar_url: userData.avatar_url,
+              language_code: userData.language_code,
             });
           }
         }).catch((error) => {
-          console.error('❌ Failed to fetch comprehensive user data:', error);
+          console.error('❌ Failed to fetch user data from sync service:', error);
         });
       }
     } else {

@@ -130,10 +130,14 @@ class TelegramService {
 
   /**
    * Show back button
+   * WARNING: This method should only be called from BudgetMiniApp centralized handler
+   * to avoid multiple handler registrations
    */
   public showBackButton(onClick: () => void): void {
     if (!this.webApp) return;
 
+    // Note: Telegram SDK onClick() replaces previous handler automatically
+    // but it's better to have only ONE source registering handlers (BudgetMiniApp)
     this.webApp.BackButton.onClick(onClick);
     this.webApp.BackButton.show();
   }
@@ -172,6 +176,68 @@ class TelegramService {
   }
 
   /**
+   * Disable vertical swipes (prevent closing app by swiping)
+   */
+  public disableVerticalSwipes(): void {
+    if (!this.webApp) return;
+
+    // Try new SDK method first (if available)
+    const disableVerticalSwipes = (this.webApp as any).disableVerticalSwipes;
+    if (typeof disableVerticalSwipes === 'function') {
+      disableVerticalSwipes();
+      return;
+    }
+
+    // Fallback: disable swipe behavior via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.disableVertical === 'function') {
+      swipeBehavior.disableVertical();
+    }
+  }
+
+  /**
+   * Enable vertical swipes
+   */
+  public enableVerticalSwipes(): void {
+    if (!this.webApp) return;
+
+    // Try new SDK method first (if available)
+    const enableVerticalSwipes = (this.webApp as any).enableVerticalSwipes;
+    if (typeof enableVerticalSwipes === 'function') {
+      enableVerticalSwipes();
+      return;
+    }
+
+    // Fallback: enable swipe behavior via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.enableVertical === 'function') {
+      swipeBehavior.enableVertical();
+    }
+  }
+
+  /**
+   * Check if vertical swipes are enabled
+   */
+  public isVerticalSwipesEnabled(): boolean {
+    if (!this.webApp) return false;
+
+    // Try new SDK method first
+    const isVerticalSwipesEnabled = (this.webApp as any).isVerticalSwipesEnabled;
+    if (typeof isVerticalSwipesEnabled === 'function') {
+      return isVerticalSwipesEnabled();
+    }
+
+    // Fallback: check via swipeBehavior object
+    const swipeBehavior = (this.webApp as any).swipeBehavior;
+    if (swipeBehavior && typeof swipeBehavior.isVerticalEnabled === 'function') {
+      return swipeBehavior.isVerticalEnabled();
+    }
+
+    // Default to enabled if unable to determine
+    return true;
+  }
+
+  /**
    * Send data to bot
    */
   public sendData(data: any): void {
@@ -191,6 +257,47 @@ class TelegramService {
    */
   public openLink(url: string): void {
     this.webApp?.openLink(url);
+  }
+
+  /**
+   * Show alert dialog
+   */
+  public showAlert(message: string, callback?: () => void): void {
+    if (!this.webApp) return;
+    this.webApp.showAlert(message, callback);
+  }
+
+  /**
+   * Show confirmation dialog
+   */
+  public showConfirm(message: string, callback?: (confirmed: boolean) => void): void {
+    if (!this.webApp) return;
+    this.webApp.showConfirm(message, callback);
+  }
+
+  /**
+   * Check if Telegram WebApp is ready and connected
+   */
+  public isReady(): boolean {
+    if (!this.webApp) return false;
+
+    // Check if WebApp is properly initialized with required methods
+    return !!(this.webApp.initData && this.webApp.initDataUnsafe);
+  }
+
+  /**
+   * Get Telegram connection status message
+   */
+  public getConnectionStatus(): string {
+    if (!this.webApp) {
+      return 'Telegram WebApp not available';
+    }
+
+    if (this.isReady()) {
+      return 'Connected to Telegram';
+    }
+
+    return 'Telegram initialization pending';
   }
 }
 

@@ -20,8 +20,26 @@ export default defineConfig({
       '/api': {
         target: 'https://dev.neon-chuckwalla.ts.net',
         changeOrigin: true,
-        secure: true,
-        ws: true
+        // Allow self-signed certificates for Tailscale tunnel
+        secure: false,
+        ws: true,
+        // Bypass Private Network Access restrictions by proxying through Node.js
+        configure: (proxy) => {
+          proxy.on('error', (err, _req, res) => {
+            console.error('Proxy error:', err);
+            res.writeHead(500, {
+              'Content-Type': 'text/plain'
+            });
+          res.end('Proxy error: ' + err.message);
+          });
+        }
+      },
+      '/log': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: false,
+        rewrite: (path) => path.replace(/^\/log/, '/log')
       }
     }
   },

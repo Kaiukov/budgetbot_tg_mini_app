@@ -13,6 +13,11 @@ export interface TransactionData {
   user_id?: number;
   username?: string;
   amount_foreign?: string;
+  // New fields for expense flow refinement
+  destination_id?: string;        // Set at Comment screen
+  date?: string;                  // ISO timestamp, set at Confirmation
+  budget_name?: string;           // Category name without emoji, set at Categories
+  category_id?: string | number;  // Set at Categories screen
 }
 
 const initialTransactionData: TransactionData = {

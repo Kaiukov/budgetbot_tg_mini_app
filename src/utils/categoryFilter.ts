@@ -1,10 +1,9 @@
 /**
  * Category Filtering Utility
- * Filters categories by transaction type (income only)
- * Expense and transfer flows show ALL categories
+ * Backend API handles filtering by type (deposit/withdrawal)
+ * This utility is now a pass-through for backend-filtered results
  */
 
-import categoryConfig from '../config/categories.json';
 import type { CategoryUsage } from '../services/sync';
 
 export type TransactionType = 'expense' | 'income' | 'transfer';
@@ -12,38 +11,24 @@ export type TransactionType = 'expense' | 'income' | 'transfer';
 /**
  * Filter categories by transaction type
  *
- * IMPORTANT: Only filters for INCOME transactions (category_id: 4)
- * Expense and transfer transactions show ALL categories
+ * IMPORTANT: Backend API already filters by type (deposit/withdrawal)
+ * This function is now a pass-through - no client-side filtering needed
  *
- * @param categories - Full list of categories from API
+ * @param categories - Full list of categories from API (already filtered by backend)
  * @param type - Transaction type (expense, income, transfer)
- * @returns Filtered category list (or all categories for expense/transfer)
+ * @returns All categories from API (backend handles filtering)
  */
 export function filterCategoriesByType(
   categories: CategoryUsage[],
   type: TransactionType
 ): CategoryUsage[] {
-  // Only filter for income - show only category_id: 4
-  if (type === 'income') {
-    const allowedIds = categoryConfig.income;
-    const filtered = categories.filter(cat => allowedIds.includes(cat.category_id));
-
-    console.log('🔍 Category filtering for INCOME:', {
-      type,
-      totalCategories: categories.length,
-      filteredCategories: filtered.length,
-      allowedIds,
-      filteredNames: filtered.map(c => c.category_name)
-    });
-
-    return filtered;
-  }
-
-  // For expense and transfer - return ALL categories (no filtering)
-  console.log('🔍 Category filtering for EXPENSE/TRANSFER:', {
+  // Backend already filters by type=deposit (income) or type=withdrawal (expense)
+  // No client-side filtering needed - return all categories from API
+  console.log('🔍 Category filtering for', type.toUpperCase() + ':', {
     type,
     totalCategories: categories.length,
-    note: 'No filtering applied - showing all categories'
+    note: 'Backend filtered, showing all API results',
+    categoryNames: categories.map(c => c.category_name)
   });
 
   return categories;
@@ -52,18 +37,18 @@ export function filterCategoriesByType(
 /**
  * Check if a category is allowed for the given transaction type
  *
- * @param categoryId - Category ID to check
- * @param type - Transaction type
- * @returns true if category is allowed for this transaction type
+ * @param _categoryId - Category ID to check (unused - backend handles filtering)
+ * @param _type - Transaction type (unused - backend handles filtering)
+ * @returns true - all categories allowed (backend pre-filtered)
+ *
+ * DEPRECATED: Backend API handles filtering, this function no longer needed
  */
 export function isCategoryAllowed(
-  categoryId: number,
-  type: TransactionType
+  _categoryId: number,
+  _type: TransactionType
 ): boolean {
-  if (type === 'income') {
-    return categoryConfig.income.includes(categoryId);
-  }
-
-  // All categories allowed for expense and transfer
+  // Backend handles all filtering - allow all categories
+  // Keep this function for backward compatibility but always return true
+  console.warn('⚠️ isCategoryAllowed is deprecated - backend handles filtering');
   return true;
 }

@@ -1,11 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
-import { addTransaction } from '../services/firefly/transactions';
-import { extractBudgetName } from '../services/firefly/utils';
-import type { IncomeTransactionData } from '../services/firefly/types';
+import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
+import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface IncomeConfirmScreenProps {
   account: string;
@@ -13,7 +11,7 @@ interface IncomeConfirmScreenProps {
   category: string;
   comment: string;
   transactionData: TransactionData;
-  userName: string;
+  isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -26,7 +24,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
   category,
   comment,
   transactionData,
-  userName,
+  isAvailable,
   onBack,
   onCancel,
   onConfirm,
@@ -34,6 +32,13 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const currencyCode = transactionData.account_currency || 'EUR';
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
 
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
@@ -41,116 +46,44 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
     setIsSubmitting(true);
     setSubmitMessage(null);
 
-    try {
-      console.log('💰 Starting income transaction submission:', {
-        account,
-        amount,
-        category,
-        transactionData
-      });
+    setSubmitMessage({
+      type: 'success',
+      text: 'Placeholder only. Ready to send to Firefly once wired.'
+    });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
-
-      // Build income transaction payload
-      const budgetName = extractBudgetName(category);
-      const transactionPayload: IncomeTransactionData = {
-        account: transactionData.account,
-        account_id: parseInt(transactionData.account_id || '0'),
-        account_currency: transactionData.account_currency || 'EUR',
-        currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: category,
-        comment: comment || '',
-        date: new Date().toISOString(),
-        user_id: transactionData.user_id || 0,
-        username: userName || transactionData.username || 'unknown',
-        // Only include budget_name if it's not empty
-        ...(budgetName && { budget_name: budgetName })
-      };
-
-      console.log('📝 Income transaction payload built:', transactionPayload);
-
-      // Submit to Firefly as income
-      const [success, response] = await addTransaction(transactionPayload, 'income', true);
-
-      if (success) {
-        console.log('✅ Income transaction submitted successfully:', response);
-        setSubmitMessage({
-          type: 'success',
-          text: 'Income transaction saved to Firefly!'
-        });
-
-        // Reset form and navigate after showing success
-        setTimeout(() => {
-          onSuccess();
-          onConfirm();
-        }, 2000);
-      } else {
-        console.error('❌ Income transaction submission failed:', response);
-        const errorMessage = typeof response === 'object' && response !== null && 'error' in response
-          ? (response as { error: string }).error
-          : 'Failed to save income transaction';
-
-        setSubmitMessage({
-          type: 'error',
-          text: `Error: ${errorMessage}`
-        });
-      }
-    } catch (error) {
-      console.error('💥 Income transaction submission error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-
-      setSubmitMessage({
-        type: 'error',
-        text: `Error: ${errorMessage}`
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    telegramService.showAlert('✅ Flow complete (placeholder only)');
+    onSuccess();
+    onConfirm();
+    setIsSubmitting(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="flex items-center px-3 py-3 border-b border-gray-800">
-        <button onClick={onBack} className="mr-3">
-          <ArrowLeft size={20} className="text-white" />
-        </button>
-        <h2 className="text-base font-semibold">Confirmation</h2>
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
+        <h1 className="text-2xl font-bold">Confirmation</h1>
       </div>
 
-      <div className="p-3">
-        <div className="bg-gray-800 rounded-lg p-4 mb-4">
+      <div className={layouts.content}>
+        <div className={`${cardStyles.container} mb-4`}>
           <div className="text-center mb-4">
             <div className="text-3xl font-bold text-green-500 mb-1">
-              +{getCurrencySymbol(transactionData.account_currency)}{amount}
+              +{getCurrencySymbol(currencyCode)}{amount}
             </div>
-            <p className="text-xs text-gray-400">Income</p>
           </div>
 
           <div className="space-y-0">
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Account:</span>
               <span className="text-xs font-medium text-white">{account}</span>
+            </div>
+            <div className="flex justify-between py-2.5 border-b border-gray-700">
+              <span className="text-xs text-gray-400">Currency:</span>
+              <span className="text-xs font-medium text-white">{currencyCode}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Category:</span>

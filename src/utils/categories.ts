@@ -1,4 +1,5 @@
 import { ShoppingBag, Coffee, Car, Home, Heart, MoreHorizontal, Utensils, Building2, Gamepad2, GraduationCap, Gift, type LucideIcon } from 'lucide-react';
+import { categoryColors, getCategoryColorValue } from '../theme/dark/categories';
 
 export interface Category {
   id: string;
@@ -32,12 +33,12 @@ export const getCategoryNameWithoutEmoji = (categoryName: string): string => {
 };
 
 export const categories: Category[] = [
-  { id: 'food', name: 'Food', icon: ShoppingBag, color: '#EF4444' },
-  { id: 'cafe', name: 'Cafe', icon: Coffee, color: '#F59E0B' },
-  { id: 'transport', name: 'Transport', icon: Car, color: '#3B82F6' },
-  { id: 'home', name: 'Home', icon: Home, color: '#10B981' },
-  { id: 'health', name: 'Health', icon: Heart, color: '#EC4899' },
-  { id: 'other', name: 'Other', icon: MoreHorizontal, color: '#6B7280' }
+  { id: 'food', name: 'Food', icon: ShoppingBag, color: categoryColors.food },
+  { id: 'cafe', name: 'Cafe', icon: Coffee, color: categoryColors.cafe },
+  { id: 'transport', name: 'Transport', icon: Car, color: categoryColors.transport },
+  { id: 'home', name: 'Home', icon: Home, color: categoryColors.home },
+  { id: 'health', name: 'Health', icon: Heart, color: categoryColors.health },
+  { id: 'other', name: 'Other', icon: MoreHorizontal, color: categoryColors.other }
 ];
 
 /**
@@ -62,17 +63,7 @@ export const getCategoryIcon = (categoryName: string): LucideIcon => {
  * Get color based on category name
  */
 export const getCategoryColor = (categoryName: string): string => {
-  const name = categoryName.toLowerCase();
-  if (name.includes('food') || name.includes('grocery')) return '#EF4444';
-  if (name.includes('cafe') || name.includes('coffee') || name.includes('restaurant')) return '#F59E0B';
-  if (name.includes('transport') || name.includes('taxi') || name.includes('car')) return '#3B82F6';
-  if (name.includes('home') || name.includes('house') || name.includes('rent')) return '#10B981';
-  if (name.includes('health') || name.includes('medical')) return '#EC4899';
-  if (name.includes('entertainment') || name.includes('fun')) return '#8B5CF6';
-  if (name.includes('education') || name.includes('school')) return '#6366F1';
-  if (name.includes('gift')) return '#F472B6';
-  if (name.includes('office') || name.includes('work')) return '#64748B';
-  return '#6B7280';
+  return getCategoryColorValue(categoryName);
 };
 
 export const suggestedComments: string[] = [

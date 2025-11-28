@@ -160,6 +160,10 @@ The app connects to:
 - Verify Docker network connectivity
 - Check environment variables
 
+### Remote logging
+
+- Set `VITE_LOG_ENDPOINT` (defaults to `/log`; in dev it proxies to `http://localhost:8000/log`). Console logs, warnings, errors, and unhandled errors are forwarded automatically (see `src/utils/remoteConsole.ts`).
+
 ## Deployment
 
 - **Production**: https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
