@@ -136,6 +136,26 @@ export interface ExchangeRateCache {
   timestamp: number;
 }
 
+/**
+ * Generic cache entry for dual-layer (memory + localStorage) caching
+ * Stores any data type with timestamp for TTL validation
+ */
+export interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+/**
+ * Configuration for DualLayerCache utility
+ * - ttl: Time-to-live in milliseconds
+ * - prefix: Optional prefix for localStorage keys
+ * - useLocalStorage: Whether to use localStorage fallback (default: true)
+ */
+export interface CacheConfig {
+  ttl: number;
+  prefix?: string;
+  useLocalStorage?: boolean;
+}
 
 /**
  * Base transaction data - common to all transaction types
