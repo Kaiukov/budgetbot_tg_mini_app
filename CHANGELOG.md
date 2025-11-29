@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Remote logging pipeline: client logs/errors and startup events are forwarded to configurable `VITE_LOG_ENDPOINT` (defaults to `/log`) with Telegram `initData` attached.
+- **XState FSM Implementation**: Complete state machine for expense flow
+  - Created `src/machines/expenseFlowMachine.ts` with 9 states (home → accounts → amount → categories → comment → confirmation → submitting → success/error)
+  - Type-safe event system with full TypeScript support
+  - Context-based data accumulation matching "legal dossier" workflow
+  - Guards for validation at each step (isAccountValid, isAmountValid, etc.)
+  - Conditional back-button logic (account change clears amount, category change clears comment)
+  - Pre-loading effects for caches (accounts, categories, destinations)
+  - FSM invoke for blocking operations (transaction submission)
+- **XState Dependencies**: Added `xstate@^4.38.0` and `@xstate/react@^3.2.0`
+- **Updated Hook**: Refactored `useExpenseFlow` to use `useMachine()`
+  - Direct access to FSM state and send function
+  - Selectors for accounts, categories, destinations
+  - Validation helpers (canProceedFromX)
+  - Pre-loading effects for API calls
 - **`useExpenseFlow` Hook**: Consolidated expense flow state management hook
   - Wraps all Zustand expense state into a single, memoized hook
   - Provides unified interface for expense transaction data and handlers
