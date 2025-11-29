@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
@@ -10,7 +9,7 @@ interface IncomeConfirmScreenProps {
   amount: string;
   category: string;
   comment: string;
-  transactionData: TransactionData;
+  accountCurrency?: string;
   isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
@@ -23,7 +22,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
   amount,
   category,
   comment,
-  transactionData,
+  accountCurrency,
   isAvailable,
   onBack,
   onCancel,
@@ -32,7 +31,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const currencyCode = transactionData.account_currency || 'EUR';
+  const currencyCode = accountCurrency || 'EUR';
 
   // Show Telegram back button
   useEffect(() => {

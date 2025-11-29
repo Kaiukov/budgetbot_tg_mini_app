@@ -1,54 +1,79 @@
-import { useState } from 'react';
-
 // Components
 import HomeScreen from './components/HomeScreen';
-// import AccountsScreen from './components/AccountsScreen';
-// import AmountScreen from './components/AmountScreen';
-// import ExpenseCategoryScreen from './components/ExampseCategoryScreen';
-// import DestinationNameCommentScreen from './components/DestinationNameCommentScreen';
-// import ConfirmScreen from './components/ConfirmScreen';
-// import TransferAmountScreen from './components/TransferAmountScreen';
-// import TransferFeeScreen from './components/TransferFeeScreen';
-// import TransferConfirmScreen from './components/TransferConfirmScreen';
-// import DebugScreen from './components/DebugScreen';
-// import TransactionsListScreen from './components/TransactionsListScreen';
-// import TransactionDetailScreen from './components/TransactionDetailScreen';
-// import TransactionEditScreen from './components/TransactionEditScreen';
-
-type Screen =
-  | 'home'
-  | 'expense-accounts'
-  | 'expense-amount'
-  | 'expense-category'
-  | 'expense-comment'
-  | 'expense-confirm'
-  | 'income-accounts'
-  | 'income-amount'
-  | 'income-category'
-  | 'income-comment'
-  | 'income-confirm'
-  | 'transfer-source-accounts'
-  | 'transfer-dest-accounts'
-  | 'transfer-amount'
-  | 'transfer-fees'
-  | 'transfer-comment'
-  | 'transfer-confirm'
-  | 'debug'
-  | 'transactions'
-  | 'transaction-detail'
-  | 'transaction-edit';
+import AccountsScreen from './components/AccountsScreen';
+import { useTelegramUser } from './hooks/useTelegramUser';
+import { useExpenseFlow } from './hooks/useExpenseFlow';
+import { useEffect } from 'react';
 
 const BudgetMiniApp = () => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const telegramUser = useTelegramUser();
+  const expenseFlow = useExpenseFlow();
 
-  const renderScreen = () => {
-    // For now, only render HomeScreen - other screens can be uncommented and built later
-    return <HomeScreen onNavigate={(screen) => setCurrentScreen(screen as Screen)} />;
-  };
+  // Load accounts and categories when entering the Accounts step
+  useEffect(() => {
+    if (
+      expenseFlow.state.step === 'expense-accounts' &&
+      expenseFlow.state.fields.user_name
+    ) {
+      // Load accounts
+      if (expenseFlow.shouldLoadAccounts()) {
+        expenseFlow.loadAccounts();
+      }
+
+      // Pre-load categories for next step
+      if (expenseFlow.shouldLoadCategories()) {
+        expenseFlow.loadCategories();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    expenseFlow.state.step,
+    expenseFlow.state.fields.user_name,
+    expenseFlow.shouldLoadAccounts,
+    expenseFlow.loadAccounts,
+    expenseFlow.shouldLoadCategories,
+    expenseFlow.loadCategories,
+  ]);
 
   return (
     <div className="budget-mini-app">
-      {renderScreen()}
+      {/* Expense Flow - Accounts Step */}
+      {expenseFlow.state.step === 'expense-accounts' && (
+        <AccountsScreen
+          accounts={expenseFlow.selectAccountsState().accounts}
+          accountsLoading={expenseFlow.selectAccountsState().accountsLoading}
+          accountsError={expenseFlow.selectAccountsState().accountsError}
+          title="Select Account"
+          isAvailable={telegramUser.isAvailable}
+          onSelectAccount={(accountName) => {
+            const account = expenseFlow.selectAccountsState().accounts.find(
+              a => a.account_name === accountName
+            );
+            if (account) {
+              expenseFlow.selectAccount(account);
+              expenseFlow.goToAmount();
+            }
+          }}
+          onRetry={expenseFlow.loadAccounts}
+          onBack={expenseFlow.backToHome}
+        />
+      )}
+
+      {/* Home Screen */}
+      {expenseFlow.state.step === 'home' && (
+        <HomeScreen
+          userFullName={telegramUser.userFullName}
+          userPhotoUrl={telegramUser.userPhotoUrl}
+          userInitials={telegramUser.userInitials}
+          userBio={telegramUser.userBio}
+          isAvailable={telegramUser.isAvailable}
+          onNavigate={(action) => {
+            if (action === 'expense-accounts') {
+              expenseFlow.startExpenseFlow(telegramUser.userName || 'Guest');
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

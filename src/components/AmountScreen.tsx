@@ -2,14 +2,12 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
-import type { TransactionData } from '../hooks/useTransactionData';
 import { gradients, cardStyles, layouts } from '../theme/dark';
-import ComposeDataDebugPanel from './ComposeDataDebugPanel';
 
 interface AmountScreenProps {
   account: string;
   amount: string;
-  transactionData: TransactionData;
+  accountCurrency?: string;
   isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
@@ -20,7 +18,7 @@ interface AmountScreenProps {
 const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
-  transactionData,
+  accountCurrency,
   isAvailable,
   onBack,
   onAmountChange,
@@ -37,7 +35,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   }, [onBack]);
 
   // Get currency code, default to empty string if not available
-  const currencyCode = transactionData.account_currency?.toUpperCase() || '';
+  const currencyCode = accountCurrency?.toUpperCase() || '';
 
   // Fetch EUR conversion when amount or currency changes
   useEffect(() => {
@@ -167,9 +165,6 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
         >
           Next
         </button>
-
-        {/* Debug Panel */}
-        <ComposeDataDebugPanel transactionData={transactionData} title="Amount Entry State" />
       </div>
     </div>
   );

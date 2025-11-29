@@ -99,7 +99,7 @@ export class SyncServiceAccounts extends SyncServiceBalance {
       }
 
       // When userName is provided, API already filtered the results server-side
-      // We just need to sort by usage_count: high to low, with 0 usage at the end
+      // We need to deduplicate and sort by usage_count: high to low, with 0 usage at the end
       const allAccounts = data.get_accounts_usage;
 
       console.log('📊 API returned accounts for user:', {
@@ -108,13 +108,32 @@ export class SyncServiceAccounts extends SyncServiceBalance {
         accountsData: allAccounts.map(a => ({
           name: a.account_name,
           user: a.user_name,
-          usage: a.usage_count
+          usage: a.usage_count,
+          id: a.account_id
         }))
       });
 
+      // Deduplicate accounts by account_id, keeping the highest usage_count
+      const deduplicatedMap = new Map<string, typeof allAccounts[0]>();
+      for (const account of allAccounts) {
+        const existing = deduplicatedMap.get(account.account_id);
+        if (!existing || account.usage_count > existing.usage_count) {
+          deduplicatedMap.set(account.account_id, account);
+        }
+      }
+      const deduplicatedAccounts = Array.from(deduplicatedMap.values());
+
+      if (deduplicatedAccounts.length < allAccounts.length) {
+        console.warn('⚠️ Removed duplicate accounts:', {
+          before: allAccounts.length,
+          after: deduplicatedAccounts.length,
+          removed: allAccounts.length - deduplicatedAccounts.length
+        });
+      }
+
       // Separate accounts by usage: used (count > 0) and unused (count = 0)
-      const usedAccounts = allAccounts.filter(account => account.usage_count > 0);
-      const unusedAccounts = allAccounts.filter(account => account.usage_count === 0);
+      const usedAccounts = deduplicatedAccounts.filter(account => account.usage_count > 0);
+      const unusedAccounts = deduplicatedAccounts.filter(account => account.usage_count === 0);
 
       // Sort used accounts by usage_count (high to low)
       usedAccounts.sort((a, b) => b.usage_count - a.usage_count);

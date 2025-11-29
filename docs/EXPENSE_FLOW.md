@@ -1,5 +1,7 @@
 # 📊 Полный Flow для Expense (Расход)
 
+> ⚠️ Legacy reference: this document describes the previous local state approach (`useTransactionData`, internal navigation in `BudgetMiniApp`). Those pieces have been removed while we prepare a dedicated expense-flow store. Treat the flows below as historical notes until the new store is wired.
+
 ## 🔄 Обзор Flow
 
 Expense flow состоит из **5 экранов**, управляемых через state в главном компоненте `BudgetMiniApp`:
@@ -537,6 +539,8 @@ try {
 ---
 
 ## 🔧 State Management Architecture
+
+> Legacy: the code below reflects the previous local/stateful implementation (now removed). It remains here as historical reference until the new expense-flow store is added.
 
 ### **1. Главный State (`BudgetMiniApp.tsx`)**
 

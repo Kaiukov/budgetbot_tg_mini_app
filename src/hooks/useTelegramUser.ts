@@ -38,7 +38,7 @@ export function useTelegramUser(): TelegramUserData {
     if (isAvailable) {
       const user = telegramService.getUser();
       const userName = telegramService.getUserName();
-      let userPhotoUrl = telegramService.getUserPhotoUrl();
+      const userPhotoUrl = telegramService.getUserPhotoUrl();
       const userInitials = telegramService.getUserInitials();
       const colorScheme = telegramService.getColorScheme();
       const userBio = telegramService.getUserBio() || '';
