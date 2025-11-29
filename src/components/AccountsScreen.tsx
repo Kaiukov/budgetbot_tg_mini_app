@@ -5,8 +5,6 @@ import type { AccountUsage } from '../services/sync';
 import { getAccountIcon, getAccountColor } from '../utils/accounts';
 import { formatCurrency } from '../utils/currencies';
 import { gradients, cardStyles, layouts } from '../theme/dark';
-import ComposeDataDebugPanel from './ComposeDataDebugPanel';
-import type { TransactionData } from '../hooks/useTransactionData';
 
 interface AccountsScreenProps {
   accounts: AccountUsage[];
@@ -17,7 +15,6 @@ interface AccountsScreenProps {
   onBack: () => void;
   onSelectAccount: (accountName: string) => void;
   onRetry: () => void;
-  transactionData?: TransactionData;
 }
 
 const AccountsScreen: React.FC<AccountsScreenProps> = ({
@@ -28,8 +25,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
   isAvailable,
   onBack,
   onSelectAccount,
-  onRetry,
-  transactionData
+  onRetry
 }) => {
   // Show Telegram back button
   useEffect(() => {
@@ -121,11 +117,6 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
             <CreditCard size={48} className="text-gray-600 mb-3" />
             <p className="text-gray-400 text-sm">No accounts found</p>
           </div>
-        )}
-
-        {/* Debug Panel */}
-        {transactionData && (
-          <ComposeDataDebugPanel transactionData={transactionData} title="Account Selection State" />
         )}
       </div>
     </div>

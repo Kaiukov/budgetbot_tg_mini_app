@@ -1,7 +1,6 @@
-import { useState } from 'react';
-
 // Components
 import HomeScreen from './components/HomeScreen';
+import { useTelegramUser } from './hooks/useTelegramUser';
 // import AccountsScreen from './components/AccountsScreen';
 // import AmountScreen from './components/AmountScreen';
 // import ExpenseCategoryScreen from './components/ExampseCategoryScreen';
@@ -15,40 +14,19 @@ import HomeScreen from './components/HomeScreen';
 // import TransactionDetailScreen from './components/TransactionDetailScreen';
 // import TransactionEditScreen from './components/TransactionEditScreen';
 
-type Screen =
-  | 'home'
-  | 'expense-accounts'
-  | 'expense-amount'
-  | 'expense-category'
-  | 'expense-comment'
-  | 'expense-confirm'
-  | 'income-accounts'
-  | 'income-amount'
-  | 'income-category'
-  | 'income-comment'
-  | 'income-confirm'
-  | 'transfer-source-accounts'
-  | 'transfer-dest-accounts'
-  | 'transfer-amount'
-  | 'transfer-fees'
-  | 'transfer-comment'
-  | 'transfer-confirm'
-  | 'debug'
-  | 'transactions'
-  | 'transaction-detail'
-  | 'transaction-edit';
-
 const BudgetMiniApp = () => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-
-  const renderScreen = () => {
-    // For now, only render HomeScreen - other screens can be uncommented and built later
-    return <HomeScreen onNavigate={(screen) => setCurrentScreen(screen as Screen)} />;
-  };
+  const telegramUser = useTelegramUser();
 
   return (
     <div className="budget-mini-app">
-      {renderScreen()}
+      {/* Flow navigation will be re-wired once the expense-flow store is added */}
+      <HomeScreen
+        userFullName={telegramUser.userFullName}
+        userPhotoUrl={telegramUser.userPhotoUrl}
+        userInitials={telegramUser.userInitials}
+        userBio={telegramUser.userBio}
+        isAvailable={telegramUser.isAvailable}
+      />
     </div>
   );
 };
