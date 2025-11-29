@@ -94,7 +94,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="grid grid-cols-3 gap-2">
           {/* Expense Card */}
           <div
-            onClick={() => onNavigate('expense-accounts')}
+            onClick={() => onNavigate?.('expense-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'
@@ -113,7 +113,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Income Card */}
           <div
-            onClick={() => onNavigate('income-accounts')}
+            onClick={() => onNavigate?.('income-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)'
@@ -132,7 +132,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 
           {/* Transfer Card */}
           <div
-            onClick={() => onNavigate('transfer-source-accounts')}
+            onClick={() => onNavigate?.('transfer-source-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.08)'
@@ -157,7 +157,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <h2 className="text-sm font-semibold text-gray-300">Transactions</h2>
           {latestTransactions.length > 0 && (
             <button
-              onClick={() => onNavigate('transactions')}
+              onClick={() => onNavigate?.('transactions')}
               className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
             >
               View all
@@ -181,7 +181,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 key={transaction.id}
                 transaction={transaction}
                 onClick={() => {
-                  onNavigate('transaction-detail');
+                  onNavigate?.('transaction-detail');
                   sessionStorage.setItem('selectedTransactionId', transaction.id);
                 }}
               />
@@ -200,7 +200,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             return (
               <div
                 key={idx}
-                onClick={() => feature.route && onNavigate(feature.route)}
+                onClick={() => feature.route && onNavigate?.(feature.route)}
                 className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex items-center shadow-sm"
                 style={{
                   boxShadow: feature.route ? `0 4px 12px ${feature.color}15` : 'none'

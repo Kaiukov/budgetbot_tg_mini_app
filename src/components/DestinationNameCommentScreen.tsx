@@ -1,11 +1,8 @@
-import { Loader } from 'lucide-react';
-import { type DestinationSuggestion } from '../services/sync';
-import { useTelegramUser } from '../hooks/useTelegramUser';
 import { gradients, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
-  category: string;
+  category?: string;
   categoryId?: number | string | null;
   onCommentChange: (comment: string, destinationId?: string) => void;
   onNext: () => void;
@@ -13,12 +10,9 @@ interface CommentScreenProps {
 
 const CommentScreen: React.FC<CommentScreenProps> = ({
   comment,
-  category,
-  categoryId,
   onCommentChange,
   onNext
 }) => {
-  const { userName } = useTelegramUser();
   const displaySuggestions: string[] = [];
 
   return (
