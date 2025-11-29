@@ -94,17 +94,25 @@ function expenseFlowReducer(state: ExpenseFlowState, action: ExpenseFlowAction):
 
     case 'SELECT_ACCOUNT': {
       const account = action.payload;
-      const accountIdChanged = state.fields.account_id !== account.account_id;
+
+      const prevKey = state.fields.account_id
+        ? `${state.fields.account_id}:${(state.fields.account_currency || '').toUpperCase()}`
+        : '';
+      const nextKey = account.account_id
+        ? `${String(account.account_id)}:${(account.account_currency || '').toUpperCase()}`
+        : '';
+
+      // Only clear when we have a previous selection and the key changes
+      const accountChanged = prevKey !== '' && prevKey !== nextKey;
 
       return {
         ...state,
         fields: {
           ...state.fields,
           account_name: account.account_name,
-          account_id: account.account_id,
+          account_id: account.account_id ? String(account.account_id) : '',
           account_currency: account.account_currency,
-          // Reset amount fields if account changed
-          ...(accountIdChanged && {
+          ...(accountChanged && {
             amount: '',
             amount_eur: '',
           }),
@@ -116,6 +124,10 @@ function expenseFlowReducer(state: ExpenseFlowState, action: ExpenseFlowAction):
             account_name: undefined,
             account_id: undefined,
           },
+        },
+        meta: {
+          ...state.meta,
+          lastAccountKey: nextKey,
         },
       };
     }
@@ -143,6 +155,13 @@ function expenseFlowReducer(state: ExpenseFlowState, action: ExpenseFlowAction):
         fields: {
           ...state.fields,
           amount_eur: action.payload,
+        },
+        errors: {
+          ...state.errors,
+          fields: {
+            ...state.errors.fields,
+            amount_eur: undefined,
+          },
         },
       };
     }
@@ -229,11 +248,25 @@ function expenseFlowReducer(state: ExpenseFlowState, action: ExpenseFlowAction):
     }
 
     case 'GO_TO_CATEGORY': {
-      const { amount, category_name } = state.fields;
+      const { amount, account_currency, amount_eur } = state.fields;
       const newErrors: Record<string, string> = {};
 
-      if (!amount) newErrors.amount = 'Amount is required';
-      if (!category_name) newErrors.category_name = 'Category is required';
+      const parsedAmount = amount !== undefined ? Number(amount) : NaN;
+      const isValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+      const currencyCode = account_currency?.toUpperCase();
+
+      if (!isValidAmount) {
+        newErrors.amount = 'Amount is required';
+      }
+
+      const requiresConversion = currencyCode && currencyCode !== 'EUR';
+      if (requiresConversion) {
+        const parsedAmountEur = amount_eur !== undefined ? Number(amount_eur) : NaN;
+        const isValidAmountEur = Number.isFinite(parsedAmountEur) && parsedAmountEur > 0;
+        if (!isValidAmountEur) {
+          newErrors.amount_eur = 'EUR amount is required';
+        }
+      }
 
       if (Object.keys(newErrors).length > 0) {
         return {
@@ -347,6 +380,18 @@ function expenseFlowReducer(state: ExpenseFlowState, action: ExpenseFlowAction):
           comment: '',
         },
         errors: {},
+        meta: {
+          external_id: state.meta.external_id,
+          lastAccountKey: undefined,
+        },
+      };
+    }
+
+    case 'BACK_TO_ACCOUNTS': {
+      return {
+        ...state,
+        step: 'expense-accounts',
+        errors: { fields: {} },
       };
     }
 
@@ -540,6 +585,10 @@ export function useExpenseFlow() {
     dispatch({ type: 'SET_EXTERNAL_ID', payload: id });
   }, []);
 
+  const backToAccounts = useCallback(() => {
+    dispatch({ type: 'BACK_TO_ACCOUNTS' });
+  }, []);
+
   const reset = useCallback(() => {
     dispatch({ type: 'RESET_FLOW' });
   }, []);
@@ -574,6 +623,7 @@ export function useExpenseFlow() {
     setComment,
     goToConfirm,
     backToHome,
+    backToAccounts,
     setExternalId,
     reset,
   };

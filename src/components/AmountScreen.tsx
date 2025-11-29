@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
 import { gradients, cardStyles, layouts } from '../theme/dark';
@@ -27,6 +27,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(null);
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -34,77 +35,123 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     return () => telegramService.hideBackButton();
   }, [onBack]);
 
-  // Get currency code, default to empty string if not available
-  const currencyCode = accountCurrency?.toUpperCase() || '';
+  // Get currency code, default to EUR if not available
+  const currencyCode = accountCurrency?.toUpperCase() || 'EUR';
+  const requiresConversion = currencyCode !== 'EUR';
+
+  const parsedAmount = amount ? Number(amount) : NaN;
+  const isValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
 
   // Fetch EUR conversion when amount or currency changes
-  useEffect(() => {
-    const fetchConversion = async () => {
-      // Only show conversion if:
-      // 1. We have an amount
-      // 2. We have a currency code
-      // 3. Currency is NOT EUR (no conversion needed for same currency)
-      if (!amount || !currencyCode || currencyCode === 'EUR') {
+  const convertToEur = useCallback(async (cancelRef?: { cancelled: boolean }) => {
+    if (!requiresConversion || !isValidAmount) {
+      setConversionAmount(null);
+      setConversionError(null);
+      onAmountForeignChange?.('');
+      setIsLoadingConversion(false);
+      return;
+    }
+
+    setIsLoadingConversion(true);
+    setConversionError(null);
+
+    try {
+      const converted = await syncService.getExchangeRate(currencyCode, 'EUR', parsedAmount);
+      if (cancelRef?.cancelled) return;
+
+      if (converted === null || !Number.isFinite(converted)) {
         setConversionAmount(null);
+        setConversionError('Conversion unavailable. Please retry.');
         onAmountForeignChange?.('');
         return;
       }
 
-      setIsLoadingConversion(true);
-      try {
-        const numAmount = parseFloat(amount);
-        if (!(numAmount > 0)) {
-          setConversionAmount(null);
-          onAmountForeignChange?.('');
-          return;
-        }
-
-        const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
-        setConversionAmount(converted);
-        if (converted) {
-          onAmountForeignChange?.(converted.toFixed(2));
-        }
-      } catch (error) {
-        console.error('Failed to fetch conversion:', error);
-        setConversionAmount(null);
-        onAmountForeignChange?.('');
-      } finally {
+      setConversionAmount(converted);
+      onAmountForeignChange?.(converted.toFixed(2));
+    } catch (error) {
+      if (cancelRef?.cancelled) return;
+      console.error('Failed to fetch conversion:', error);
+      setConversionAmount(null);
+      setConversionError('Conversion failed. Please retry.');
+      onAmountForeignChange?.('');
+    } finally {
+      if (!cancelRef?.cancelled) {
         setIsLoadingConversion(false);
       }
+    }
+  }, [currencyCode, isValidAmount, onAmountForeignChange, parsedAmount, requiresConversion]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Only show conversion when needed and amount is valid
+    if (!requiresConversion || !isValidAmount) {
+      setConversionAmount(null);
+      setConversionError(null);
+      onAmountForeignChange?.('');
+      setIsLoadingConversion(false);
+      return undefined;
+    }
+
+    const cancelRef = { cancelled };
+    const timer = setTimeout(() => {
+      void convertToEur(cancelRef);
+    }, 500);
+
+    return () => {
+      cancelRef.cancelled = true;
+      cancelled = true;
+      clearTimeout(timer);
     };
+  }, [convertToEur, currencyCode, isValidAmount, onAmountForeignChange, parsedAmount, requiresConversion]);
 
-    // Debounce the conversion fetch
-    const timer = setTimeout(fetchConversion, 500);
-    return () => clearTimeout(timer);
-  }, [amount, currencyCode, onAmountForeignChange]);
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
+  const handleRetryConversion = () => {
+    void convertToEur();
+  };
 
-    // Replace comma with dot for decimal separator
-    value = value.replace(/,/g, '.');
+  const normalizeAmountInput = (rawValue: string) => {
+    let value = rawValue.replace(/,/g, '.');
 
     // Reject if it contains minus sign (negative amounts not allowed)
     if (value.includes('-')) {
-      return;
+      return null;
     }
 
     // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
-      if (value.startsWith('.')) {
-        value = '0' + value;
-      }
-      onAmountChange(value);
+    if (value !== '' && !/^\d*\.?\d*$/.test(value)) {
+      return null;
     }
+
+    if (value.startsWith('.')) {
+      value = '0' + value;
+    }
+
+    // Trim redundant leading zeros (keep single zero before decimals)
+    if (value.startsWith('0') && !value.startsWith('0.') && value.length > 1) {
+      value = value.replace(/^0+/, '');
+      if (value === '') {
+        value = '0';
+      }
+    }
+
+    return value;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = normalizeAmountInput(e.target.value);
+    if (value === null) return;
+
+    setConversionError(null);
+    onAmountChange(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && amount && parseFloat(amount) > 0) {
+    if (e.key === 'Enter' && isValidAmount && isNextEnabled) {
       onNext();
     }
   };
 
-  const isValidAmount = amount && parseFloat(amount) > 0;
+  const isNextEnabled = isValidAmount && (!requiresConversion || (conversionAmount !== null && !conversionError && !isLoadingConversion));
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -145,22 +192,36 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
           </div>
 
           {/* Show EUR conversion for non-EUR currencies */}
-          {currencyCode && currencyCode !== 'EUR' && (
-            <div className="mt-3 pt-3 border-t border-gray-700 text-center">
-              {isLoadingConversion ? (
-                <p className="text-xs text-gray-500">Converting...</p>
-              ) : conversionAmount !== null ? (
-                <p className="text-sm text-gray-400">
-                  {conversionAmount.toFixed(2)} EUR
-                </p>
-              ) : null}
+              {currencyCode && currencyCode !== 'EUR' && (
+                <div className="mt-3 pt-3 border-t border-gray-700 text-center">
+                  {isLoadingConversion ? (
+                    <p className="text-xs text-gray-500">Converting...</p>
+                  ) : conversionAmount !== null && !conversionError ? (
+                    <p className="text-sm text-gray-400">
+                      ≈ {conversionAmount.toFixed(2)} EUR
+                    </p>
+                  ) : conversionError ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-xs text-red-400">{conversionError}</p>
+                      <button
+                        onClick={handleRetryConversion}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : null}
             </div>
+          )}
+
+          {amount && !isValidAmount && (
+            <p className="text-xs text-red-400 mt-2 text-center">Enter a valid amount greater than zero</p>
           )}
         </div>
 
         <button
           onClick={onNext}
-          disabled={!isValidAmount}
+          disabled={!isNextEnabled}
           className="w-full mt-4 bg-blue-500 text-white py-3 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 transition active:scale-98"
         >
           Next

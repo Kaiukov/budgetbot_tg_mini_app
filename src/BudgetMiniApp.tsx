@@ -1,6 +1,7 @@
 // Components
 import HomeScreen from './components/HomeScreen';
 import AccountsScreen from './components/AccountsScreen';
+import AmountScreen from './components/AmountScreen';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useExpenseFlow } from './hooks/useExpenseFlow';
 import { useEffect } from 'react';
@@ -45,17 +46,26 @@ const BudgetMiniApp = () => {
           accountsError={expenseFlow.selectAccountsState().accountsError}
           title="Select Account"
           isAvailable={telegramUser.isAvailable}
-          onSelectAccount={(accountName) => {
-            const account = expenseFlow.selectAccountsState().accounts.find(
-              a => a.account_name === accountName
-            );
-            if (account) {
-              expenseFlow.selectAccount(account);
-              expenseFlow.goToAmount();
-            }
+          onSelectAccount={(account) => {
+            expenseFlow.selectAccount(account);
+            expenseFlow.goToAmount();
           }}
           onRetry={expenseFlow.loadAccounts}
           onBack={expenseFlow.backToHome}
+        />
+      )}
+
+      {/* Expense Flow - Amount Step */}
+      {expenseFlow.state.step === 'expense-amount' && (
+        <AmountScreen
+          account={expenseFlow.state.fields.account_name || ''}
+          amount={expenseFlow.state.fields.amount || ''}
+          accountCurrency={expenseFlow.state.fields.account_currency}
+          isAvailable={telegramUser.isAvailable}
+          onBack={expenseFlow.backToAccounts}
+          onAmountChange={expenseFlow.setAmount}
+          onAmountForeignChange={expenseFlow.setAmountEur}
+          onNext={expenseFlow.goToCategory}
         />
       )}
 

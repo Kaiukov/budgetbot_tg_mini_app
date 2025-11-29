@@ -50,6 +50,7 @@ export interface ExpenseFlowErrors {
 
 export interface ExpenseFlowMeta {
   external_id?: string;
+  lastAccountKey?: string;
 }
 
 export interface ExpenseFlowStatus {
@@ -88,5 +89,6 @@ export type ExpenseFlowAction =
   | { type: 'SET_COMMENT'; payload: string }
   | { type: 'GO_TO_CONFIRM' }
   | { type: 'BACK_TO_HOME' }
+  | { type: 'BACK_TO_ACCOUNTS' }
   | { type: 'SET_EXTERNAL_ID'; payload: string }
   | { type: 'RESET_FLOW' };
