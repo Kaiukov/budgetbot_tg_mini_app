@@ -213,7 +213,7 @@ export const useExpenseFlow = (): UseExpenseFlowReturn => {
 
   return {
     // FSM state and send
-    state,
+    state: state as unknown as State<ExpenseFlowContext, ExpenseFlowEvent>,
     send,
 
     // Context accessors

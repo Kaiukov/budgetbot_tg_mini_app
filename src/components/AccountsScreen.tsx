@@ -1,3 +1,9 @@
+/**
+ * TODO: Wire to XState state management (useExpenseFlow hook)
+ * This component is currently using props-based state.
+ * Will be updated to use: const { state, send } = useExpenseFlow()
+ */
+
 import { ArrowLeft, ChevronRight, CreditCard } from 'lucide-react';
 import { useEffect } from 'react';
 import telegramService from '../services/telegram';

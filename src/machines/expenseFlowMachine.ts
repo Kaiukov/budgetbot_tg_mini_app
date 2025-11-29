@@ -75,6 +75,7 @@ export type ExpenseFlowEvent =
   // Destination step
   | { type: 'SET_DESTINATION_SUGGESTIONS'; list: Destination[] }
   | { type: 'SET_DESTINATION'; id?: string; name: string }
+  | { type: 'SET_COMMENT'; comment: string }
   | { type: 'NEXT_FROM_COMMENT' }
   | { type: 'BACK_TO_CATEGORIES' }
 
@@ -202,6 +203,9 @@ export const expenseFlowMachine = createMachine<
           SET_DESTINATION: {
             actions: 'setDestination',
           },
+          SET_COMMENT: {
+            actions: 'setComment',
+          },
           NEXT_FROM_COMMENT: {
             target: 'confirmation',
             cond: 'isDestinationValid',
@@ -310,7 +314,7 @@ export const expenseFlowMachine = createMachine<
 
     /** ACTIONS (изменения контекста) */
     actions: {
-      setCaches: assign((ctx, event) => {
+      setCaches: assign((_ctx, event) => {
         if (event.type !== 'LOAD_CACHES') return {};
         return {
           accountsCache: event.accounts,
@@ -328,7 +332,7 @@ export const expenseFlowMachine = createMachine<
         };
       }),
 
-      resetDraftKeepCaches: assign((ctx) => ({
+      resetDraftKeepCaches: assign(() => ({
         draft: initialContext.draft,
         previousAccountId: null,
         error: null,
@@ -380,7 +384,7 @@ export const expenseFlowMachine = createMachine<
         };
       }),
 
-      setDestinationSuggestions: assign((ctx, event) => {
+      setDestinationSuggestions: assign((_ctx, event) => {
         if (event.type !== 'SET_DESTINATION_SUGGESTIONS') return {};
         return {
           destinationSuggestions: event.list,
@@ -402,6 +406,16 @@ export const expenseFlowMachine = createMachine<
         };
       }),
 
+      setComment: assign((ctx: ExpenseFlowContext, event) => {
+        if (event.type !== 'SET_COMMENT') return {};
+        return {
+          draft: {
+            ...ctx.draft,
+            comment: event.comment,
+          },
+        };
+      }),
+
       setConfirmationDate: assign((ctx) => ({
         draft: {
           ...ctx.draft,
@@ -409,7 +423,7 @@ export const expenseFlowMachine = createMachine<
         },
       })),
 
-      setError: assign((ctx, event) => {
+      setError: assign((_ctx, event) => {
         if (event.type !== 'SUBMIT_FAILURE') return {};
         return { error: event.error };
       }),

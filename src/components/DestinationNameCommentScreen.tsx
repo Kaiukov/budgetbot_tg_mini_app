@@ -1,10 +1,16 @@
+/**
+ * TODO: Wire to XState state management (useExpenseFlow hook)
+ * This component is currently using props-based state.
+ * Will be updated to use: const { state, send } = useExpenseFlow()
+ */
+
 import { gradients, layouts } from '../theme/dark';
 
 interface CommentScreenProps {
   comment: string;
   category?: string;
   categoryId?: number | string | null;
-  onCommentChange: (comment: string, destinationId?: string) => void;
+  onCommentChange: (comment: string) => void;
   onNext: () => void;
 }
 
@@ -24,7 +30,7 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
       <div className={layouts.content}>
         <textarea
           value={comment}
-          onChange={(e) => onCommentChange(e.target.value, undefined)}
+          onChange={(e) => onCommentChange(e.target.value)}
           placeholder="Add comment (optional)"
           className="w-full h-28 p-3 text-sm bg-gray-800 text-white rounded-lg border-none focus:ring-1 focus:ring-gray-700 outline-none resize-none placeholder-gray-500"
         />
@@ -41,7 +47,7 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
                   <button
                     key={idx}
                     onClick={() => {
-                      onCommentChange(suggestion, undefined);
+                      onCommentChange(suggestion);
                     }}
                     className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-full text-xs hover:bg-gray-700 transition active:scale-95"
                     title={suggestion}

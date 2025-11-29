@@ -1,3 +1,9 @@
+/**
+ * TODO: Wire to XState state management (useExpenseFlow hook)
+ * This component is currently using props-based state.
+ * Will be updated to use: const { state, send } = useExpenseFlow()
+ */
+
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
