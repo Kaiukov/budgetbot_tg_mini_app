@@ -9,14 +9,21 @@ const BudgetMiniApp = () => {
   const telegramUser = useTelegramUser();
   const expenseFlow = useExpenseFlow();
 
-  // Load accounts when entering the Accounts step and userName is set
+  // Load accounts and categories when entering the Accounts step
   useEffect(() => {
     if (
       expenseFlow.state.step === 'expense-accounts' &&
-      expenseFlow.state.fields.user_name &&
-      expenseFlow.shouldLoadAccounts()
+      expenseFlow.state.fields.user_name
     ) {
-      expenseFlow.loadAccounts();
+      // Load accounts
+      if (expenseFlow.shouldLoadAccounts()) {
+        expenseFlow.loadAccounts();
+      }
+
+      // Pre-load categories for next step
+      if (expenseFlow.shouldLoadCategories()) {
+        expenseFlow.loadCategories();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -24,6 +31,8 @@ const BudgetMiniApp = () => {
     expenseFlow.state.fields.user_name,
     expenseFlow.shouldLoadAccounts,
     expenseFlow.loadAccounts,
+    expenseFlow.shouldLoadCategories,
+    expenseFlow.loadCategories,
   ]);
 
   return (

@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Wraps all Zustand expense state into a single, memoized hook
   - Provides unified interface for expense transaction data and handlers
   - Reduces BudgetMiniApp component complexity by 14 Zustand selectors
+- **Expense Flow - Accounts Page** ✅ IMPLEMENTED
+  - Complete multi-step transaction flow architecture (Home → Accounts → Amount → Categories → Destination → Confirmation)
+  - Accounts page fully functional with account selection, loading, error handling
+  - Smart account sorting: most-used accounts first, unused accounts at bottom
+  - Back button logic with state preservation and cache management
+  - Pre-loading of categories on Accounts page for optimized UX
+  - Account deduplication: removes duplicates from API, keeps highest usage_count
+  - Full Telegram Mini App integration (back button, dark theme, haptic feedback)
+- **Expense Flow Documentation** ✅ ADDED
+  - Comprehensive guide in `telegram-mini-apps-skill/references/expense-flow.md`
+  - Complete flow overview with state shapes and API calls
+  - Back button logic matrix for all steps
+  - Reference implementation for future steps
 
 ### Changed
 - **State Management Refactoring**: Extracted expense flow state from BudgetMiniApp.tsx into dedicated hook
@@ -20,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Consolidated 14 individual Zustand selectors into single hook call
   - Removed inline `expenseFlowApi` wrapper pattern from component
   - Improved code organization and maintainability
+- **BudgetMiniApp Entry Point**: Wired expense flow navigation
+  - Step-based conditional rendering (home vs expense-accounts)
+  - Automatic account and category pre-loading on Accounts page
+  - userName passed correctly to API calls (fixes `/get_accounts_usage?user_name=Kaiukov`)
+  - HomeScreen Expense button triggers `startExpenseFlow()`
+- **Type System**: Enhanced ExpenseFlowErrors type
+  - Fields can now be `Record<string, string | undefined>` for proper error clearing
 - Account usage now reads from the new `/api/v1/get_account_usage` endpoint with legacy fallback, normalizing singular/plural payloads and new fields (`global_usage`, `user_has_used`).
 - Accounts screen shows the per-user usage status with an "Unused" pill, and the subtitle now only contains your usage + balance (removed the "All users X" community metric).
 - Category usage requests now forward the transaction type (`withdrawal`/`deposit`) to `/api/v1/get_categories_usage`, caching results per user + type and respecting new response fields.
@@ -38,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Category selection now properly derives ID from either `category_id` or `category_id1` field
   - Unused categories now correctly include `category_id1` mapping for comprehensive filtering
   - Type definitions updated to make `category_id1` optional and `created_at`/`updated_at` nullable
+- **API Query Parameters**: Fixed missing `user_name` parameter in account fetch
+  - Accounts now properly filtered by user via `/get_accounts_usage?user_name=Kaiukov`
+  - useEffect timing ensures userName is set in state before API call
+  - Resolves duplicate accounts issue through deduplication logic
+- **Accounts Page Optimization**: Pre-load categories on Accounts page
+  - Categories now fetched concurrently with accounts for faster Amount step load
+  - Reduces loading time when advancing from Accounts to Amount page
 
 ## [1.2.7] - 2025-11-25
 
