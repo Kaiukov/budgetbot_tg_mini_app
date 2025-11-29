@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2025-11-29
+
+### Added
+- **Browser Back Fallback**: Debug-only back button (click + ESC) that works outside Telegram for expense/income/transfer/transactions entry screens.
+
+### Changed
+- **Telegram Detection**: `telegramService.isAvailable()` now requires real `initDataUnsafe.user.id`, preventing SDK-only false positives in the browser.
+- **Back Button Calls**: Screens guard Telegram BackButton usage behind availability to avoid noisy console warnings in browser mode.
+
+### Documentation
+- Updated FSM reference to reflect the unified `budgetMachine` (XState v5) with browser back behavior and entry-screen home routing.
+
 ## [1.2.3] - 2025-11-03
 
 ### Added
