@@ -167,6 +167,12 @@ export const budgetMachine = createMachine(
                   UPDATE_AMOUNT_FOREIGN: {
                     actions: 'updateAmountForeign',
                   },
+                  SET_CONVERSION_AMOUNT: {
+                    actions: 'setConversionAmount',
+                  },
+                  SET_IS_LOADING_CONVERSION: {
+                    actions: 'setIsLoadingConversion',
+                  },
                   NAVIGATE_CATEGORY: 'category',
                   NAVIGATE_BACK: 'accounts',
                 },
@@ -185,6 +191,15 @@ export const budgetMachine = createMachine(
                   UPDATE_COMMENT: {
                     actions: 'updateComment',
                   },
+                  SET_SUGGESTIONS: {
+                    actions: 'setSuggestions',
+                  },
+                  SET_IS_LOADING_SUGGESTIONS: {
+                    actions: 'setIsLoadingSuggestions',
+                  },
+                  SET_SUGGESTIONS_ERROR: {
+                    actions: 'setSuggestionsError',
+                  },
                   NAVIGATE_CONFIRM: 'confirm',
                   NAVIGATE_BACK: 'category',
                 },
@@ -194,6 +209,12 @@ export const budgetMachine = createMachine(
                   SUBMIT_TRANSACTION: {
                     target: '#budget.ready.home',
                     actions: 'resetTransaction',
+                  },
+                  SET_IS_SUBMITTING: {
+                    actions: 'setIsSubmitting',
+                  },
+                  SET_SUBMIT_MESSAGE: {
+                    actions: 'setSubmitMessage',
                   },
                   NAVIGATE_BACK: 'comment',
                 },
@@ -443,7 +464,10 @@ export const budgetMachine = createMachine(
       })),
 
       resetTransaction: assign({
-        transaction: initialContext.transaction,
+        transaction: {
+          ...initialContext.transaction,
+          username: initialContext.transaction.username,
+        },
       }),
 
       setTransferSource: assign(({ context, event }: any) => ({
@@ -590,6 +614,56 @@ export const budgetMachine = createMachine(
             ...context.ui.services,
             [event.service]: event.status,
           },
+        },
+      })),
+
+      // UI State actions for expense flow
+      setConversionAmount: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          conversionAmount: event.amount_eur,
+        },
+      })),
+
+      setIsLoadingConversion: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isLoadingConversion: event.isLoading,
+        },
+      })),
+
+      setSuggestions: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          suggestions: event.suggestions || [],
+        },
+      })),
+
+      setIsLoadingSuggestions: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isLoadingSuggestions: event.isLoading,
+        },
+      })),
+
+      setSuggestionsError: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          suggestionsError: event.error,
+        },
+      })),
+
+      setIsSubmitting: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isSubmitting: event.isSubmitting,
+        },
+      })),
+
+      setSubmitMessage: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          submitMessage: event.message,
         },
       })),
     },

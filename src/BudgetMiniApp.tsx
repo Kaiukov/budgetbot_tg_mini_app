@@ -61,17 +61,16 @@ const BudgetMiniApp = () => {
   const [editingTransaction, setEditingTransaction] = useState<DisplayTransaction | null>(null);
 
   // Get Telegram user data
-  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
+  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
 
   // Get transaction data hook (supports expense and income)
   const {
     transactionData,
-    updateAccount,
+    setUserName,
     updateAccountWithDetails,
     updateAmount,
     updateCategory,
-    updateComment,
-    setUserData,
+    updateDestination,
     resetTransactionData
   } = useTransactionData(transactionType);
 
@@ -175,17 +174,29 @@ const BudgetMiniApp = () => {
     setCategoriesError(null);
 
     try {
-      console.log('🔍 Fetching categories for user:', userName);
+      console.log('🔍 Fetching categories for user:', userName, 'type:', transactionType);
 
       // If userName is known and matches users in the system, filter by userName
       // Otherwise, return all categories
       // Treat "User" and "Guest" as unknown users (browser mode)
       const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getCategoriesUsage(isUnknownUser ? undefined : userName);
+
+      // Map transaction type to API type parameter
+      const typeParam = transactionType === 'expense'
+        ? 'withdrawal'
+        : transactionType === 'income'
+          ? 'deposit'
+          : undefined;
+
+      const data = await syncService.getCategoriesUsage(
+        isUnknownUser ? undefined : userName,
+        typeParam as 'withdrawal' | 'deposit' | undefined
+      );
 
       console.log('📊 Fetched categories:', {
         total: data.total,
-        count: data.get_categories_usage.length
+        count: data.get_categories_usage.length,
+        type: typeParam
       });
 
       // Categories are already sorted by syncService.getCategoriesUsage()
@@ -308,21 +319,15 @@ const BudgetMiniApp = () => {
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
 
     if (selectedAccount) {
+      // Store user name
+      setUserName(selectedAccount.user_name);
+
       // Store account details
       updateAccountWithDetails(
         selectedAccount.account_name,
-        selectedAccount.account_id,
-        selectedAccount.account_currency,
-        selectedAccount.user_name
+        parseInt(selectedAccount.account_id),
+        selectedAccount.account_currency
       );
-
-      // Store user data if available
-      if (user?.id) {
-        setUserData(user.id, userName);
-      }
-    } else {
-      // Fallback to old method if account not found
-      updateAccount(accountName);
     }
 
     setCurrentScreen('amount');
@@ -530,7 +535,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'amount' && (
         <AmountScreen
-          account={transactionData.account}
+          account={transactionData.account_name}
           amount={transactionData.amount}
           transactionData={transactionData}
           isAvailable={isAvailable}
@@ -548,8 +553,8 @@ const BudgetMiniApp = () => {
           transactionType={transactionType}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('amount')}
-          onSelectCategory={(category) => {
-            updateCategory(category);
+          onSelectCategory={(categoryName, categoryId, budgetName) => {
+            updateCategory(categoryName, categoryId, budgetName || '');
             setCurrentScreen('comment');
           }}
           onRetry={fetchCategories}
@@ -558,23 +563,23 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'comment' && (
         <CommentScreen
-          comment={transactionData.comment}
-          category={transactionData.category}
+          destination_name={transactionData.destination_name}
+          category_name={transactionData.category_name}
+          category_id={transactionData.category_id}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('category')}
-          onCommentChange={updateComment}
+          onDestinationChange={(dest_id, dest_name) => updateDestination(typeof dest_id === 'string' ? parseInt(dest_id, 10) : dest_id, dest_name)}
           onNext={() => setCurrentScreen('confirm')}
         />
       )}
 
       {currentScreen === 'confirm' && transactionType === 'expense' && (
         <ConfirmScreen
-          account={transactionData.account}
+          account_name={transactionData.account_name}
           amount={transactionData.amount}
-          category={transactionData.category}
-          comment={transactionData.comment}
+          budget_name={transactionData.budget_name}
+          destination_name={transactionData.destination_name}
           transactionData={transactionData}
-          userName={userName}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
@@ -593,12 +598,11 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'confirm' && transactionType === 'income' && (
         <IncomeConfirmScreen
-          account={transactionData.account}
+          account_name={transactionData.account_name}
           amount={transactionData.amount}
-          category={transactionData.category}
-          comment={transactionData.comment}
+          budget_name={transactionData.budget_name}
+          destination_name={transactionData.destination_name}
           transactionData={transactionData}
-          userName={userName}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
@@ -728,11 +732,11 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'transfer-comment' && (
         <CommentScreen
-          comment={transferComment}
-          category="Transfer"
+          destination_name={transferComment}
+          category_name="Transfer"
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-fees')}
-          onCommentChange={setTransferComment}
+          onDestinationChange={(_, dest) => setTransferComment(dest)}
           onNext={() => setCurrentScreen('transfer-confirm')}
         />
       )}

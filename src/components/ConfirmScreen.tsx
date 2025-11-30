@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
-import { addTransaction, extractBudgetName, type ExpenseTransactionData } from '../services/sync/index';
+import { addTransaction, type ExpenseTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
@@ -9,34 +8,40 @@ import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface ConfirmScreenProps {
-  account: string;
+  account_name: string;
   amount: string;
-  category: string;
-  comment: string;
+  budget_name: string;
+  destination_name: string;
   transactionData: TransactionData;
-  userName: string;
+  isSubmitting?: boolean;
+  submitMessage?: { type: 'success' | 'error'; text: string } | null;
   isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
   onSuccess: () => void;
+  onIsSubmittingChange?: (isSubmitting: boolean) => void;
+  onSubmitMessageChange?: (message: { type: 'success' | 'error'; text: string } | null) => void;
 }
 
 const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
-  account,
+  account_name,
   amount,
-  category,
-  comment,
+  budget_name,
+  destination_name,
   transactionData,
-  userName,
+  isSubmitting: propIsSubmitting,
+  submitMessage: propSubmitMessage,
   isAvailable,
   onBack,
   onCancel,
   onConfirm,
-  onSuccess
+  onSuccess,
+  onIsSubmittingChange,
+  onSubmitMessageChange
 }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
 
   // Show Telegram back button
   useEffect(() => {
@@ -48,53 +53,34 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    onIsSubmittingChange?.(true);
     setSubmitMessage(null);
+    onSubmitMessageChange?.(null);
 
     try {
       console.log('💳 Starting transaction submission:', {
-        account,
-        amount,
-        category,
+        account_name: transactionData.account_name,
+        amount: transactionData.amount,
+        category_name: transactionData.category_name,
+        budget_name: transactionData.budget_name,
+        destination_name: transactionData.destination_name,
         transactionData
       });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
-
       // Build transaction payload
-      const budgetName = extractBudgetName(category);
       const transactionPayload: ExpenseTransactionData = {
-        account: transactionData.account,
-        account_id: parseInt(transactionData.account_id || '0'),
-        account_currency: transactionData.account_currency || 'EUR',
-        currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: category,
-        comment: comment || '',
-        date: new Date().toISOString(),
-        user_id: transactionData.user_id || 0,
-        username: userName || transactionData.username || 'unknown',
+        account: transactionData.account_name,
+        account_id: transactionData.account_id,
+        account_currency: transactionData.account_currency,
+        currency: transactionData.account_currency,
+        amount: parseFloat(transactionData.amount),
+        amount_foreign: transactionData.amount_eur,
+        category: transactionData.category_name,
+        comment: transactionData.destination_name || '',
+        date: transactionData.date || new Date().toISOString(),
+        username: transactionData.user_name || 'unknown',
         // Only include budget_name if it's not empty (excludes Cyrillic/non-ASCII names)
-        ...(budgetName && { budget_name: budgetName })
+        ...(transactionData.budget_name && { budget_name: transactionData.budget_name })
       };
 
       console.log('📝 Transaction payload built:', transactionPayload);
@@ -122,10 +108,12 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
         // Show Telegram alert for error
         telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
-        setSubmitMessage({
-          type: 'error',
+        const errorMsg = {
+          type: 'error' as const,
           text: `Error: ${errorMessage}`
-        });
+        };
+        setSubmitMessage(errorMsg);
+        onSubmitMessageChange?.(errorMsg);
       }
     } catch (error) {
       console.error('💥 Transaction submission error:', error);
@@ -134,12 +122,15 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
       // Show Telegram alert for error
       telegramService.showAlert(`❌ Error: ${errorMessage}`);
 
-      setSubmitMessage({
-        type: 'error',
+      const errorMsg = {
+        type: 'error' as const,
         text: `Error: ${errorMessage}`
-      });
+      };
+      setSubmitMessage(errorMsg);
+      onSubmitMessageChange?.(errorMsg);
     } finally {
       setIsSubmitting(false);
+      onIsSubmittingChange?.(false);
     }
   };
 
@@ -166,15 +157,15 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
           <div className="space-y-0">
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Account:</span>
-              <span className="text-xs font-medium text-white">{account}</span>
+              <span className="text-xs font-medium text-white">{account_name}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Category:</span>
-              <span className="text-xs font-medium text-white">{category}</span>
+              <span className="text-xs font-medium text-white">{budget_name || transactionData.category_name}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Comment:</span>
-              <span className="text-xs font-medium text-white text-right max-w-[60%]">{comment || 'No comment'}</span>
+              <span className="text-xs text-gray-400">Destination:</span>
+              <span className="text-xs font-medium text-white text-right max-w-[60%]">{destination_name || 'None'}</span>
             </div>
             <div className="flex justify-between py-2.5">
               <span className="text-xs text-gray-400">Date:</span>

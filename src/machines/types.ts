@@ -4,7 +4,7 @@
  */
 
 import type { TelegramWebAppUser } from '../types/telegram';
-import type { AccountUsage, CategoryUsage } from '../services/sync';
+import type { AccountUsage, CategoryUsage, DestinationSuggestion } from '../services/sync';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 
 // ============================================================================
@@ -36,6 +36,14 @@ export interface TransactionForm {
   user_id: number | undefined;
   username: string;
   amount_foreign: string;
+  // UI State for expense flow
+  conversionAmount: number | null;
+  isLoadingConversion: boolean;
+  suggestions: DestinationSuggestion[];
+  isLoadingSuggestions: boolean;
+  suggestionsError: string | null;
+  isSubmitting: boolean;
+  submitMessage: { type: 'success' | 'error'; text: string } | null;
 }
 
 export const initialTransactionForm: TransactionForm = {
@@ -48,6 +56,13 @@ export const initialTransactionForm: TransactionForm = {
   user_id: undefined,
   username: '',
   amount_foreign: '',
+  conversionAmount: null,
+  isLoadingConversion: false,
+  suggestions: [],
+  isLoadingSuggestions: false,
+  suggestionsError: null,
+  isSubmitting: false,
+  submitMessage: null,
 };
 
 // ============================================================================
@@ -221,7 +236,15 @@ export type TransactionEvent =
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; username: string }
   | { type: 'SELECT_TRANSACTION'; id: string }
-  | { type: 'CLEAR_SELECTED_TRANSACTION' };
+  | { type: 'CLEAR_SELECTED_TRANSACTION' }
+  // UI state events for expense flow
+  | { type: 'SET_CONVERSION_AMOUNT'; amount_eur: number }
+  | { type: 'SET_IS_LOADING_CONVERSION'; isLoading: boolean }
+  | { type: 'SET_SUGGESTIONS'; suggestions: DestinationSuggestion[] }
+  | { type: 'SET_IS_LOADING_SUGGESTIONS'; isLoading: boolean }
+  | { type: 'SET_SUGGESTIONS_ERROR'; error: string | null }
+  | { type: 'SET_IS_SUBMITTING'; isSubmitting: boolean }
+  | { type: 'SET_SUBMIT_MESSAGE'; message: { type: 'success' | 'error'; text: string } | null };
 
 // Transfer Events
 export type TransferEvent =
@@ -292,6 +315,13 @@ export const isTransactionEvent = (event: BudgetMachineEvent): event is Transact
     'SET_USER_DATA',
     'SELECT_TRANSACTION',
     'CLEAR_SELECTED_TRANSACTION',
+    'SET_CONVERSION_AMOUNT',
+    'SET_IS_LOADING_CONVERSION',
+    'SET_SUGGESTIONS',
+    'SET_IS_LOADING_SUGGESTIONS',
+    'SET_SUGGESTIONS_ERROR',
+    'SET_IS_SUBMITTING',
+    'SET_SUBMIT_MESSAGE',
   ].includes(event.type as any);
 };
 

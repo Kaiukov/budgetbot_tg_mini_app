@@ -9,9 +9,13 @@ interface AmountScreenProps {
   account: string;
   amount: string;
   transactionData: TransactionData;
+  conversionAmount?: number | null;
+  isLoadingConversion?: boolean;
   isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
+  onConversionAmountChange?: (amount: number | null) => void;
+  onIsLoadingConversionChange?: (isLoading: boolean) => void;
   onNext: () => void;
 }
 
@@ -19,13 +23,17 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
   transactionData,
+  conversionAmount: propConversionAmount,
+  isLoadingConversion: propIsLoadingConversion,
   isAvailable,
   onBack,
   onAmountChange,
+  onConversionAmountChange,
+  onIsLoadingConversionChange,
   onNext
 }) => {
-  const [conversionAmount, setConversionAmount] = useState<number | null>(null);
-  const [isLoadingConversion, setIsLoadingConversion] = useState(false);
+  const [conversionAmount, setConversionAmount] = useState<number | null>(propConversionAmount ?? null);
+  const [isLoadingConversion, setIsLoadingConversion] = useState(propIsLoadingConversion ?? false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -45,21 +53,26 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       // 3. Currency is NOT EUR (no conversion needed for same currency)
       if (!amount || !currencyCode || currencyCode === 'EUR') {
         setConversionAmount(null);
+        onConversionAmountChange?.(null as any);
         return;
       }
 
       setIsLoadingConversion(true);
+      onIsLoadingConversionChange?.(true);
       try {
         const numAmount = parseFloat(amount);
         if (numAmount > 0) {
           const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
           setConversionAmount(converted);
+          onConversionAmountChange?.(converted);
         }
       } catch (error) {
         console.error('Failed to fetch conversion:', error);
         setConversionAmount(null);
+        onConversionAmountChange?.(null as any);
       } finally {
         setIsLoadingConversion(false);
+        onIsLoadingConversionChange?.(false);
       }
     };
 

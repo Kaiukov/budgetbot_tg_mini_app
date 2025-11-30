@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronRight, MoreHorizontal, Folder } from 'lucide-react';
 import { useEffect } from 'react';
 import telegramService from '../services/telegram';
 import type { CategoryUsage } from '../services/sync';
+import { extractBudgetName } from '../services/sync/utils';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
 import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
 import { gradients, cardStyles, layouts } from '../theme/dark';
@@ -13,7 +14,7 @@ interface CategoryScreenProps {
   transactionType?: TransactionType;
   isAvailable?: boolean;
   onBack: () => void;
-  onSelectCategory: (categoryName: string) => void;
+  onSelectCategory: (categoryName: string, categoryId: number, budgetName?: string) => void;
   onRetry: () => void;
 }
 
@@ -79,7 +80,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
               return (
                 <div
                   key={`${category.category_name}-${idx}`}
-                  onClick={() => onSelectCategory(category.category_name)}
+                  onClick={() => onSelectCategory(category.category_name, category.category_id, extractBudgetName(category.category_name))}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div
