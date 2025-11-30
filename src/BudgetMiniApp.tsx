@@ -5,6 +5,7 @@ import { syncService, type AccountUsage, type CategoryUsage } from './services/s
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 import { refreshHomeTransactionCache } from './utils/cache';
+import { useBudgetMachineContext } from './context/BudgetMachineContext';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -22,7 +23,25 @@ import TransactionsListScreen from './components/TransactionsListScreen';
 import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
 import BrowserBackButton from './components/BrowserBackButton';
-import type { DisplayTransaction, TransactionData } from './types/transaction';
+import type { DisplayTransaction, TransactionData as APITransactionData } from './types/transaction';
+import type { TransactionData as HookTransactionData } from './hooks/useTransactionData';
+
+// Helper to determine expense screen from machine state
+const getExpenseScreenFromMachineState = (machineState: any): string | null => {
+  if (!machineState?.matches) return null;
+
+  // Check if in expenseFlow
+  if (machineState.matches({ ready: 'expenseFlow' })) {
+    // Get the substate
+    if (machineState.matches({ ready: { expenseFlow: 'accounts' } })) return 'expense-accounts';
+    if (machineState.matches({ ready: { expenseFlow: 'amount' } })) return 'expense-amount';
+    if (machineState.matches({ ready: { expenseFlow: 'category' } })) return 'expense-category';
+    if (machineState.matches({ ready: { expenseFlow: 'comment' } })) return 'expense-comment';
+    if (machineState.matches({ ready: { expenseFlow: 'confirm' } })) return 'expense-confirm';
+  }
+
+  return null;
+};
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
@@ -57,13 +76,19 @@ const BudgetMiniApp = () => {
 
   // Transaction view/edit state
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [selectedTransactionData, setSelectedTransactionData] = useState<TransactionData | null>(null);
+  const [selectedTransactionData, setSelectedTransactionData] = useState<APITransactionData | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<DisplayTransaction | null>(null);
 
   // Get Telegram user data
   const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
 
-  // Get transaction data hook (supports expense and income)
+  // Get machine context for state and actions (expense flow)
+  const machineContext = useBudgetMachineContext();
+
+  // Determine current expense screen from machine state
+  const expenseScreen = getExpenseScreenFromMachineState(machineContext.state);
+
+  // Get transaction data hook (supports expense and income - for income/transfer flows only)
   const {
     transactionData,
     setUserName,
@@ -72,7 +97,7 @@ const BudgetMiniApp = () => {
     updateCategory,
     updateDestination,
     resetTransactionData
-  } = useTransactionData(transactionType);
+  } = useTransactionData(transactionType) as any;
 
   // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
@@ -306,8 +331,55 @@ const BudgetMiniApp = () => {
     }, 1500);
   };
 
+  // ===== EXPENSE FLOW HANDLERS (Machine-driven) =====
+  const handleExpenseSelectAccount = (accountName: string, accountId?: string, currency?: string, user?: string) => {
+    machineContext.send({
+      type: 'UPDATE_ACCOUNT',
+      account: accountName,
+      account_id: accountId || '',
+      account_currency: currency || '',
+      username: user || userName
+    });
+    machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT' });
+  };
+
+  const handleExpenseAmountChange = (value: string) => {
+    machineContext.send({ type: 'UPDATE_AMOUNT', amount: value });
+  };
+
+  const handleExpenseSelectCategory = (categoryName: string, categoryId: number, budgetName?: string) => {
+    machineContext.send({
+      type: 'UPDATE_CATEGORY',
+      category_name: categoryName,
+      category_id: categoryId,
+      budget_name: budgetName || '',
+    });
+    machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT_CATEGORY' });
+  };
+
+  const handleExpenseDestinationChange = (destinationId: number | string, destinationName: string) => {
+    machineContext.send({
+      type: 'UPDATE_DESTINATION',
+      destination_id: typeof destinationId === 'string' ? parseInt(destinationId, 10) : destinationId,
+      destination_name: destinationName
+    });
+    machineContext.send({ type: 'NAVIGATE_EXPENSE_COMMENT_CONFIRM' });
+  };
+
+  const handleExpenseConfirm = () => {
+    machineContext.send({ type: 'SUBMIT_TRANSACTION' });
+  };
+
+  // ===== INCOME FLOW HANDLERS (useTransactionData-driven) =====
   // Navigation handlers
   const handleNavigate = (screen: string) => {
+    // For expense flow, dispatch machine event
+    if (screen === 'accounts') {
+      machineContext.send({ type: 'NAVIGATE_EXPENSE_ACCOUNTS' });
+      return;
+    }
+
+    // For other screens, use currentScreen state
     setCurrentScreen(screen);
   };
 
@@ -350,7 +422,7 @@ const BudgetMiniApp = () => {
     setCurrentScreen('transaction-detail');
   };
 
-  const handleEditTransaction = async (transactionId: string, rawData: TransactionData) => {
+  const handleEditTransaction = async (transactionId: string, rawData: APITransactionData) => {
     setSelectedTransactionData(rawData);
     // Get the display transaction from session or reconstruct from raw data
     const storedId = sessionStorage.getItem('selectedTransactionId');
@@ -499,6 +571,112 @@ const BudgetMiniApp = () => {
         />
       )}
 
+      {/* EXPENSE FLOW - Machine-driven */}
+      {expenseScreen === 'expense-accounts' && (
+        <AccountsScreen
+          accounts={accounts}
+          accountsLoading={accountsLoading}
+          accountsError={accountsError}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onSelectAccount={handleExpenseSelectAccount}
+          onRetry={fetchAccounts}
+        />
+      )}
+
+      {expenseScreen === 'expense-amount' && (
+        <AmountScreen
+          account={machineContext.context.transaction.account}
+          amount={machineContext.context.transaction.amount}
+          transactionData={{
+            user_name: machineContext.context.user.username,
+            account_name: machineContext.context.transaction.account,
+            account_id: 0,
+            account_currency: machineContext.context.transaction.account_currency,
+            amount: machineContext.context.transaction.amount,
+            amount_eur: machineContext.context.transaction.conversionAmount || 0,
+            category_id: 0,
+            category_name: '',
+            budget_name: '',
+            destination_id: 0,
+            destination_name: '',
+            date: ''
+          } as HookTransactionData}
+          conversionAmount={machineContext.context.transaction.conversionAmount}
+          isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onAmountChange={handleExpenseAmountChange}
+          onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount })}
+          onIsLoadingConversionChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_CONVERSION', isLoading })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT_CATEGORY' })}
+        />
+      )}
+
+      {expenseScreen === 'expense-category' && (
+        <CategoryScreen
+          categories={categories}
+          categoriesLoading={categoriesLoading}
+          categoriesError={categoriesError}
+          transactionType="expense"
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onSelectCategory={handleExpenseSelectCategory}
+          onRetry={fetchCategories}
+        />
+      )}
+
+      {expenseScreen === 'expense-comment' && (
+        <CommentScreen
+          destination_name={(machineContext.context.transaction as any).destination_name || ''}
+          category_name={machineContext.context.transaction.category}
+          category_id={0}
+          suggestions={(machineContext.context.transaction as any).suggestions || []}
+          isLoadingSuggestions={(machineContext.context.transaction as any).isLoadingSuggestions || false}
+          suggestionsError={(machineContext.context.transaction as any).suggestionsError || null}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onDestinationChange={handleExpenseDestinationChange}
+          onSuggestionsChange={(suggestions) => machineContext.send({ type: 'SET_SUGGESTIONS', suggestions })}
+          onLoadingSuggestionsChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_SUGGESTIONS', isLoading })}
+          onSuggestionsErrorChange={(error) => machineContext.send({ type: 'SET_SUGGESTIONS_ERROR', error })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_EXPENSE_COMMENT_CONFIRM' })}
+        />
+      )}
+
+      {expenseScreen === 'expense-confirm' && (
+        <ConfirmScreen
+          account_name={machineContext.context.transaction.account}
+          amount={machineContext.context.transaction.amount}
+          budget_name={(machineContext.context.transaction as any).budget_name || ''}
+          destination_name={(machineContext.context.transaction as any).destination_name || ''}
+          transactionData={{
+            user_name: machineContext.context.user.username,
+            account_name: machineContext.context.transaction.account,
+            account_id: 0,
+            account_currency: machineContext.context.transaction.account_currency,
+            amount: machineContext.context.transaction.amount,
+            amount_eur: machineContext.context.transaction.conversionAmount || 0,
+            category_id: 0,
+            category_name: machineContext.context.transaction.category,
+            budget_name: (machineContext.context.transaction as any).budget_name || '',
+            destination_id: 0,
+            destination_name: (machineContext.context.transaction as any).destination_name || '',
+            date: ''
+          } as HookTransactionData}
+          isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
+          submitMessage={(machineContext.context.transaction as any).submitMessage || null}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onCancel={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onConfirm={handleExpenseConfirm}
+          onSuccess={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onIsSubmittingChange={(isSubmitting) => machineContext.send({ type: 'SET_IS_SUBMITTING', isSubmitting })}
+          onSubmitMessageChange={(message) => machineContext.send({ type: 'SET_SUBMIT_MESSAGE', message })}
+        />
+      )}
+
+      {/* INCOME FLOW - useTransactionData-driven (legacy) */}
       {currentScreen === 'accounts' && (
         <AccountsScreen
           accounts={accounts}
