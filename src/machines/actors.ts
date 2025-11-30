@@ -127,17 +127,34 @@ export const telegramInitActor = fromPromise<
 
 export const accountsFetchActor = fromPromise<
   AccountUsage[],
-  { userName?: string }
+  { userName?: string; timeout?: number }
 >(async ({ input }) => {
-  try {
-    console.log('🔄 Fetching accounts for user:', input?.userName);
-    const response = await syncService.getAccountsUsage(input?.userName);
-    console.log('✅ Accounts fetched:', response.get_accounts_usage.length);
-    return response.get_accounts_usage;
-  } catch (error) {
-    console.error('❌ Failed to fetch accounts:', error);
-    throw error;
-  }
+  const timeout = input?.timeout || 30000; // 30s timeout
+
+  return new Promise<AccountUsage[]>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Fetch accounts timeout after 30 seconds'));
+    }, timeout);
+
+    try {
+      console.log('🔄 Fetching accounts for user:', input?.userName);
+      syncService.getAccountsUsage(input?.userName)
+        .then((response) => {
+          clearTimeout(timer);
+          console.log('✅ Accounts fetched:', response.get_accounts_usage.length);
+          resolve(response.get_accounts_usage);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          console.error('❌ Failed to fetch accounts:', error);
+          reject(error);
+        });
+    } catch (error) {
+      clearTimeout(timer);
+      console.error('❌ Error in accounts fetch:', error);
+      reject(error);
+    }
+  });
 });
 
 // ============================================================================
@@ -146,17 +163,34 @@ export const accountsFetchActor = fromPromise<
 
 export const categoriesFetchActor = fromPromise<
   CategoryUsage[],
-  { userName?: string }
+  { userName?: string; timeout?: number }
 >(async ({ input }) => {
-  try {
-    console.log('🔄 Fetching categories for user:', input?.userName);
-    const response = await syncService.getCategoriesUsage(input?.userName);
-    console.log('✅ Categories fetched:', response.get_categories_usage.length);
-    return response.get_categories_usage;
-  } catch (error) {
-    console.error('❌ Failed to fetch categories:', error);
-    throw error;
-  }
+  const timeout = input?.timeout || 30000; // 30s timeout
+
+  return new Promise<CategoryUsage[]>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Fetch categories timeout after 30 seconds'));
+    }, timeout);
+
+    try {
+      console.log('🔄 Fetching categories for user:', input?.userName);
+      syncService.getCategoriesUsage(input?.userName)
+        .then((response) => {
+          clearTimeout(timer);
+          console.log('✅ Categories fetched:', response.get_categories_usage.length);
+          resolve(response.get_categories_usage);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          console.error('❌ Failed to fetch categories:', error);
+          reject(error);
+        });
+    } catch (error) {
+      clearTimeout(timer);
+      console.error('❌ Error in categories fetch:', error);
+      reject(error);
+    }
+  });
 });
 
 // ============================================================================
@@ -165,17 +199,34 @@ export const categoriesFetchActor = fromPromise<
 
 export const transactionsFetchActor = fromPromise<
   DisplayTransaction[],
-  { page?: number }
+  { page?: number; timeout?: number }
 >(async ({ input }) => {
-  try {
-    console.log('🔄 Fetching transactions, page:', input?.page || 1);
-    const response = await fetchTransactions(input?.page || 1);
-    console.log('✅ Transactions fetched:', response.transactions.length);
-    return response.transactions;
-  } catch (error) {
-    console.error('❌ Failed to fetch transactions:', error);
-    throw error;
-  }
+  const timeout = input?.timeout || 30000; // 30s timeout
+
+  return new Promise<DisplayTransaction[]>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Fetch transactions timeout after 30 seconds'));
+    }, timeout);
+
+    try {
+      console.log('🔄 Fetching transactions, page:', input?.page || 1);
+      fetchTransactions(input?.page || 1)
+        .then((response) => {
+          clearTimeout(timer);
+          console.log('✅ Transactions fetched:', response.transactions.length);
+          resolve(response.transactions);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          console.error('❌ Failed to fetch transactions:', error);
+          reject(error);
+        });
+    } catch (error) {
+      clearTimeout(timer);
+      console.error('❌ Error in transactions fetch:', error);
+      reject(error);
+    }
+  });
 });
 
 // ============================================================================
