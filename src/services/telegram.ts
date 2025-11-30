@@ -4,9 +4,13 @@
  */
 
 import type { TelegramWebApp, TelegramWebAppUser } from '../types/telegram';
+import { isBrowserMode, generateFakeInitData, generateFakeInitDataUnsafe } from '../utils/fakeInitData';
 
 class TelegramService {
   private webApp: TelegramWebApp | null = null;
+  private browserMode: boolean = false;
+  private fakeInitData: string = '';
+  private fakeInitDataUnsafe: any = null;
 
   constructor() {
     this.initialize();
@@ -16,7 +20,70 @@ class TelegramService {
    * Initialize Telegram WebApp
    */
   private initialize(): void {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    this.browserMode = isBrowserMode();
+
+    if (this.browserMode) {
+      console.log('🔧 Browser debug mode enabled');
+      this.fakeInitData = generateFakeInitData();
+      this.fakeInitDataUnsafe = generateFakeInitDataUnsafe();
+
+      // Create a mock WebApp object for browser mode
+      this.webApp = {
+        initData: this.fakeInitData,
+        initDataUnsafe: this.fakeInitDataUnsafe,
+        colorScheme: 'dark',
+        themeParams: {},
+        isExpanded: true,
+        viewportHeight: window.innerHeight,
+        viewportStableHeight: window.innerHeight,
+        headerColor: '#000000',
+        backgroundColor: '#000000',
+        isClosingConfirmationEnabled: false,
+        BackButton: {
+          isVisible: false,
+          onClick: () => {},
+          offClick: () => {},
+          show: () => {},
+          hide: () => {},
+        },
+        MainButton: {
+          text: '',
+          color: '#000000',
+          textColor: '#ffffff',
+          isVisible: false,
+          isActive: true,
+          isProgressVisible: false,
+          setText: () => {},
+          onClick: () => {},
+          offClick: () => {},
+          show: () => {},
+          hide: () => {},
+          enable: () => {},
+          disable: () => {},
+          showProgress: () => {},
+          hideProgress: () => {},
+        },
+        HapticFeedback: {
+          impactOccurred: () => {},
+          notificationOccurred: () => {},
+          selectionChanged: () => {},
+        },
+        ready: () => console.log('🔧 Mock WebApp ready'),
+        expand: () => console.log('🔧 Mock WebApp expand'),
+        close: () => console.log('🔧 Mock WebApp close'),
+        sendData: () => console.log('🔧 Mock WebApp sendData'),
+        openLink: (url: string) => window.open(url, '_blank'),
+        openTelegramLink: (url: string) => window.open(url, '_blank'),
+        showAlert: (message: string, callback?: () => void) => {
+          alert(message);
+          callback?.();
+        },
+        showConfirm: (message: string, callback?: (confirmed: boolean) => void) => {
+          const result = confirm(message);
+          callback?.(result);
+        },
+      } as any;
+    } else if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       this.webApp = window.Telegram.WebApp;
       this.webApp.ready();
       this.webApp.expand();
@@ -28,6 +95,13 @@ class TelegramService {
    */
   public isAvailable(): boolean {
     return this.webApp !== null;
+  }
+
+  /**
+   * Check if running in browser debug mode
+   */
+  public isBrowserMode(): boolean {
+    return this.browserMode;
   }
 
   /**

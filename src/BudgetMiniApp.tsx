@@ -22,6 +22,7 @@ import DebugScreen from './components/DebugScreen';
 import TransactionsListScreen from './components/TransactionsListScreen';
 import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
+import BrowserBackButton from './components/BrowserBackButton';
 import type { DisplayTransaction, TransactionData } from './types/transaction';
 
 const BudgetMiniApp = () => {
@@ -387,6 +388,81 @@ const BudgetMiniApp = () => {
     }
   };
 
+  // Get back handler for current screen
+  const getBackHandler = () => {
+    switch (currentScreen) {
+      case 'accounts':
+        return () => {
+          resetTransactionData();
+          setCurrentScreen('home');
+        };
+      case 'income-accounts':
+        return () => {
+          resetTransactionData();
+          setTransactionType('expense');
+          setCurrentScreen('home');
+        };
+      case 'amount':
+        return () => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts');
+      case 'category':
+        return () => setCurrentScreen('amount');
+      case 'comment':
+        return () => setCurrentScreen('category');
+      case 'confirm':
+        return () => setCurrentScreen('comment');
+      case 'transfer-source-accounts':
+        return () => {
+          setTransferSourceAccount('');
+          setTransferSourceAccountId('');
+          setTransferSourceCurrency('');
+          setTransferDestAccount('');
+          setTransferDestAccountId('');
+          setTransferDestCurrency('');
+          setTransferExitAmount('');
+          setTransferEntryAmount('');
+          setTransferExitFee('');
+          setTransferEntryFee('');
+          setTransferComment('');
+          setCurrentScreen('home');
+        };
+      case 'transfer-dest-accounts':
+        return () => {
+          setTransferExitAmount('');
+          setTransferEntryAmount('');
+          setTransferExitFee('');
+          setTransferEntryFee('');
+          setCurrentScreen('transfer-source-accounts');
+        };
+      case 'transfer-amount':
+        return () => {
+          setTransferExitAmount('');
+          setTransferEntryAmount('');
+          setTransferExitFee('');
+          setTransferEntryFee('');
+          setCurrentScreen('transfer-dest-accounts');
+        };
+      case 'transfer-fees':
+        return () => setCurrentScreen('transfer-amount');
+      case 'transfer-comment':
+        return () => setCurrentScreen('transfer-fees');
+      case 'transfer-confirm':
+        return () => setCurrentScreen('transfer-comment');
+      case 'debug':
+        return () => setCurrentScreen('home');
+      case 'transactions':
+        return () => setCurrentScreen('home');
+      case 'transaction-detail':
+        return () => {
+          sessionStorage.removeItem('selectedTransactionId');
+          setCurrentScreen('transactions');
+        };
+      case 'transaction-edit':
+        return () => setCurrentScreen('transaction-detail');
+      default:
+        return () => setCurrentScreen('home');
+    }
+  };
+
   return (
     <div
       className="max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950"
@@ -395,6 +471,9 @@ const BudgetMiniApp = () => {
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)'
       }}
     >
+      {/* Browser Back Button (only shows in browser debug mode) */}
+      <BrowserBackButton onBack={getBackHandler()} isHome={currentScreen === 'home'} />
+
       {/* Screen Router */}
       {currentScreen === 'home' && (
         <HomeScreen
