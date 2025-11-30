@@ -560,7 +560,7 @@ const BudgetMiniApp = () => {
       <BrowserBackButton onBack={getBackHandler()} isHome={currentScreen === 'home'} />
 
       {/* Screen Router */}
-      {currentScreen === 'home' && (
+      {machineContext.state.matches({ ready: 'home' }) && (
         <HomeScreen
           userFullName={userFullName}
           userPhotoUrl={userPhotoUrl}
