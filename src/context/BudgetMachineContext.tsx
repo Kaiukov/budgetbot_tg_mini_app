@@ -127,7 +127,7 @@ export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ ch
   useEffect(() => {
     try {
       const machineState = {
-        state: machine.state,
+        state: machine.state.value,
         context: {
           // Only persist safe data, skip sensitive info
           user: machine.context.user,

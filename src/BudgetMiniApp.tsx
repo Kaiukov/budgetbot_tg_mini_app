@@ -574,9 +574,9 @@ const BudgetMiniApp = () => {
       {/* EXPENSE FLOW - Machine-driven */}
       {expenseScreen === 'expense-accounts' && (
         <AccountsScreen
-          accounts={accounts}
-          accountsLoading={accountsLoading}
-          accountsError={accountsError}
+          accounts={machineContext.context.data.accounts}
+          accountsLoading={machineContext.context.ui.accounts.loading}
+          accountsError={machineContext.context.ui.accounts.error}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
           onSelectAccount={handleExpenseSelectAccount}
@@ -615,9 +615,9 @@ const BudgetMiniApp = () => {
 
       {expenseScreen === 'expense-category' && (
         <CategoryScreen
-          categories={categories}
-          categoriesLoading={categoriesLoading}
-          categoriesError={categoriesError}
+          categories={machineContext.context.data.categories}
+          categoriesLoading={machineContext.context.ui.categories.loading}
+          categoriesError={machineContext.context.ui.categories.error}
           transactionType="expense"
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}

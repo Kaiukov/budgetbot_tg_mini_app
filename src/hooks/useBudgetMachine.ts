@@ -12,7 +12,7 @@ export function useBudgetMachine() {
 
   return {
     // State
-    state: state.value,
+    state: state,
     context: state.context,
 
     // Navigation
