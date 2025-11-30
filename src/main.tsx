@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import BudgetMiniApp from './BudgetMiniApp'
+import { BudgetMachineProvider } from './context/BudgetMachineContext'
 import { telegramService } from './services/telegram'
 import { isBrowserMode } from './utils/fakeInitData'
 import './index.css'
@@ -21,6 +22,8 @@ if (!isBrowserMode()) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BudgetMiniApp />
+    <BudgetMachineProvider>
+      <BudgetMiniApp />
+    </BudgetMachineProvider>
   </React.StrictMode>,
 )

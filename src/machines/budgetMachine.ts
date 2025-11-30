@@ -7,6 +7,12 @@
 import { createMachine, assign } from 'xstate';
 import type { BudgetMachineContext } from './types';
 import { initialContext } from './types';
+import {
+  telegramInitActor,
+  accountsFetchActor,
+  categoriesFetchActor,
+  transactionsFetchActor,
+} from './actors';
 
 export const budgetMachine = createMachine(
   {
@@ -21,6 +27,19 @@ export const budgetMachine = createMachine(
     states: {
       // Loading / Initialization
       loading: {
+        invoke: {
+          id: 'telegramInit',
+          src: telegramInitActor,
+          onDone: {
+            target: 'ready',
+            actions: assign(({ event }) => ({
+              user: event.output,
+            })),
+          },
+          onError: {
+            target: 'ready',
+          },
+        },
         on: {
           INIT_DONE: {
             target: 'ready',
@@ -35,6 +54,84 @@ export const budgetMachine = createMachine(
       // Main App Ready State
       ready: {
         initial: 'home',
+
+        invoke: [
+          {
+            id: 'fetchAccounts',
+            src: accountsFetchActor,
+            input: ({ context }) => ({ userName: context.user.username }),
+            onDone: {
+              actions: assign(({ event, context }) => ({
+                data: {
+                  ...context.data,
+                  accounts: event.output || [],
+                },
+                ui: {
+                  ...context.ui,
+                  accounts: { loading: false, error: null },
+                },
+              })),
+            },
+            onError: {
+              actions: assign(({ event, context }) => ({
+                ui: {
+                  ...context.ui,
+                  accounts: { loading: false, error: String(event.error) },
+                },
+              })),
+            },
+          },
+          {
+            id: 'fetchCategories',
+            src: categoriesFetchActor,
+            input: ({ context }) => ({ userName: context.user.username }),
+            onDone: {
+              actions: assign(({ event, context }) => ({
+                data: {
+                  ...context.data,
+                  categories: event.output || [],
+                },
+                ui: {
+                  ...context.ui,
+                  categories: { loading: false, error: null },
+                },
+              })),
+            },
+            onError: {
+              actions: assign(({ event, context }) => ({
+                ui: {
+                  ...context.ui,
+                  categories: { loading: false, error: String(event.error) },
+                },
+              })),
+            },
+          },
+          {
+            id: 'fetchTransactions',
+            src: transactionsFetchActor,
+            input: () => ({ page: 1 }),
+            onDone: {
+              actions: assign(({ event, context }) => ({
+                data: {
+                  ...context.data,
+                  transactions: event.output || [],
+                },
+                ui: {
+                  ...context.ui,
+                  transactions: { loading: false, error: null },
+                },
+              })),
+            },
+            onError: {
+              actions: assign(({ event, context }) => ({
+                ui: {
+                  ...context.ui,
+                  transactions: { loading: false, error: String(event.error) },
+                },
+              })),
+            },
+          },
+        ],
 
         states: {
           home: {
