@@ -269,14 +269,14 @@ class SyncService {
       const response = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'X-Anonymous-Key': apiKey,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          ...(initData && { 'X-Telegram-Init-Data': initData }),
         },
         // Only include body for POST requests (GET cannot have body)
         ...(method === 'POST' && {
           body: JSON.stringify({
-            initData,
             ...options?.body
           })
         }),
@@ -630,7 +630,7 @@ class SyncService {
 
       console.log('📸 Fetching Telegram user data from backend');
 
-      const data = await this.makeRequest<TelegramUserData>('/api/sync/tgUser', { method: 'POST' });
+      const data = await this.makeRequest<TelegramUserData>('/api/v1/tgUser', { method: 'POST' });
 
       if (data.success) {
         console.log('✅ Successfully fetched Telegram user data:', data.userData);

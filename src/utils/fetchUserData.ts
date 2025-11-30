@@ -67,17 +67,17 @@ export async function fetchUserData(userId?: number): Promise<UserDataResponse> 
       throw new Error('Sync API key not configured');
     }
 
-    const url = `${baseUrl}/api/sync/tgUser`;
-    
+    const url = `${baseUrl}/api/v1/tgUser`;
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'X-Anonymous-Key': apiKey,
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        ...(initData && { 'X-Telegram-Init-Data': initData }),
       },
-      body: JSON.stringify({ 
-        initData,
+      body: JSON.stringify({
         ...(userId && { userId }) // Include userId in the request if provided
       }),
     });
