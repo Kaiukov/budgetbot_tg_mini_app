@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
 import { syncService } from '../services/sync';
-import { addTransaction } from '../services/firefly/transactions';
-import { extractBudgetName } from '../services/firefly/utils';
+import { addTransaction, extractBudgetName, type IncomeTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
-import type { IncomeTransactionData } from '../services/firefly/types';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';

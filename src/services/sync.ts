@@ -1,9 +1,11 @@
 /**
  * Sync API Service
- * Provides utilities for interacting with the Sync API
+ * Provides utilities for interacting with the unified Firefly API (v1)
+ * Uses the unified ApiClient for all HTTP requests with Firefly 3-tier auth
  */
 
 import { Cache } from '../utils/cache';
+import { apiClient } from './sync/apiClient';
 
 export interface AccountUsage {
   account_id: string;
@@ -91,8 +93,6 @@ export interface ExchangeRateCache {
 }
 
 class SyncService {
-  private baseUrl: string;
-  private apiKey: string | null = null;
   private exchangeRateCache: Map<string, ExchangeRateCache> = new Map();
   private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
   private readonly CACHE_KEY_PREFIX = 'exchange_rate_';
@@ -110,17 +110,6 @@ class SyncService {
   private readonly BALANCE_CACHE_EXPIRY_MS = 300000; // 5 minutes in milliseconds
 
   constructor() {
-    // Detect environment
-    const isProduction = typeof window !== 'undefined' &&
-      (window.location.hostname.includes('workers.dev') ||
-       window.location.hostname.includes('pages.dev'));
-
-    // In production: call backend directly (middleware not working)
-    // In development: use Vite proxy (empty baseUrl)
-    this.baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
-
-    this.apiKey = import.meta.env.VITE_SYNC_API_KEY || null;
-
     // Initialize category cache with 1-minute expiry
     this.categoryCache = new Cache<CategoriesUsageResponse>(
       this.CATEGORY_CACHE_EXPIRY_MS,
@@ -139,11 +128,7 @@ class SyncService {
       'balance_'
     );
 
-    console.log('🔧 Sync Service Config:', {
-      environment: isProduction ? 'production' : 'development',
-      baseUrl: this.baseUrl || '(using proxy)',
-      hasApiKey: !!this.apiKey
-    });
+    console.log('🔧 SyncService initialized with ApiClient (Tier 2 auth)');
   }
 
   /**
@@ -219,88 +204,26 @@ class SyncService {
   }
 
   /**
-   * Get current API key
-   */
-  public getApiKey(): string | null {
-    return this.apiKey;
-  }
-
-  /**
-   * Get base URL
-   */
-  public getBaseUrl(): string {
-    return this.baseUrl;
-  }
-
-  /**
    * Check if service is configured
    */
   public isConfigured(): boolean {
-    // baseUrl is always empty (using proxy routing in both dev and prod)
-    // so we only need to check for apiKey
-    return !!this.apiKey;
+    return apiClient.isConfigured();
   }
 
   /**
-   * Make API request to Sync API with Telegram authentication
+   * Make API request using unified ApiClient with Tier 2 auth
+   * Tier 2: Anonymous Authorized (X-Anonymous-Key + X-Telegram-Init-Data)
    */
-  private async makeRequest<T>(endpoint: string, options?: { method?: string; body?: any }): Promise<T> {
-    const url = `${this.getBaseUrl()}${endpoint}`;
-    const apiKey = this.getApiKey();
-
-    if (!apiKey) {
-      throw new Error('Sync API key not configured');
-    }
-
-    // Get Telegram initData for authentication
-    const { default: telegramService } = await import('./telegram');
-    const initData = telegramService.getInitData();
-
-    const method = options?.method || 'POST';
-
-    console.log('🔄 Sync API Request:', {
-      url,
-      method,
-      hasApiKey: !!apiKey,
-      hasInitData: !!initData
+  private async makeRequest<T>(
+    endpoint: string,
+    options?: { method?: string; body?: any }
+  ): Promise<T> {
+    const method = options?.method || 'GET';
+    return apiClient.request<T>(endpoint, {
+      method: method as 'GET' | 'POST' | 'PUT' | 'DELETE',
+      body: options?.body,
+      auth: 'tier2', // Tier 2: Anonymous Authorized (Telegram Mini App users)
     });
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'X-Anonymous-Key': apiKey,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          ...(initData && { 'X-Telegram-Init-Data': initData }),
-        },
-        // Only include body for POST requests (GET cannot have body)
-        ...(method === 'POST' && {
-          body: JSON.stringify({
-            ...options?.body
-          })
-        }),
-      });
-
-      console.log('📡 Sync API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Sync API Error Response:', errorText);
-        throw new Error(`Sync API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Sync API Success:', { totalAccounts: (data as any).total });
-      return data;
-    } catch (error) {
-      console.error('💥 Sync API Fetch Error:', error);
-      throw error;
-    }
   }
 
   /**
@@ -324,7 +247,7 @@ class SyncService {
       console.log('🔄 Fetching fresh balance');
 
       const data = await this.makeRequest<CurrentBalanceResponse>(
-        '/api/sync/get_current_balance',
+        '/api/v1/get_running_balance',
         { method: 'GET' }
       );
 
@@ -366,8 +289,8 @@ class SyncService {
 
       // Build URL with optional user_name query parameter
       const endpoint = userName
-        ? `/api/sync/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/sync/get_accounts_usage';
+        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/v1/get_accounts_usage';
 
       const data = await this.makeRequest<AccountsUsageResponse>(
         endpoint,
@@ -470,8 +393,8 @@ class SyncService {
 
       // Build URL with optional user_name query parameter
       const endpoint = userName
-        ? `/api/sync/get_categories_usage?user_name=${encodeURIComponent(userName)}`
-        : '/api/sync/get_categories_usage';
+        ? `/api/v1/get_categories_usage?user_name=${encodeURIComponent(userName)}`
+        : '/api/v1/get_categories_usage';
 
       const data = await this.makeRequest<CategoriesUsageResponse>(
         endpoint,
@@ -588,7 +511,7 @@ class SyncService {
 
       // Fetch all destinations without query parameters
       // Avoids backend filtering issues with special characters (Cyrillic, emoji)
-      const endpoint = '/api/sync/get_destination_name_usage';
+      const endpoint = '/api/v1/get_destination_name_usage';
 
       const data = await this.makeRequest<DestinationNameUsageResponse>(
         endpoint,
@@ -692,7 +615,7 @@ class SyncService {
         amount: String(amount)
       });
 
-      const endpoint = `/api/sync/exchange_rate?${params.toString()}`;
+      const endpoint = `/api/v1/exchange_rate?${params.toString()}`;
 
       console.log('💱 Fetching fresh exchange rate:', {
         from: fromCode,
@@ -701,23 +624,7 @@ class SyncService {
         endpoint
       });
 
-      const response = await fetch(`${this.getBaseUrl()}${endpoint}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.getApiKey()}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        console.error('❌ Exchange rate API error:', {
-          status: response.status,
-          statusText: response.statusText
-        });
-        return null;
-      }
-
-      const data = await response.json();
+      const data = await this.makeRequest<any>(endpoint, { method: 'GET' });
 
       // Extract converted amount from response
       // API returns: { success: true, exchangeData: { exchangeAmount: number } }

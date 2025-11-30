@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
+- **Transaction Operations**: `addTransaction()`, `fetchTransactions()`, and `fetchTransactionById()` now directly use `apiClient.request()` instead of wrapper methods
+- **Actor Integration**: Transaction CRUD and health check actors now use `apiClient.request()` with explicit auth tier injection
+- **Component Updates**: `BudgetMiniApp.tsx` and `TransactionEditScreen.tsx` now use `apiClient` directly for all API operations
+
+### Technical Improvements
+- **Simplified Architecture**: Eliminated unnecessary service wrapper layer, reduced indirection
+- **Unified Authentication**: All Firefly API calls now explicitly use Tier 2 auth (`auth: 'tier2'`) at the call site
+- **Direct Integration**: Transaction deletion, editing, and health checks now go directly through `apiClient`
+- **Type Safety**: Maintained consistent request/response handling across all API operations
+
+### Removed
+- `src/services/sync/firefly.ts` - Removed wrapper service entirely
+- `fireflyService` exports from `src/services/sync/index.ts`
+
 ## [1.2.4] - 2025-11-29
 
 ### Added

@@ -1,10 +1,11 @@
 /**
  * Firefly III Transaction Service
  * Handles creation of expenses, income, and transfer transactions
+ * Uses unified apiClient with Tier 2 auth (Telegram Mini App users)
  * Based on Python implementation: firefly/budgetbot/bot/utils/firefly_api/add_transaction.py
  */
 
-import { fireflyService } from './firefly';
+import { apiClient } from './apiClient';
 import {
   type ExpenseTransactionData,
   type IncomeTransactionData,
@@ -180,20 +181,19 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
       logTransactionOperation('info', `Sending EUR expense transaction for user ${body.username}`, transactionData);
 
-      const response = await fireflyService.postRequest<Record<string, unknown>>(
+      const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
-        transactionData
+        {
+          method: 'POST',
+          body: transactionData,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
-
-      if (!response.success) {
-        logTransactionOperation('error', `EUR expense transaction failed for user ${body.username}`, response.data);
-        return [false, response.data || { error: 'Unknown error' }];
-      }
 
       // Trigger sync to update account balances
       await triggerImmediateSync();
 
-      return [true, response.data || {}];
+      return [true, response || {}];
     } else {
       // Non-EUR expense - convert to EUR
       const foreignAmount = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
@@ -229,20 +229,19 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
       logTransactionOperation('info', `Sending non-EUR expense transaction for user ${body.username}`, transactionData);
 
-      const response = await fireflyService.postRequest<Record<string, unknown>>(
+      const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
-        transactionData
+        {
+          method: 'POST',
+          body: transactionData,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
-
-      if (!response.success) {
-        logTransactionOperation('error', `Non-EUR expense transaction failed for user ${body.username}`, response.data);
-        return [false, response.data || { error: 'Unknown error' }];
-      }
 
       // Trigger sync to update account balances
       await triggerImmediateSync();
 
-      return [true, response.data || {}];
+      return [true, response || {}];
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -294,20 +293,19 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
       logTransactionOperation('info', `Sending EUR income transaction for user ${body.username}`, transactionData);
 
-      const response = await fireflyService.postRequest<Record<string, unknown>>(
+      const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
-        transactionData
+        {
+          method: 'POST',
+          body: transactionData,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
-
-      if (!response.success) {
-        logTransactionOperation('error', `EUR income transaction failed for user ${body.username}`, response.data);
-        return [false, response.data || { error: 'Unknown error' }];
-      }
 
       // Trigger sync to update account balances
       await triggerImmediateSync();
 
-      return [true, response.data || {}];
+      return [true, response || {}];
     } else {
       // Non-EUR income - convert to EUR
       const foreignAmount = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
@@ -340,20 +338,19 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
       logTransactionOperation('info', `Sending non-EUR income transaction for user ${body.username}`, transactionData);
 
-      const response = await fireflyService.postRequest<Record<string, unknown>>(
+      const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
-        transactionData
+        {
+          method: 'POST',
+          body: transactionData,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
-
-      if (!response.success) {
-        logTransactionOperation('error', `Non-EUR income transaction failed for user ${body.username}`, response.data);
-        return [false, response.data || { error: 'Unknown error' }];
-      }
 
       // Trigger sync to update account balances
       await triggerImmediateSync();
 
-      return [true, response.data || {}];
+      return [true, response || {}];
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -445,15 +442,14 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
     logTransactionOperation('info', `Sending transfer transaction for user ${body.username}`, transactionData);
 
     // Execute main transfer
-    const response = await fireflyService.postRequest<Record<string, unknown>>(
+    const response = await apiClient.request<Record<string, unknown>>(
       '/api/v1/transactions',
-      transactionData
+      {
+        method: 'POST',
+        body: transactionData,
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
     );
-
-    if (!response.success) {
-      logTransactionOperation('error', `Transfer transaction failed for user ${body.username}`, response.data);
-      return [false, response.data || { error: 'Unknown error' }];
-    }
 
     // Handle exit fee if present
     if (body.exit_fee && parseFloat(String(body.exit_fee)) > 0) {
@@ -468,7 +464,7 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
     // Trigger sync after successful transfer
     await triggerImmediateSync();
 
-    return [true, response.data || {}];
+    return [true, response || {}];
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logTransactionOperation('error', `Error handling transfer transaction: ${errorMessage}`);
@@ -508,14 +504,14 @@ async function handleTransferFee(
 
     logTransactionOperation('info', `Sending ${feeType} fee transaction for user ${username}`, transactionData);
 
-    const response = await fireflyService.postRequest<Record<string, unknown>>(
+    await apiClient.request<Record<string, unknown>>(
       '/api/v1/transactions',
-      transactionData
+      {
+        method: 'POST',
+        body: transactionData,
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
     );
-
-    if (!response.success) {
-      logTransactionOperation('error', `${feeType} fee transaction failed for user ${username}`, response.data);
-    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logTransactionOperation('error', `Error handling ${feeType} fee: ${errorMessage}`);
@@ -560,8 +556,9 @@ async function verifyTransactionExists(
  */
 async function convertCurrency(fromCurrency: string, toCurrency: string, amount: number): Promise<number | null> {
   try {
-    // Import syncService dynamically to get exchange rates
-    const { default: syncService } = await import('../sync');
+    // Import syncService from parent sync module
+    const syncModule = await import('../sync');
+    const syncService = syncModule.default;
 
     logTransactionOperation('info', `Converting ${amount} ${fromCurrency} to ${toCurrency}`);
 

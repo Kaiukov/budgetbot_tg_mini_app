@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
-import { fireflyService } from './services/firefly';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
@@ -163,8 +162,7 @@ const BudgetMiniApp = () => {
         error,
         message: errorMessage,
         userName,
-        syncConfigured: syncService.isConfigured(),
-        baseUrl: syncService.getBaseUrl()
+        syncConfigured: syncService.isConfigured()
       });
       setAccountsError(errorMessage);
     } finally {
@@ -199,8 +197,7 @@ const BudgetMiniApp = () => {
         error,
         message: errorMessage,
         userName,
-        syncConfigured: syncService.isConfigured(),
-        baseUrl: syncService.getBaseUrl()
+        syncConfigured: syncService.isConfigured()
       });
       setCategoriesError(errorMessage);
     } finally {
@@ -266,13 +263,21 @@ const BudgetMiniApp = () => {
     // Check Firefly API (real check)
     setTimeout(async () => {
       try {
-        const result = await fireflyService.checkConnection();
+        // Import apiClient dynamically to avoid circular dependencies
+        const { apiClient } = await import('./services/sync/index');
+        await apiClient.request<{ data: unknown }>(
+          '/api/v1/transactions?limit=1',
+          {
+            method: 'GET',
+            auth: 'tier2'
+          }
+        );
         setServiceStatuses(prev => prev.map(service =>
           service.name === 'Firefly API'
             ? {
                 ...service,
-                status: result.success ? 'connected' : 'disconnected',
-                message: result.message
+                status: 'connected',
+                message: 'Firefly API is accessible'
               }
             : service
         ));
@@ -370,18 +375,21 @@ const BudgetMiniApp = () => {
 
   const handleDeleteTransaction = async (transactionId: string) => {
     try {
-      const response = await fireflyService.deleteRequest(`/api/v1/transactions/${transactionId}`);
-      if (response.success) {
-        // Proactively refresh transaction cache
-        await refreshHomeTransactionCache();
+      // Import apiClient dynamically to avoid circular dependencies
+      const { apiClient } = await import('./services/sync/index');
+      await apiClient.request<Record<string, unknown>>(
+        `/api/v1/transactions/${transactionId}`,
+        {
+          method: 'DELETE',
+          auth: 'tier2'
+        }
+      );
+      // Proactively refresh transaction cache
+      await refreshHomeTransactionCache();
 
-        sessionStorage.removeItem('selectedTransactionId');
-        setSelectedTransactionId(null);
-        setCurrentScreen('transactions');
-      } else {
-        console.error('Failed to delete transaction:', response.error);
-        alert(`Failed to delete transaction: ${response.error}`);
-      }
+      sessionStorage.removeItem('selectedTransactionId');
+      setSelectedTransactionId(null);
+      setCurrentScreen('transactions');
     } catch (error) {
       console.error('Error deleting transaction:', error);
       alert('Failed to delete transaction');

@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { fetchTransactionById } from '../services/firefly/transactionsFetch';
+import { fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import {
   formatTransactionForDisplay,

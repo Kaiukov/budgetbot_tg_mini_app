@@ -144,7 +144,7 @@ export class Cache<T> {
  */
 
 import type { DisplayTransaction } from '../types/transaction';
-import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import { fetchTransactions } from '../services/sync/index';
 
 // Transaction cache instance (5-minute TTL)
 export const transactionCache = new Cache<DisplayTransaction[]>(

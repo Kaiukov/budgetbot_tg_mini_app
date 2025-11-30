@@ -2,9 +2,10 @@
  * Firefly III Transactions Fetch Service
  * Handles GET operations for fetching transactions with pagination
  * Also handles single transaction retrieval
+ * Uses unified apiClient with Tier 2 auth (Telegram Mini App users)
  */
 
-import { fireflyService } from './firefly';
+import { apiClient } from './apiClient';
 import type {
   FireflyTransactionResponse,
   DisplayTransaction,
@@ -29,7 +30,13 @@ export async function fetchTransactions(
   try {
     const endpoint = `/api/v1/transactions?page=${page}&limit=${limit}`;
 
-    const response = await fireflyService.makeRequest<FireflyTransactionResponse>(endpoint);
+    const response = await apiClient.request<FireflyTransactionResponse>(
+      endpoint,
+      {
+        method: 'GET',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
 
     if (!response) {
       return {
@@ -83,7 +90,13 @@ export async function fetchTransactionById(id: string | number): Promise<{
   try {
     const endpoint = `/api/v1/transactions/${id}`;
 
-    const response = await fireflyService.makeRequest<FireflyTransactionResponse>(endpoint);
+    const response = await apiClient.request<FireflyTransactionResponse>(
+      endpoint,
+      {
+        method: 'GET',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
 
     if (!response) {
       return {
@@ -195,8 +208,8 @@ function transformTransactionsForDisplay(response: FireflyTransactionResponse): 
 }
 
 /**
- * Public wrapper for makeRequest with typed response
- * This is used internally by the service - extend fireflyService to expose this
+ * Public wrapper for apiClient with typed response
+ * This is used internally by the service
  */
 export function createTransactionsFetchService() {
   return {

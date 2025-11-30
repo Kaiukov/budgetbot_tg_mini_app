@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
 import { syncService } from '../services/sync';
 import type { DisplayTransaction } from '../types/transaction';
-import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import { fetchTransactions } from '../services/sync/index';
 import { transactionCache, TRANSACTION_CACHE_KEYS } from '../utils/cache';
 import TransactionCard from './TransactionCard';
 
