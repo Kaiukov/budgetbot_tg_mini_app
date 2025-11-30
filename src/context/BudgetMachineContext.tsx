@@ -3,7 +3,7 @@
  * Provides budget machine state to all components without prop drilling
  */
 
-import React, { createContext, ReactNode } from 'react';
+import React, { createContext, ReactNode, useEffect, useRef } from 'react';
 import { useBudgetMachine } from '../hooks/useBudgetMachine';
 import type { BudgetMachineContext as BudgetContext } from '../machines/types';
 
@@ -106,8 +106,46 @@ export interface BudgetMachineProviderProps {
   children: ReactNode;
 }
 
+const MACHINE_STATE_KEY = 'budget-machine-state';
+
 export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ children }) => {
   const machine = useBudgetMachine();
+  const previousStateRef = useRef<any>(null);
+
+  // Add event logging (dev only)
+  useEffect(() => {
+    const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
+    if (isDev && machine.state !== previousStateRef.current) {
+      console.log(
+        `🔄 State transition: ${previousStateRef.current ? JSON.stringify(previousStateRef.current) : 'initial'} → ${JSON.stringify(machine.state)}`
+      );
+      previousStateRef.current = machine.state;
+    }
+  }, [machine.state]);
+
+  // Add state persistence
+  useEffect(() => {
+    try {
+      const machineState = {
+        state: machine.state,
+        context: {
+          // Only persist safe data, skip sensitive info
+          user: machine.context.user,
+          // Don't persist form data during entry
+          transaction: machine.context.transaction.amount
+            ? machine.context.transaction
+            : { account: '', amount: '', category: '', comment: '', account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '' },
+          transfer: machine.context.transfer,
+          data: machine.context.data,
+          ui: machine.context.ui,
+          selectedTransaction: machine.context.selectedTransaction,
+        },
+      };
+      localStorage.setItem(MACHINE_STATE_KEY, JSON.stringify(machineState));
+    } catch (error) {
+      console.warn('Failed to persist machine state:', error);
+    }
+  }, [machine.state, machine.context]);
 
   return (
     <budgetMachineContext.Provider value={machine}>
