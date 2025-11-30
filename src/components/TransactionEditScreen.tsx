@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Save, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { fireflyService } from '../services/firefly/firefly';
+import { apiClient } from '../services/sync/index';
 import type { TransactionData, DisplayTransaction } from '../types/transaction';
 import { formatTransactionDate } from '../utils/transactionHelpers';
 import { refreshHomeTransactionCache } from '../utils/cache';
@@ -101,15 +101,14 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
         ],
       };
 
-      const response = await fireflyService.putRequest(
+      await apiClient.request<Record<string, unknown>>(
         `/api/v1/transactions/${transaction.journalId}`,
-        payload
+        {
+          method: 'PUT',
+          body: payload,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
-
-      if (!response.success) {
-        setError(response.error || 'Failed to update transaction');
-        return;
-      }
 
       // Proactively refresh transaction cache
       await refreshHomeTransactionCache();

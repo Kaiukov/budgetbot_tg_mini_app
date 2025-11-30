@@ -7,8 +7,7 @@ import { fromPromise } from 'xstate';
 import type { BudgetUser } from './types';
 import telegramService from '../services/telegram';
 import { syncService, type AccountUsage, type CategoryUsage } from '../services/sync';
-import { fireflyService, addTransaction } from '../services/firefly';
-import { fetchTransactions, fetchTransactionById } from '../services/firefly/transactionsFetch';
+import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
 
@@ -285,13 +284,14 @@ export const transactionEditActor = fromPromise<
 >(async ({ input }) => {
   try {
     console.log('🔄 Editing transaction:', input.transactionId);
-    const response = await fireflyService.putRequest(
+    await apiClient.request<Record<string, unknown>>(
       `/api/v1/transactions/${input.transactionId}`,
-      { transactions: [input.data] }
+      {
+        method: 'PUT',
+        body: { transactions: [input.data] },
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
     );
-    if (!response.success) {
-      throw new Error(response.error);
-    }
     console.log('✅ Transaction edited');
   } catch (error) {
     console.error('❌ Failed to edit transaction:', error);
@@ -309,7 +309,13 @@ export const transactionDeleteActor = fromPromise<
 >(async ({ input }) => {
   try {
     console.log('🔄 Deleting transaction:', input.transactionId);
-    await fireflyService.deleteRequest(`/api/v1/transactions/${input.transactionId}`);
+    await apiClient.request<Record<string, unknown>>(
+      `/api/v1/transactions/${input.transactionId}`,
+      {
+        method: 'DELETE',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
     console.log('✅ Transaction deleted');
   } catch (error) {
     console.error('❌ Failed to delete transaction:', error);
@@ -342,11 +348,22 @@ export const fireflyServiceHealthActor = fromPromise<
 >(async () => {
   try {
     console.log('🔄 Checking Firefly API connection...');
-    const result = await fireflyService.checkConnection();
+    // Test connection by making a simple request to the API
+    await apiClient.request<{ data: unknown }>(
+      '/api/v1/transactions?limit=1',
+      {
+        method: 'GET',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+    const result = { success: true, message: 'Firefly API is accessible' };
     console.log('✅ Firefly API status:', result);
     return result;
   } catch (error) {
     console.error('❌ Firefly API health check failed:', error);
-    throw error;
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to connect to Firefly API'
+    };
   }
 });

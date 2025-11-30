@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { fetchTransactions } from '../services/firefly/transactionsFetch';
+import { fetchTransactions } from '../services/sync/index';
 import type { DisplayTransaction, PaginationMeta } from '../types/transaction';
 import TransactionCard from './TransactionCard';
 import { layouts, gradients } from '../theme/dark';
