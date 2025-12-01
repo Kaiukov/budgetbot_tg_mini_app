@@ -230,18 +230,19 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
 
     if (transactionCurrency === 'EUR') {
       // EUR withdrawal transaction
-      const cleanCategory = cleanCategoryName(body.category);
+      const cleanCategory = cleanCategoryName(body.category_name);
+      const accountName = body.account_name || body.account || 'Unknown Account';
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency),
+        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency),
         currency_code: transactionCurrency,
         category_name: cleanCategory,
-        source_name: body.account,
+        source_name: accountName,
         destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
         notes: providedNotes || buildTransactionNotes(
-          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency}`,
+          `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency}`,
           (body as any).destination_name || (body as any).comment,
           body.user_name
         ),
@@ -277,20 +278,21 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
         return [false, { error: 'Currency conversion failed' }];
       }
 
-      const cleanCategory = cleanCategoryName(body.category);
+      const cleanCategory = cleanCategoryName(body.category_name);
+      const accountName = body.account_name || body.account || 'Unknown Account';
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency, amount_eur),
+        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
-        source_name: body.account,
+        source_name: accountName,
         destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
         notes: providedNotes || buildTransactionNotes(
-          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
+          `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           (body as any).destination_name || (body as any).comment,
           body.user_name
         ),
@@ -359,17 +361,17 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
     if (transactionCurrency === 'EUR') {
       // EUR income transaction
-      const cleanCategory = cleanCategoryName(body.category);
+      const cleanCategory = cleanCategoryName(body.category_name);
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
+        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
         currency_code: accountCurrency,
         category_name: cleanCategory,
-        destination_name: body.account,
+        destination_name: body.account_name,
         notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency}`,
+          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency}`,
           body.comment,
           body.user_name
         ),
@@ -403,19 +405,19 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         return [false, { error: 'Currency conversion failed' }];
       }
 
-      const cleanCategory = cleanCategoryName(body.category);
+      const cleanCategory = cleanCategoryName(body.category_name);
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR) Comment: ${body.comment || ''}`,
+        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR) Comment: ${body.comment || ''}`,
         currency_code: accountCurrency,
         category_name: cleanCategory,
-        destination_name: body.account,
+        destination_name: body.account_name,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
         notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
+          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           body.comment,
           body.user_name
         ),

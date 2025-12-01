@@ -15,8 +15,9 @@ export interface BaseTransactionData {
   user_name: string;
   date: string | Date;
   amount: string | number;
-  currency: string;
-  account: string;
+  currency?: string;
+  account?: string;
+  account_name?: string;
   account_currency?: string;
   comment?: string;
   notes?: string;
@@ -26,10 +27,14 @@ export interface BaseTransactionData {
  * Withdrawal-specific transaction data
  */
 export interface WithdrawalTransactionData extends BaseTransactionData {
-  category: string;
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  destination_id?: string | number;
+  destination_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 
@@ -37,10 +42,14 @@ export interface WithdrawalTransactionData extends BaseTransactionData {
  * Income-specific transaction data
  */
 export interface IncomeTransactionData extends BaseTransactionData {
-  category: string;
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  destination_id?: string | number;
+  destination_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 

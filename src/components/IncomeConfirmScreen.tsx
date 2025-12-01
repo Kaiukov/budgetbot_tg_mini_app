@@ -79,14 +79,17 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 
       // Build income transaction payload
       const transactionPayload: IncomeTransactionData = {
-        account: transactionData.account_name,
+        account_name: transactionData.account_name,
         account_id: transactionData.account_id,
         account_currency: transactionData.account_currency || 'EUR',
         currency: transactionData.account_currency || 'EUR',
         amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: transactionData.category_name,
-        comment: destination_name || '',
+        amount_eur: amountForeignEur,
+        category_id: transactionData.category_id,
+        category_name: transactionData.category_name,
+        destination_id: transactionData.destination_id,
+        destination_name: destination_name || '',
+        notes: transactionData.notes || '',
         date: transactionData.date || new Date().toISOString(),
         user_name: transactionData.user_name || 'unknown',
         // Only include budget_name if it's not empty

@@ -189,25 +189,26 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
       const amountForeign = isEurAccount ? undefined : amountValue;
 
       const transactionPayload: WithdrawalTransactionData = {
-        // Required identification
+        // User identification
         user_name: transactionData.user_name || 'unknown',
 
         // Account
-        account: transactionData.account_name,
+        account_name: transactionData.account_name,
         account_id: transactionData.account_id,
         account_currency: transactionData.account_currency,
-        currency: transactionData.account_currency,
 
         // Amounts
         amount: amountValue,
-        amount_foreign: amountForeign,
+        amount_eur: amountForeign !== undefined ? amountForeign : amountValue,
 
         // Category
-        category: transactionData.category_name,
+        category_id: transactionData.category_id,
+        category_name: transactionData.category_name,
         budget_name: transactionData.budget_name,
 
-        // Destination/Comment
-        comment: transactionData.destination_name || '',
+        // Destination
+        destination_id: transactionData.destination_id,
+        destination_name: transactionData.destination_name || '',
 
         // Meta
         notes: notesInput.trim(),
