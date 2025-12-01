@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export type TransactionType = 'expense' | 'income' | 'transfer';
+export type TransactionType = 'withdrawal' | 'income' | 'transfer';
 
 export interface TransactionData {
   // User identification
@@ -24,6 +24,9 @@ export interface TransactionData {
   destination_id: number;
   destination_name: string;
 
+  // Notes (free-form memo)
+  notes: string;
+
   // Metadata
   date: string; // ISO timestamp
 }
@@ -40,15 +43,16 @@ const initialTransactionData: TransactionData = {
   budget_name: '',
   destination_id: 0,
   destination_name: '',
+  notes: '',
   date: '',
 };
 
 /**
  * Generic transaction data hook
  * Replaces useExpenseData with type-aware version
- * Supports expense, income, and transfer transaction types
+ * Supports withdrawal, income, and transfer transaction types
  */
-export const useTransactionData = (type: TransactionType = 'expense') => {
+export const useTransactionData = (type: TransactionType = 'withdrawal') => {
   const [transactionData, setTransactionData] = useState<TransactionData>(initialTransactionData);
   const [transactionType] = useState<TransactionType>(type);
 
@@ -85,6 +89,10 @@ export const useTransactionData = (type: TransactionType = 'expense') => {
     setTransactionData(prev => ({ ...prev, destination_id, destination_name }));
   };
 
+  const updateNotes = (notes: string) => {
+    setTransactionData(prev => ({ ...prev, notes }));
+  };
+
   const setDate = (date: string) => {
     setTransactionData(prev => ({ ...prev, date }));
   };
@@ -109,6 +117,7 @@ export const useTransactionData = (type: TransactionType = 'expense') => {
     updateAmountEUR,
     updateCategory,
     updateDestination,
+    updateNotes,
     setDate,
     resetTransactionData,
     isValid

@@ -50,7 +50,7 @@ const defaultContextValue: BudgetMachineContextType = {
   state: 'loading',
   context: {
     user: { id: 0, username: 'Guest', fullName: 'Guest', photoUrl: null, initials: 'G', bio: '', colorScheme: 'dark', rawUser: null },
-    transaction: { account: '', amount: '', category: '', category_id: 0, budget_name: '', comment: '', destination_name: '', destination_id: 0, account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
+    transaction: { account: '', amount: '', category: '', category_id: 0, budget_name: '', comment: '', destination_name: '', destination_id: 0, account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', notes: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
     transfer: { source: { account: '', id: '', currency: '' }, destination: { account: '', id: '', currency: '' }, exitAmount: '', entryAmount: '', exitFee: '', entryFee: '', comment: '' },
     data: { accounts: [], categories: [], transactions: [] },
     ui: { accounts: { loading: false, error: null }, categories: { loading: false, error: null }, transactions: { loading: false, error: null }, services: { telegram: { name: 'Telegram', status: 'checking', message: '' }, sync: { name: 'Sync', status: 'checking', message: '' }, firefly: { name: 'Firefly', status: 'checking', message: '' } } },

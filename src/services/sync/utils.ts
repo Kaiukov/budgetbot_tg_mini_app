@@ -120,16 +120,16 @@ export function extractBudgetName(category: string): string {
 }
 
 /**
- * Build description string for expense transactions
+ * Build description string for withdrawal transactions
  */
-export function buildExpenseDescription(
+export function buildWithdrawalDescription(
   category: string,
   account: string,
   amount: string | number,
   currency: string,
   foreignAmount?: string | number
 ): string {
-  const baseDesc = `Expense ${category} from ${account} ${amount} ${currency}`;
+  const baseDesc = `Withdrawal ${category} from ${account} ${amount} ${currency}`;
 
   if (foreignAmount) {
     return `${baseDesc} (${foreignAmount} EUR)`;

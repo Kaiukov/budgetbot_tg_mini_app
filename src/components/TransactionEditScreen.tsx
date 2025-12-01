@@ -218,7 +218,7 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
             <span className="text-sm font-medium text-white capitalize">{transaction.type}</span>
           </div>
 
-          {transaction.type === 'expense' && (
+          {transaction.type === 'withdrawal' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">From Account</span>
               <span className="text-sm font-medium text-white">{transaction.sourceName}</span>

@@ -52,7 +52,7 @@ export {
   formatAmount,
   extractCategoryName,
   extractBudgetName,
-  buildExpenseDescription,
+  buildWithdrawalDescription,
   buildIncomeDescription,
   buildTransferDescription,
   buildTransactionNotes,
@@ -68,7 +68,7 @@ export {
 export {
   TransactionType,
   type BaseTransactionData,
-  type ExpenseTransactionData,
+  type WithdrawalTransactionData,
   type IncomeTransactionData,
   type TransferTransactionData,
   type FireflyTransactionPayload,

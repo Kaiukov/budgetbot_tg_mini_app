@@ -1,7 +1,7 @@
 /**
  * Reusable Transaction Card Component
  * Displays a single transaction in a card format
- * Supports income, expense, and transfer transactions
+ * Supports income, withdrawal, and transfer transactions
  */
 
 import { TrendingDown, TrendingUp, ArrowRightLeft, ChevronRight } from 'lucide-react';
@@ -27,7 +27,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
     case 'income':
       IconComponent = TrendingUp;
       break;
-    case 'expense':
+    case 'withdrawal':
       IconComponent = TrendingDown;
       break;
     case 'transfer':
@@ -95,7 +95,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
             color:
               displayData.type === 'income'
                 ? '#10B981'
-                : displayData.type === 'expense'
+                : displayData.type === 'withdrawal'
                   ? '#EF4444'
                   : '#3B82F6',
           }}

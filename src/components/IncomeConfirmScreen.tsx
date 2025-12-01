@@ -88,7 +88,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
         category: transactionData.category_name,
         comment: destination_name || '',
         date: transactionData.date || new Date().toISOString(),
-        username: transactionData.user_name || 'unknown',
+        user_name: transactionData.user_name || 'unknown',
         // Only include budget_name if it's not empty
         ...(budget_name && { budget_name })
       };

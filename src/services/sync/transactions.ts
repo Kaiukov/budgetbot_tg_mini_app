@@ -7,7 +7,7 @@
 
 import { apiClient } from './apiClient';
 import {
-  type ExpenseTransactionData,
+  type WithdrawalTransactionData,
   type IncomeTransactionData,
   type TransferTransactionData,
   type FireflyCreateTransactionRequest,
@@ -21,13 +21,40 @@ import {
   parseTransactionDate,
   formatAmount,
   cleanCategoryName,
-  buildExpenseDescription,
+  buildWithdrawalDescription,
   buildTransferDescription,
   buildTransactionNotes,
   validateAmount,
   logTransactionOperation,
   OperationTimer,
 } from './utils';
+
+const isDebugApi = import.meta.env.VITE_DEBUG_API === 'true';
+const DEBUG_WEBHOOK_URL = import.meta.env.VITE_DEBUG_WEBHOOK_URL || 'https://n8n.neon-chuckwalla.ts.net/webhook/test_me';
+
+const safeStringify = (value: unknown): string => {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value === 'string') return value;
+  if (value instanceof Error) return value.message || String(value);
+
+  const seen = new WeakSet<object>();
+  try {
+    return JSON.stringify(
+      value,
+      (_k, v) => {
+        if (typeof v === 'object' && v !== null) {
+          if (seen.has(v as object)) return '[Circular]';
+          seen.add(v as object);
+        }
+        if (typeof v === 'bigint') return v.toString();
+        return v;
+      },
+      2
+    );
+  } catch {
+    return String(value);
+  }
+};
 
 /**
  * Helper to build transaction request with cleaned null values
@@ -48,10 +75,55 @@ function buildTransactionRequest(payload: FireflyTransactionPayload): FireflyCre
  * Coordinates transaction creation with optional verification
  */
 export async function addTransaction(
-  body: ExpenseTransactionData | IncomeTransactionData | TransferTransactionData,
+  body: WithdrawalTransactionData | IncomeTransactionData | TransferTransactionData,
   transactionType: TransactionType | string,
   enableVerification: boolean = true
 ): Promise<TransactionResult> {
+  // Debug mode: short-circuit and send payload to webhook for inspection
+  if (isDebugApi) {
+    try {
+      // Normalize payload to ensure all required fields are present for inspection
+      const normalized = {
+        transactionType,
+        user_name: (body as any).user_name || (body as any).username || 'unknown',
+        account_name: (body as any).account_name || (body as any).account || '',
+        account_id: (body as any).account_id ?? '',
+        account_currency: (body as any).account_currency || (body as any).currency || '',
+        amount: (body as any).amount ?? '',
+        amount_eur: (body as any).amount_eur ?? '',
+        category_id: (body as any).category_id ?? '',
+        category_name: (body as any).category_name || (body as any).category || '',
+        destination_id: (body as any).destination_id ?? '',
+        destination_name: (body as any).destination_name || (body as any).comment || '',
+        date: (body as any).date ?? new Date().toISOString(),
+        notes: (body as any).notes ?? '',
+        budget_name: (body as any).budget_name ?? '',
+        timestamp: new Date().toISOString()
+      };
+
+      await fetch(DEBUG_WEBHOOK_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(normalized)
+      });
+
+      logTransactionOperation(
+        'info',
+        `DEBUG_API enabled. Transaction routed to webhook: ${DEBUG_WEBHOOK_URL}`
+      );
+
+      // Return early to avoid hitting Firefly
+      return [true, { debug: true, routed_to: DEBUG_WEBHOOK_URL } as unknown as any];
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logTransactionOperation('error', `DEBUG_API webhook failed: ${message}`);
+      return [false, { error: `Debug webhook failed: ${message}` } as unknown as any];
+    }
+  }
+
   const timer = new OperationTimer();
 
   try {
@@ -60,8 +132,8 @@ export async function addTransaction(
     const normalizedType = (transactionType as TransactionType).toLowerCase();
 
     switch (normalizedType) {
-      case TransactionType.EXPENSE:
-        result = await handleExpenseTransaction(body as ExpenseTransactionData);
+      case TransactionType.WITHDRAWAL:
+        result = await handleWithdrawalTransaction(body as WithdrawalTransactionData);
         break;
       case TransactionType.INCOME:
         result = await handleIncomeTransaction(body as IncomeTransactionData);
@@ -136,9 +208,9 @@ export async function addTransaction(
 }
 
 /**
- * Handle expense transactions (EUR and non-EUR)
+ * Handle withdrawal transactions (EUR and non-EUR)
  */
-async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<TransactionResult> {
+async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Promise<TransactionResult> {
   try {
     // Validate amount
     if (!validateAmount(body.amount)) {
@@ -149,30 +221,31 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
-    const externalId = generateExternalId(TransactionType.EXPENSE, body.username);
+    const externalId = generateExternalId(TransactionType.WITHDRAWAL, body.user_name);
 
     // Determine currencies
     const accountCurrency = body.account_currency || 'EUR';
     const transactionCurrency = body.currency || accountCurrency;
+    const providedNotes = typeof body.notes === 'string' ? body.notes.trim() : '';
 
     if (transactionCurrency === 'EUR') {
-      // EUR expense transaction
+      // EUR withdrawal transaction
       const cleanCategory = cleanCategoryName(body.category);
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildExpenseDescription(cleanCategory, body.account, body.amount, body.currency),
+        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency),
         currency_code: transactionCurrency,
         category_name: cleanCategory,
         source_name: body.account,
-        destination_name: body.comment || 'Expense',
-        notes: buildTransactionNotes(
-          `Expense ${cleanCategory} from ${body.account} ${body.amount} ${body.currency}`,
-          body.comment,
-          body.username
+        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
+        notes: providedNotes || buildTransactionNotes(
+          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency}`,
+          (body as any).destination_name || (body as any).comment,
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
         reconciled: false,
         budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
@@ -180,7 +253,7 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending EUR expense transaction for user ${body.username}`, transactionData);
+      logTransactionOperation('info', `Sending EUR withdrawal transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -196,7 +269,7 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
       return [true, response || {}];
     } else {
-      // Non-EUR expense - convert to EUR
+      // Non-EUR withdrawal - convert to EUR
       const foreignAmount = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
 
       if (foreignAmount === null) {
@@ -209,19 +282,19 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildExpenseDescription(cleanCategory, body.account, body.amount, body.currency, foreignAmount),
+        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency, foreignAmount),
         currency_code: accountCurrency,
         category_name: cleanCategory,
         source_name: body.account,
-        destination_name: body.comment || 'Expense',
+        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(foreignAmount),
-        notes: buildTransactionNotes(
-          `Expense ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
-          body.comment,
-          body.username
+        notes: providedNotes || buildTransactionNotes(
+          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
+          (body as any).destination_name || (body as any).comment,
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
         reconciled: false,
         budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
@@ -229,7 +302,7 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending non-EUR expense transaction for user ${body.username}`, transactionData);
+      logTransactionOperation('info', `Sending non-EUR withdrawal transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -246,9 +319,21 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
       return [true, response || {}];
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logTransactionOperation('error', `Error handling expense transaction: ${errorMessage}`);
-    return [false, { error: errorMessage }];
+    const err: any = error;
+    const errorPayload =
+      err && typeof err === 'object' && 'status' in err
+        ? {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            body: err.body
+          }
+        : err instanceof Error
+          ? err.message
+          : err;
+
+    logTransactionOperation('error', `Error handling withdrawal transaction: ${safeStringify(errorPayload)}`);
+    return [false, { error: errorPayload }];
   }
 }
 
@@ -266,7 +351,7 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
-    const externalId = generateExternalId(TransactionType.INCOME, body.username);
+    const externalId = generateExternalId(TransactionType.INCOME, body.user_name);
 
     // Determine currencies
     const accountCurrency = body.account_currency || 'EUR';
@@ -286,15 +371,15 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         notes: buildTransactionNotes(
           `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency}`,
           body.comment,
-          body.username
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
       };
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending EUR income transaction for user ${body.username}`, transactionData);
+      logTransactionOperation('info', `Sending EUR income transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -332,15 +417,15 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         notes: buildTransactionNotes(
           `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
           body.comment,
-          body.username
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
       };
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending non-EUR income transaction for user ${body.username}`, transactionData);
+      logTransactionOperation('info', `Sending non-EUR income transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -357,9 +442,21 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
       return [true, response || {}];
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logTransactionOperation('error', `Error handling income transaction: ${errorMessage}`);
-    return [false, { error: errorMessage }];
+    const err: any = error;
+    const errorPayload =
+      err && typeof err === 'object' && 'status' in err
+        ? {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            body: err.body
+          }
+        : err instanceof Error
+          ? err.message
+          : err;
+
+    logTransactionOperation('error', `Error handling income transaction: ${safeStringify(errorPayload)}`);
+    return [false, { error: errorPayload }];
   }
 }
 
@@ -372,7 +469,7 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
-    const externalId = generateExternalId(TransactionType.TRANSFER, body.username);
+    const externalId = generateExternalId(TransactionType.TRANSFER, body.user_name);
 
     // Determine currencies
     const exitCurrency = body.exit_currency || body.currency || 'EUR';
@@ -403,9 +500,9 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
         notes: buildTransactionNotes(
           `Transfer from ${body.exit_account} to ${body.entry_account} ${amount} ${exitCurrency}`,
           body.description,
-          body.username
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
       };
     } else {
@@ -434,16 +531,16 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
         notes: buildTransactionNotes(
           `Transfer from ${body.exit_account} ${exitAmount} ${exitCurrency} to ${body.entry_account} ${entryAmount} ${entryCurrency}`,
           body.description,
-          body.username
+          body.user_name
         ),
-        tags: [body.username],
+        tags: [body.user_name],
         external_id: externalId,
       };
     }
 
     const transactionData = buildTransactionRequest(payload);
 
-    logTransactionOperation('info', `Sending transfer transaction for user ${body.username}`, transactionData);
+    logTransactionOperation('info', `Sending transfer transaction for user ${body.user_name}`, transactionData);
 
     // Execute main transfer
     const response = await apiClient.request<Record<string, unknown>>(
@@ -457,12 +554,12 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
 
     // Handle exit fee if present
     if (body.exit_fee && parseFloat(String(body.exit_fee)) > 0) {
-      await handleTransferFee(body.exit_fee, body.exit_account, body.entry_account, 'exit', exitCurrency, body.username);
+      await handleTransferFee(body.exit_fee, body.exit_account, body.entry_account, 'exit', exitCurrency, body.user_name);
     }
 
     // Handle entry fee if present
     if (body.entry_fee && parseFloat(String(body.entry_fee)) > 0) {
-      await handleTransferFee(body.entry_fee, body.entry_account, body.exit_account, 'entry', entryCurrency, body.username);
+      await handleTransferFee(body.entry_fee, body.entry_account, body.exit_account, 'entry', entryCurrency, body.user_name);
     }
 
     // Trigger sync after successful transfer
@@ -470,9 +567,21 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
 
     return [true, response || {}];
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logTransactionOperation('error', `Error handling transfer transaction: ${errorMessage}`);
-    return [false, { error: errorMessage }];
+    const err: any = error;
+    const errorPayload =
+      err && typeof err === 'object' && 'status' in err
+        ? {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            body: err.body
+          }
+        : err instanceof Error
+          ? err.message
+          : err;
+
+    logTransactionOperation('error', `Error handling transfer transaction: ${safeStringify(errorPayload)}`);
+    return [false, { error: errorPayload }];
   }
 }
 
@@ -638,8 +747,8 @@ function extractExternalIdFromResponse(response: unknown): string | null {
 function getUsername(body: unknown): string {
   if (typeof body === 'object' && body !== null) {
     const obj = body as Record<string, unknown>;
-    if (typeof obj.username === 'string') {
-      return obj.username;
+    if (typeof obj.user_name === 'string') {
+      return obj.user_name;
     }
   }
   return 'unknown';

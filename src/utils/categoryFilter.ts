@@ -1,7 +1,7 @@
 /**
  * Category Filtering Utility
  * Filters categories by transaction type (income only)
- * Expense and transfer flows show ALL categories
+ * Withdrawal and transfer flows show ALL categories
  */
 
 import categoryConfig from '../config/categories.json';
@@ -9,17 +9,17 @@ import type { CategoryUsage } from '../services/sync';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
-export type TransactionType = 'expense' | 'income' | 'transfer';
+export type TransactionType = 'withdrawal' | 'income' | 'transfer';
 
 /**
  * Filter categories by transaction type
  *
  * IMPORTANT: Only filters for INCOME transactions (category_id: 4)
- * Expense and transfer transactions show ALL categories (backend handles filtering via type parameter)
+ * Withdrawal and transfer transactions show ALL categories (backend handles filtering via type parameter)
  *
  * @param categories - Full list of categories from API
- * @param type - Transaction type (expense, income, transfer)
- * @returns Filtered category list (or all categories for expense/transfer)
+ * @param type - Transaction type (withdrawal, income, transfer)
+ * @returns Filtered category list (or all categories for withdrawal/transfer)
  */
 export function filterCategoriesByType(
   categories: CategoryUsage[],
@@ -43,9 +43,9 @@ export function filterCategoriesByType(
     return filtered;
   }
 
-  // For expense and transfer - return ALL categories (backend handles filtering via type parameter)
+  // For withdrawal and transfer - return ALL categories (backend handles filtering via type parameter)
   if (enableDebugLogs) {
-    console.log('🔍 Category filtering for EXPENSE/TRANSFER:', {
+    console.log('🔍 Category filtering for WITHDRAWAL/TRANSFER:', {
       type,
       totalCategories: categories.length,
       note: 'Backend handles type filtering - showing categories as received'
@@ -70,6 +70,6 @@ export function isCategoryAllowed(
     return categoryConfig.income.includes(categoryId);
   }
 
-  // All categories allowed for expense and transfer
+  // All categories allowed for withdrawal and transfer
   return true;
 }

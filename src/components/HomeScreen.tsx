@@ -154,7 +154,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             >
               <TrendingDown size={20} style={{ color: '#EF4444' }} />
             </div>
-            <span className="text-xs font-medium text-white text-center">Expense</span>
+            <span className="text-xs font-medium text-white text-center">Withdrawal</span>
           </div>
 
           {/* Income Card */}

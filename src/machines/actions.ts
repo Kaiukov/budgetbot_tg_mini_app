@@ -56,16 +56,20 @@ export const actions = {
   }),
 
   updateCategory: assign({
-    transaction: ({ context }, params: { category: string }) => ({
+    transaction: ({ context }, params: { category: string; category_id?: number; budget_name?: string }) => ({
       ...context.transaction,
       category: params.category,
+      category_id: params.category_id ?? context.transaction.category_id,
+      budget_name: params.budget_name ?? context.transaction.budget_name,
     }),
   }),
 
   updateComment: assign({
-    transaction: ({ context }, params: { comment: string }) => ({
+    transaction: ({ context }, params: { comment: string; destination_id?: number; destination_name?: string }) => ({
       ...context.transaction,
       comment: params.comment,
+      destination_name: params.destination_name ?? params.comment ?? context.transaction.destination_name,
+      destination_id: params.destination_id ?? context.transaction.destination_id,
     }),
   }),
 

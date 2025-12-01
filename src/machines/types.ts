@@ -40,7 +40,8 @@ export interface TransactionForm {
   user_id: number | undefined;
   username: string;
   amount_foreign: string;
-  // UI State for expense flow
+  notes: string;
+  // UI State for withdrawal flow
   conversionAmount: number | null;
   isLoadingConversion: boolean;
   suggestions: DestinationSuggestion[];
@@ -64,6 +65,7 @@ export const initialTransactionForm: TransactionForm = {
   user_id: undefined,
   username: '',
   amount_foreign: '',
+  notes: '',
   conversionAmount: null,
   isLoadingConversion: false,
   suggestions: [],
@@ -216,7 +218,7 @@ export type InitEvent =
 // Navigation Events
 export type NavigationEvent =
   | { type: 'NAVIGATE_HOME' }
-  | { type: 'NAVIGATE_EXPENSE_ACCOUNTS' }
+  | { type: 'NAVIGATE_WITHDRAWAL_ACCOUNTS' }
   | { type: 'NAVIGATE_INCOME_ACCOUNTS' }
   | { type: 'NAVIGATE_AMOUNT' }
   | { type: 'NAVIGATE_CATEGORY' }
@@ -245,7 +247,7 @@ export type TransactionEvent =
   | { type: 'SET_USER_DATA'; user_id: number; username: string }
   | { type: 'SELECT_TRANSACTION'; id: string }
   | { type: 'CLEAR_SELECTED_TRANSACTION' }
-  // UI state events for expense flow
+  // UI state events for withdrawal flow
   | { type: 'SET_CONVERSION_AMOUNT'; amount_eur: number }
   | { type: 'SET_IS_LOADING_CONVERSION'; isLoading: boolean }
   | { type: 'SET_SUGGESTIONS'; suggestions: DestinationSuggestion[] }

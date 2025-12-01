@@ -1,0 +1,105 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - button "Go back" [ref=e4] [cursor=pointer]: ← Back
+  - generic [ref=e5]:
+    - heading "Select Account" [level=1] [ref=e7]
+    - generic [ref=e9]:
+      - generic [ref=e10] [cursor=pointer]:
+        - img [ref=e12]
+        - generic [ref=e14]:
+          - heading "O PUMB USD" [level=3] [ref=e15]
+          - paragraph [ref=e16]: Used 74 • $2360.39
+        - img [ref=e17]
+      - generic [ref=e19] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e23]:
+          - heading "O PUMP €" [level=3] [ref=e24]
+          - paragraph [ref=e25]: Used 21 • €193.25
+        - img [ref=e26]
+      - generic [ref=e28] [cursor=pointer]:
+        - img [ref=e30]
+        - generic [ref=e33]:
+          - heading "MONO UAH Oleksandr" [level=3] [ref=e34]
+          - paragraph [ref=e35]: Used 10 • ₴1304.92
+        - img [ref=e36]
+      - generic [ref=e38] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e43]:
+          - heading "PUMB UAH Violetta" [level=3] [ref=e44]
+          - paragraph [ref=e45]: Used 10 • ₴0
+        - img [ref=e46]
+      - generic [ref=e48] [cursor=pointer]:
+        - img [ref=e50]
+        - generic [ref=e52]:
+          - heading "CASH USD" [level=3] [ref=e53]
+          - paragraph [ref=e54]: Used 3 • $2380
+        - img [ref=e55]
+      - generic [ref=e57] [cursor=pointer]:
+        - img [ref=e59]
+        - generic [ref=e61]:
+          - heading "PUMB EUR Violetta" [level=3] [ref=e62]
+          - paragraph [ref=e63]: Used 3 • €753.64
+        - img [ref=e64]
+      - generic [ref=e66] [cursor=pointer]:
+        - img [ref=e68]
+        - generic [ref=e70]:
+          - heading "ZEN EUR Oleksandr" [level=3] [ref=e71]
+          - paragraph [ref=e72]: Used 3 • €26.13
+        - img [ref=e73]
+      - generic [ref=e75] [cursor=pointer]:
+        - img [ref=e77]
+        - generic [ref=e79]:
+          - heading "CASH RON" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Used 2 • lei318
+        - img [ref=e82]
+      - generic [ref=e84] [cursor=pointer]:
+        - img [ref=e86]
+        - generic [ref=e88]:
+          - heading "MONO USD Oleksandr" [level=3] [ref=e89]
+          - paragraph [ref=e90]: Used 2 • $28.38
+        - img [ref=e91]
+      - generic [ref=e93] [cursor=pointer]:
+        - img [ref=e95]
+        - generic [ref=e98]:
+          - heading "MONO UAH Violetta" [level=3] [ref=e99]
+          - paragraph [ref=e100]: Used 1 • ₴73.03
+        - img [ref=e101]
+      - generic [ref=e103] [cursor=pointer]:
+        - img [ref=e105]
+        - generic [ref=e107]:
+          - heading "CASH EUR" [level=3] [ref=e108]
+          - paragraph [ref=e109]: Used 0 • €1049
+        - img [ref=e110]
+      - generic [ref=e112] [cursor=pointer]:
+        - img [ref=e114]
+        - generic [ref=e117]:
+          - heading "CASH UAH" [level=3] [ref=e118]
+          - paragraph [ref=e119]: Used 0 • ₴451
+        - img [ref=e120]
+      - generic [ref=e122] [cursor=pointer]:
+        - img [ref=e124]
+        - generic [ref=e126]:
+          - heading "MONO USD Violetta" [level=3] [ref=e127]
+          - paragraph [ref=e128]: Used 0 • $523
+        - img [ref=e129]
+      - generic [ref=e131] [cursor=pointer]:
+        - img [ref=e133]
+        - generic [ref=e136]:
+          - heading "O. PUMB UAH" [level=3] [ref=e137]
+          - paragraph [ref=e138]: Used 0 • ₴0
+        - img [ref=e139]
+      - generic [ref=e141] [cursor=pointer]:
+        - img [ref=e143]
+        - generic [ref=e145]:
+          - heading "O.Trustee EUR" [level=3] [ref=e146]
+          - paragraph [ref=e147]: Used 0 • €0
+        - img [ref=e148]
+      - generic [ref=e150] [cursor=pointer]:
+        - img [ref=e152]
+        - generic [ref=e154]:
+          - heading "PUMB USD Violetta" [level=3] [ref=e155]
+          - paragraph [ref=e156]: Used 0 • $8238.87
+        - img [ref=e157]
+```

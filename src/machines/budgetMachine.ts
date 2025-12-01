@@ -143,8 +143,8 @@ export const budgetMachine = createMachine(
         states: {
           home: {
             on: {
-              NAVIGATE_EXPENSE_ACCOUNTS: {
-                target: 'expenseFlow',
+              NAVIGATE_WITHDRAWAL_ACCOUNTS: {
+                target: 'withdrawalFlow',
                 actions: 'resetTransaction',
               },
               NAVIGATE_INCOME_ACCOUNTS: 'incomeFlow',
@@ -154,7 +154,7 @@ export const budgetMachine = createMachine(
             },
           },
 
-          expenseFlow: {
+          withdrawalFlow: {
             initial: 'accounts',
             on: {
               NAVIGATE_HOME: {
@@ -193,7 +193,7 @@ export const budgetMachine = createMachine(
               category: {
                 entry: 'setCategoriesLoading',
                 invoke: {
-                  id: 'fetchExpenseCategoriesOnNavigate',
+                  id: 'fetchWithdrawalCategoriesOnNavigate',
                   src: categoriesFetchActor,
                   input: ({ context }) => {
                     const maybeUser = context.user.username;

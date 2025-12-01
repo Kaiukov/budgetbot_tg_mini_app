@@ -155,7 +155,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
         </div>
 
         {/* Category/Account Info based on type */}
-        {transaction.type === 'expense' && (
+        {transaction.type === 'withdrawal' && (
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">From Account</p>
@@ -211,7 +211,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
                 color:
                   displayData.type === 'income'
                     ? '#10B981'
-                    : displayData.type === 'expense'
+                    : displayData.type === 'withdrawal'
                       ? '#EF4444'
                       : '#3B82F6',
               }}

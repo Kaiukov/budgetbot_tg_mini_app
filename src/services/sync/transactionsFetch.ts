@@ -149,15 +149,15 @@ export async function fetchTransactionById(id: string | number): Promise<{
 
 /**
  * Transform API transaction data to display-friendly format
- * Handles all three transaction types: income, expense, transfer
+ * Handles all three transaction types: income, withdrawal, transfer
  */
 function transformTransactionForDisplay(data: TransactionData): DisplayTransaction {
   const isIncome = data.type === 'deposit';
-  const isExpense = data.type === 'withdrawal';
+  const isWithdrawal = data.type === 'withdrawal';
   const isTransfer = data.type === 'transfer';
 
   // Determine transaction type for display
-  let displayType: 'income' | 'expense' | 'transfer' = 'expense';
+  let displayType: 'income' | 'withdrawal' | 'transfer' = 'withdrawal';
   if (isIncome) displayType = 'income';
   else if (isTransfer) displayType = 'transfer';
 
@@ -190,7 +190,7 @@ function transformTransactionForDisplay(data: TransactionData): DisplayTransacti
     foreignCurrency: data.foreign_currency_code,
     foreignCurrencySymbol: data.foreign_currency_symbol,
     categoryName: isTransfer ? undefined : categoryName,
-    sourceName: isExpense || isTransfer ? sourceName : undefined,
+    sourceName: isWithdrawal || isTransfer ? sourceName : undefined,
     destinationName: isIncome || isTransfer ? destinationName : undefined,
     description,
     username: data.tags?.[0] || 'Unknown User',

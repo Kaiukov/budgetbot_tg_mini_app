@@ -22,7 +22,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   categories,
   categoriesLoading,
   categoriesError,
-  transactionType = 'expense',
+  transactionType = 'withdrawal',
   isAvailable,
   onBack,
   onSelectCategory,
@@ -34,7 +34,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
     return () => telegramService.hideBackButton();
   }, [onBack]);
 
-  // Filter categories based on transaction type (income only filters, expense shows all)
+  // Filter categories based on transaction type (income only filters, withdrawal shows all)
   const displayCategories = filterCategoriesByType(categories, transactionType);
 
   return (
@@ -80,7 +80,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
               return (
                 <div
                   key={`${category.category_name}-${idx}`}
-                  onClick={() => onSelectCategory(categoryNameWithoutEmoji, category.category_id, extractBudgetName(category.category_name))}
+                  onClick={() => onSelectCategory(category.category_name, category.category_id, extractBudgetName(category.category_name))}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div
