@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Loader, ArrowLeft } from 'lucide-react';
+import { X, Check, Loader, ArrowLeft, Wallet, Tag, MapPin, Calendar, FileText } from 'lucide-react';
 import { addTransaction, type WithdrawalTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
-import { gradients, cardStyles, layouts } from '../theme/dark';
+import { gradients, layouts } from '../theme/dark';
 
 const DEBUG_WEBHOOK_URL = import.meta.env.VITE_DEBUG_WEBHOOK_URL || 'https://n8n.neon-chuckwalla.ts.net/webhook-test/test_me';
 
@@ -297,94 +297,119 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h1 className="text-2xl font-bold">Confirmation</h1>
+        <h1 className="text-2xl font-bold">Confirm Withdrawal</h1>
       </div>
 
       <div className={layouts.content}>
-        <div className={`${cardStyles.container} mb-4`}>
-          <div className="text-center mb-4">
-            <div className="text-3xl font-bold text-red-500 mb-1">
-              -{getCurrencySymbol(transactionData.account_currency)}{amount}
+        {/* Amount Card - Prominent Display */}
+        <div className="mb-4 p-3 rounded-lg bg-gradient-to-br from-red-900/40 to-red-900/20 border border-red-800/50 shadow-lg">
+          <p className="text-xs text-red-200 uppercase tracking-wider font-semibold mb-1">Amount</p>
+          <div className="text-3xl font-bold text-red-400 mb-1">
+            -{getCurrencySymbol(transactionData.account_currency)}{amount}
+          </div>
+          <p className="text-xs text-gray-400">Withdrawal Transaction</p>
+        </div>
+
+        {/* Details Card */}
+        <div className="mb-4 rounded-lg bg-gray-800/50 border border-gray-700/50 shadow-lg overflow-hidden">
+          {/* Account */}
+          <div className="p-3 border-b border-gray-700/50">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Wallet size={14} className="text-blue-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Account</span>
             </div>
-            <p className="text-xs text-gray-400">Withdrawal</p>
+            <span className="text-xs font-medium text-white ml-5">{account_name}</span>
           </div>
 
-          <div className="space-y-0">
-            <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Account:</span>
-              <span className="text-xs font-medium text-white">{account_name}</span>
+          {/* Category */}
+          <div className="p-3 border-b border-gray-700/50">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Tag size={14} className="text-amber-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Category</span>
             </div>
-            <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Category:</span>
-              <span className="text-xs font-medium text-white">{displayCategory}</span>
+            <span className="text-xs font-medium text-white ml-5">{displayCategory}</span>
+          </div>
+
+          {/* Destination */}
+          <div className="p-3 border-b border-gray-700/50">
+            <div className="flex items-center gap-2 mb-0.5">
+              <MapPin size={14} className="text-green-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Destination</span>
             </div>
-            <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Destination:</span>
-              <span className="text-xs font-medium text-white text-right max-w-[60%]">{destination_name || 'None'}</span>
+            <span className="text-xs font-medium text-white ml-5">{destination_name || 'Not specified'}</span>
+          </div>
+
+          {/* Date */}
+          <div className="p-3 border-b border-gray-700/50">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar size={14} className="text-purple-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Date</span>
             </div>
-            <div className="flex items-center justify-between py-2.5">
-              <span className="text-xs text-gray-400">Date:</span>
-              <input
-                type="date"
-                aria-label="Transaction date"
-                value={dateInput}
-                onChange={(e) => handleDateChange(e.target.value)}
-                className="bg-gray-800 border border-gray-700 text-white text-xs px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[170px] text-right"
-              />
+            <input
+              type="date"
+              aria-label="Transaction date"
+              value={dateInput}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-full max-w-[140px]"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <FileText size={14} className="text-cyan-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Notes</span>
             </div>
-            <div className="border-b border-gray-700" />
-            <div className="flex flex-col gap-1 pt-2.5">
-              <label className="text-xs text-gray-400">Notes:</label>
-              <textarea
-                value={notesInput}
-                onChange={(e) => handleNotesChange(e.target.value)}
-                placeholder="Add notes for this withdrawal..."
-                rows={8}
-                className="bg-gray-800 border border-gray-700 text-white text-xs px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y min-h-[200px] w-full"
-              />
-            </div>
+            <textarea
+              value={notesInput}
+              onChange={(e) => handleNotesChange(e.target.value)}
+              placeholder="Describe the withdrawal..."
+              rows={4}
+              className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-y min-h-[100px] w-[calc(100%-20px)]"
+            />
           </div>
         </div>
 
         {/* Submit Message */}
         {submitMessage && (
-          <div className={`mb-4 p-3 rounded-lg text-sm font-medium flex items-center gap-2 ${
+          <div className={`mb-3 p-3 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
             submitMessage.type === 'success'
-              ? 'bg-green-900 border border-green-700 text-green-200'
-              : 'bg-red-900 border border-red-700 text-red-200'
+              ? 'bg-green-900/30 border border-green-600/50 text-green-200'
+              : 'bg-red-900/30 border border-red-600/50 text-red-200'
           }`}>
             {submitMessage.type === 'success' ? (
-              <Check size={16} />
+              <Check size={16} className="flex-shrink-0" />
             ) : (
-              <X size={16} />
+              <X size={16} className="flex-shrink-0" />
             )}
             <span>{submitMessage.text}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-1.5">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onCancel}
             disabled={isSubmitting}
-            className="bg-red-500 text-white py-2 rounded-lg font-medium hover:bg-red-600 transition active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            <X size={14} className="mr-1" />
-            No
+            <X size={16} />
+            Decline
           </button>
           <button
             onClick={handleConfirmTransaction}
             disabled={isSubmitting}
-            className="bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600 transition active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             {isSubmitting ? (
               <>
-                <Loader size={14} className="mr-1 animate-spin" />
-                Saving...
+                <Loader size={16} className="animate-spin" />
+                Processing...
               </>
             ) : (
               <>
-                <Check size={14} className="mr-1" />
-                Yes
+                <Check size={16} />
+                Confirm
               </>
             )}
           </button>
