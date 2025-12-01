@@ -270,9 +270,9 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
       return [true, response || {}];
     } else {
       // Non-EUR withdrawal - convert to EUR
-      const foreignAmount = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
+      const amount_eur = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
 
-      if (foreignAmount === null) {
+      if (amount_eur === null) {
         logTransactionOperation('error', `Currency conversion failed: ${transactionCurrency} to EUR`);
         return [false, { error: 'Currency conversion failed' }];
       }
@@ -282,15 +282,15 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency, foreignAmount),
+        description: buildWithdrawalDescription(cleanCategory, body.account, body.amount, body.currency, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
         source_name: body.account,
         destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
         foreign_currency_code: 'EUR',
-        foreign_amount: formatAmount(foreignAmount),
+        foreign_amount: formatAmount(amount_eur),
         notes: providedNotes || buildTransactionNotes(
-          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
+          `Withdrawal ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           (body as any).destination_name || (body as any).comment,
           body.user_name
         ),
@@ -396,9 +396,9 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
       return [true, response || {}];
     } else {
       // Non-EUR income - convert to EUR
-      const foreignAmount = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
+      const amount_eur = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
 
-      if (foreignAmount === null) {
+      if (amount_eur === null) {
         logTransactionOperation('error', `Currency conversion failed: ${transactionCurrency} to EUR`);
         return [false, { error: 'Currency conversion failed' }];
       }
@@ -408,14 +408,14 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR) Comment: ${body.comment || ''}`,
+        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR) Comment: ${body.comment || ''}`,
         currency_code: accountCurrency,
         category_name: cleanCategory,
         destination_name: body.account,
         foreign_currency_code: 'EUR',
-        foreign_amount: formatAmount(foreignAmount),
+        foreign_amount: formatAmount(amount_eur),
         notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
+          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           body.comment,
           body.user_name
         ),

@@ -159,13 +159,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">From Account</p>
-              <p className="text-sm font-medium text-white">{transaction.sourceName}</p>
+              <p className="text-sm font-medium text-white">{transaction.source_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Category</p>
               <p className="text-sm font-medium text-white">
-                {transaction.categoryName || 'Uncategorized'}
+                {transaction.category_name || 'Uncategorized'}
               </p>
             </div>
           </>
@@ -175,13 +175,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">To Account</p>
-              <p className="text-sm font-medium text-white">{transaction.destinationName}</p>
+              <p className="text-sm font-medium text-white">{transaction.destination_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Category</p>
               <p className="text-sm font-medium text-white">
-                {transaction.categoryName || 'Uncategorized'}
+                {transaction.category_name || 'Uncategorized'}
               </p>
             </div>
           </>
@@ -191,12 +191,12 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">From Account</p>
-              <p className="text-sm font-medium text-white">{transaction.sourceName}</p>
+              <p className="text-sm font-medium text-white">{transaction.source_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">To Account</p>
-              <p className="text-sm font-medium text-white">{transaction.destinationName}</p>
+              <p className="text-sm font-medium text-white">{transaction.destination_name}</p>
             </div>
           </>
         )}
@@ -218,8 +218,8 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
             >
               {displayData.amount}
             </p>
-            {shouldShowForeignAmount(transaction) && displayData.foreignAmount && (
-              <p className="text-sm text-gray-400">{displayData.foreignAmount}</p>
+            {shouldShowForeignAmount(transaction) && displayData.amount_eur && (
+              <p className="text-sm text-gray-400">{displayData.amount_eur}</p>
             )}
           </div>
         </div>

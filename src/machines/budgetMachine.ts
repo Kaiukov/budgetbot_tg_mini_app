@@ -59,7 +59,7 @@ export const budgetMachine = createMachine(
           {
             id: 'fetchAccounts',
             src: accountsFetchActor,
-            input: ({ context }) => ({ userName: context.user.username }),
+            input: ({ context }) => ({ userName: context.user.user_name }),
             onDone: {
               actions: assign(({ event, context }) => ({
                 data: {
@@ -85,7 +85,7 @@ export const budgetMachine = createMachine(
             id: 'fetchCategories',
             src: categoriesFetchActor,
             input: ({ context }) => {
-              const maybeUser = context.user.username;
+              const maybeUser = context.user.user_name;
               const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
               return {
                 userName: isUnknown ? undefined : maybeUser,
@@ -177,7 +177,7 @@ export const budgetMachine = createMachine(
                   UPDATE_AMOUNT: {
                     actions: 'updateAmount',
                   },
-                  UPDATE_AMOUNT_FOREIGN: {
+                  UPDATE_AMOUNT_EUR: {
                     actions: 'updateAmountForeign',
                   },
                   SET_CONVERSION_AMOUNT: {
@@ -196,7 +196,7 @@ export const budgetMachine = createMachine(
                   id: 'fetchWithdrawalCategoriesOnNavigate',
                   src: categoriesFetchActor,
                   input: ({ context }) => {
-                    const maybeUser = context.user.username;
+                    const maybeUser = context.user.user_name;
                     const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
                     return {
                       userName: isUnknown ? undefined : maybeUser,
@@ -218,9 +218,9 @@ export const budgetMachine = createMachine(
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_COMMENT: {
+                  UPDATE_NOTES: {
                     actions: 'updateComment',
                   },
                   SET_SUGGESTIONS: {
@@ -284,7 +284,7 @@ export const budgetMachine = createMachine(
                   id: 'fetchIncomeCategoriesOnNavigate',
                   src: categoriesFetchActor,
                   input: ({ context }) => {
-                    const maybeUser = context.user.username;
+                    const maybeUser = context.user.user_name;
                     const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
                     return {
                       userName: isUnknown ? undefined : maybeUser,
@@ -306,9 +306,9 @@ export const budgetMachine = createMachine(
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_COMMENT: {
+                  UPDATE_NOTES: {
                     actions: 'updateComment',
                   },
                   NAVIGATE_CONFIRM: 'confirm',
@@ -375,9 +375,9 @@ export const budgetMachine = createMachine(
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_TRANSFER_COMMENT: {
+                  UPDATE_TRANSFER_NOTES: {
                     actions: 'updateTransferComment',
                   },
                   NAVIGATE_TRANSFER_CONFIRM: 'confirm',
@@ -483,13 +483,13 @@ export const budgetMachine = createMachine(
             ? {}
             : {
                 amount: '',
-                amount_foreign: '',
+                amount_eur: '',
                 conversionAmount: null,
               }),
           account: event.account,
           account_id: event.account_id,
           account_currency: event.account_currency,
-          username: event.username || context.transaction.username,
+          user_name: event.user_name || context.transaction.username,
         },
       })),
 
@@ -503,7 +503,7 @@ export const budgetMachine = createMachine(
       updateAmountForeign: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
-          amount_foreign: event.amount_foreign,
+          amount_eur: event.amount_foreign,
         },
       })),
 
@@ -519,8 +519,8 @@ export const budgetMachine = createMachine(
       updateComment: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
-          comment: event.comment,
-          destination_name: event.comment,
+          notes: event.notes,
+          destination_name: event.notes,
           destination_id: event.destination_id ?? context.transaction.destination_id,
         },
       })),
@@ -528,7 +528,7 @@ export const budgetMachine = createMachine(
       resetTransaction: assign({
         transaction: {
           ...initialContext.transaction,
-          username: initialContext.transaction.username,
+          user_name: initialContext.transaction.username,
         },
       }),
 
@@ -585,7 +585,7 @@ export const budgetMachine = createMachine(
       updateTransferComment: assign(({ context, event }: any) => ({
         transfer: {
           ...context.transfer,
-          comment: event.comment,
+          notes: event.notes,
         },
       })),
 

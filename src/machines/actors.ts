@@ -42,7 +42,7 @@ export const telegramInitActor = fromPromise<
         console.warn('Telegram WebApp not available. Running in browser mode.');
         resolve({
           id: 0,
-          username: 'User',
+          user_name: 'User',
           fullName: 'User',
           photoUrl: null,
           initials: 'U',
@@ -54,13 +54,13 @@ export const telegramInitActor = fromPromise<
       }
 
       const user = telegramService.getUser();
-      const userName = telegramService.getUserName();
+      const user_name = telegramService.getUserName();
       const userPhotoUrl = telegramService.getUserPhotoUrl();
       const userInitials = telegramService.getUserInitials();
       const colorScheme = telegramService.getColorScheme();
       const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
 
-      debugLog('🔍 Telegram User Data:', { userName, userInitials });
+      debugLog('🔍 Telegram User Data:', { user_name, userInitials });
 
       // Fetch additional user data from backend
       if (user?.id) {
@@ -71,8 +71,8 @@ export const telegramInitActor = fromPromise<
             if (backendData?.success && backendData.userData) {
               resolve({
                 id: user.id,
-                username: backendData.userData.username || userName,
-                fullName: backendData.userData.name || userName,
+                user_name: backendData.userData.username || user_name,
+                fullName: backendData.userData.name || user_name,
                 photoUrl: userPhotoUrl,
                 initials: userInitials,
                 bio: backendData.userData.bio || userBio,
@@ -82,8 +82,8 @@ export const telegramInitActor = fromPromise<
             } else {
               resolve({
                 id: user.id,
-                username: userName,
-                fullName: userName,
+                user_name: user_name,
+                fullName: user_name,
                 photoUrl: userPhotoUrl,
                 initials: userInitials,
                 bio: userBio,
@@ -97,8 +97,8 @@ export const telegramInitActor = fromPromise<
             console.error('❌ Failed to fetch comprehensive user data:', error);
             resolve({
               id: user.id,
-              username: userName,
-              fullName: userName,
+              user_name: user_name,
+              fullName: user_name,
               photoUrl: userPhotoUrl,
               initials: userInitials,
               bio: userBio,
@@ -110,8 +110,8 @@ export const telegramInitActor = fromPromise<
         clearTimeout(timer);
         resolve({
           id: user?.id || 0,
-          username: userName,
-          fullName: userName,
+          user_name: user_name,
+          fullName: user_name,
           photoUrl: userPhotoUrl,
           initials: userInitials,
           bio: userBio,
@@ -133,7 +133,7 @@ export const telegramInitActor = fromPromise<
 
 export const accountsFetchActor = fromPromise<
   AccountUsage[],
-  { userName?: string; timeout?: number }
+  { user_name?: string; timeout?: number }
 >(async ({ input }) => {
   const timeout = input?.timeout || 30000; // 30s timeout
 
@@ -143,8 +143,8 @@ export const accountsFetchActor = fromPromise<
     }, timeout);
 
     try {
-      debugLog('🔄 Fetching accounts for user:', input?.userName);
-      syncService.getAccountsUsage(input?.userName)
+      debugLog('🔄 Fetching accounts for user:', input?.user_name);
+      syncService.getAccountsUsage(input?.user_name)
         .then((response) => {
           clearTimeout(timer);
           debugLog('✅ Accounts fetched:', response.get_accounts_usage.length);
@@ -169,7 +169,7 @@ export const accountsFetchActor = fromPromise<
 
 export const categoriesFetchActor = fromPromise<
   CategoryUsage[],
-  { userName?: string; type?: 'withdrawal' | 'deposit'; timeout?: number }
+  { user_name?: string; type?: 'withdrawal' | 'deposit'; timeout?: number }
 >(async ({ input }) => {
   const timeout = input?.timeout || 30000; // 30s timeout
 
@@ -179,8 +179,8 @@ export const categoriesFetchActor = fromPromise<
     }, timeout);
 
     try {
-      debugLog('🔄 Fetching categories for user:', input?.userName, 'type:', input?.type);
-      syncService.getCategoriesUsage(input?.userName, input?.type)
+      debugLog('🔄 Fetching categories for user:', input?.user_name, 'type:', input?.type);
+      syncService.getCategoriesUsage(input?.user_name, input?.type)
         .then((response) => {
           clearTimeout(timer);
           debugLog('✅ Categories fetched:', response.get_categories_usage.length);
@@ -336,7 +336,7 @@ export const transactionDeleteActor = fromPromise<
 
 export const syncServiceHealthActor = fromPromise<
   { success: boolean; message: string },
-  { userName?: string }
+  { user_name?: string }
 >(async () => {
   try {
     debugLog('🔄 Checking Sync API connection...');

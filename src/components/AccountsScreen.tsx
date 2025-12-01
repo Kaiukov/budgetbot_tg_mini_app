@@ -13,7 +13,7 @@ interface AccountsScreenProps {
   title?: string;
   isAvailable?: boolean;
   onBack: () => void;
-  onSelectAccount: (accountName: string, accountId?: string, currency?: string, userName?: string) => void;
+  onSelectAccount: (accountName: string, accountId?: string, currency?: string, user_name?: string) => void;
   onRetry: () => void;
 }
 

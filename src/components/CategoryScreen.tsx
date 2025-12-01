@@ -14,7 +14,7 @@ interface CategoryScreenProps {
   transactionType?: TransactionType;
   isAvailable?: boolean;
   onBack: () => void;
-  onSelectCategory: (categoryName: string, categoryId: number, budgetName?: string) => void;
+  onSelectCategory: (category_name: string, categoryId: number, budgetName?: string) => void;
   onRetry: () => void;
 }
 

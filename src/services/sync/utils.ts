@@ -127,12 +127,12 @@ export function buildWithdrawalDescription(
   account: string,
   amount: string | number,
   currency: string,
-  foreignAmount?: string | number
+  amount_eur?: string | number
 ): string {
   const baseDesc = `Withdrawal ${category} from ${account} ${amount} ${currency}`;
 
-  if (foreignAmount) {
-    return `${baseDesc} (${foreignAmount} EUR)`;
+  if (amount_eur) {
+    return `${baseDesc} (${amount_eur} EUR)`;
   }
 
   return baseDesc;
@@ -147,7 +147,7 @@ export function buildIncomeDescription(
   amount: string | number,
   currency: string,
   comment?: string,
-  foreignAmount?: string | number
+  amount_eur?: string | number
 ): string {
   let baseDesc = `${category} income to ${account} ${amount} ${currency}`;
 
@@ -155,8 +155,8 @@ export function buildIncomeDescription(
     baseDesc += ` Comment: ${comment}`;
   }
 
-  if (foreignAmount) {
-    return `${baseDesc} (${foreignAmount} EUR)`;
+  if (amount_eur) {
+    return `${baseDesc} (${amount_eur} EUR)`;
   }
 
   return baseDesc;

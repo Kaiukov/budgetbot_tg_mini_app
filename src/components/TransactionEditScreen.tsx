@@ -102,7 +102,7 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
       };
 
       await apiClient.request<Record<string, unknown>>(
-        `/api/v1/transactions/${transaction.journalId}`,
+        `/api/v1/transactions/${transaction.journal_id}`,
         {
           method: 'PUT',
           body: payload,
@@ -221,14 +221,14 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
           {transaction.type === 'withdrawal' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">From Account</span>
-              <span className="text-sm font-medium text-white">{transaction.sourceName}</span>
+              <span className="text-sm font-medium text-white">{transaction.source_name}</span>
             </div>
           )}
 
           {transaction.type === 'income' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">To Account</span>
-              <span className="text-sm font-medium text-white">{transaction.destinationName}</span>
+              <span className="text-sm font-medium text-white">{transaction.destination_name}</span>
             </div>
           )}
 
@@ -236,19 +236,19 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">From</span>
-                <span className="text-sm font-medium text-white">{transaction.sourceName}</span>
+                <span className="text-sm font-medium text-white">{transaction.source_name}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">To</span>
-                <span className="text-sm font-medium text-white">{transaction.destinationName}</span>
+                <span className="text-sm font-medium text-white">{transaction.destination_name}</span>
               </div>
             </>
           )}
 
-          {transaction.categoryName && (
+          {transaction.category_name && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Category</span>
-              <span className="text-sm font-medium text-white">{transaction.categoryName}</span>
+              <span className="text-sm font-medium text-white">{transaction.category_name}</span>
             </div>
           )}
         </div>

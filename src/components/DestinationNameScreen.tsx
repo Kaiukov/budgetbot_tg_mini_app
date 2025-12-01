@@ -36,8 +36,8 @@ const DestinationNameScreen: React.FC<DestinationNameScreenProps> = ({
   onSuggestionsErrorChange,
   onNext
 }) => {
-  const { userName } = useTelegramUser();
-  const effectiveUser = userName === 'User' || userName === 'Guest' ? undefined : userName;
+  const { user_name } = useTelegramUser();
+  const effectiveUser = user_name === 'User' || user_name === 'Guest' ? undefined : user_name;
   const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
   // Use prop values if provided (from machine), otherwise use local state
   const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>(propSuggestions ? propSuggestions as DestinationSuggestion[] : []);
@@ -134,7 +134,7 @@ const DestinationNameScreen: React.FC<DestinationNameScreenProps> = ({
     };
 
     fetchDestinationSuggestions();
-  }, [category_name, category_id, userName]);
+  }, [category_name, category_id, user_name]);
 
 
   return (
@@ -183,8 +183,8 @@ const DestinationNameScreen: React.FC<DestinationNameScreenProps> = ({
 
               {suggestions.length > 0 && (
                 <p className="text-xs text-gray-500 mt-2">
-                  {suggestions.filter(s => s.user_name === userName).length} of your favorites
-                  {suggestions.filter(s => s.user_name !== userName).length > 0 && ` + ${suggestions.filter(s => s.user_name !== userName).length} community suggestions`}
+                  {suggestions.filter(s => s.user_name === user_name).length} of your favorites
+                  {suggestions.filter(s => s.user_name !== user_name).length > 0 && ` + ${suggestions.filter(s => s.user_name !== user_name).length} community suggestions`}
                 </p>
               )}
             </>

@@ -286,16 +286,16 @@ class SyncService {
    * - Top: Accounts user has used (usage_count > 0), sorted high to low
    * - Bottom: Accounts user hasn't used (usage_count = 0)
    *
-   * @param userName - Optional username to sort accounts by usage
+   * @param user_name - Optional username to sort accounts by usage
    */
-  public async getAccountsUsage(userName?: string): Promise<AccountsUsageResponse> {
+  public async getAccountsUsage(user_name?: string): Promise<AccountsUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
       // Generate cache key
-      const cacheKey = userName || 'all';
+      const cacheKey = user_name || 'all';
 
       // Check cache first
       const cachedData = this.accountCache.get(cacheKey);
@@ -307,8 +307,8 @@ class SyncService {
       console.log('🔄 Fetching fresh accounts for:', cacheKey);
 
       // Build URL with optional user_name query parameter
-      const endpoint = userName
-        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
+      const endpoint = user_name
+        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(user_name)}`
         : '/api/v1/get_accounts_usage';
 
       const data = await this.makeRequest<AccountsUsageResponse>(
@@ -317,24 +317,24 @@ class SyncService {
       );
 
       console.log('📋 Raw API data:', {
-        userName,
+        user_name,
         total: data.total,
         accountCount: data.get_accounts_usage.length,
         firstAccount: data.get_accounts_usage[0]
       });
 
       // If no username provided, return all accounts as-is
-      if (!userName) {
+      if (!user_name) {
         console.log('✅ Returning all accounts (no sorting)');
         return data;
       }
 
-      // When userName is provided, API already filtered the results server-side
+      // When user_name is provided, API already filtered the results server-side
       // We just need to sort by usage_count: high to low, with 0 usage at the end
       const allAccounts = data.get_accounts_usage;
 
       console.log('📊 API returned accounts for user:', {
-        userName,
+        user_name,
         totalAccounts: allAccounts.length,
         accountsData: allAccounts.map(a => ({
           name: a.account_name,
@@ -354,7 +354,7 @@ class SyncService {
       const sortedAccounts = [...usedAccounts, ...unusedAccounts];
 
       console.log('✅ Sorted account results:', {
-        requestedUser: userName,
+        requestedUser: user_name,
         usedCount: usedAccounts.length,
         unusedCount: unusedAccounts.length,
         totalCount: sortedAccounts.length,
@@ -390,17 +390,17 @@ class SyncService {
    *
    * Uses 5-minute cache to reduce API calls
    *
-   * @param userName - Optional username to sort categories by usage
+   * @param user_name - Optional username to sort categories by usage
    * @param type - Optional transaction type filter: 'withdrawal' for expenses, 'deposit' for income
    */
-  public async getCategoriesUsage(userName?: string, type?: 'withdrawal' | 'deposit'): Promise<CategoriesUsageResponse> {
+  public async getCategoriesUsage(user_name?: string, type?: 'withdrawal' | 'deposit'): Promise<CategoriesUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
       // Generate cache key including type parameter
-      const cacheKey = `${userName || 'all'}_${type || 'all'}`;
+      const cacheKey = `${user_name || 'all'}_${type || 'all'}`;
 
       // Check cache first
       const cachedData = this.categoryCache.get(cacheKey);
@@ -413,7 +413,7 @@ class SyncService {
 
       // Build URL with optional user_name and type query parameters
       const params = new URLSearchParams();
-      if (userName) params.append('user_name', userName);
+      if (user_name) params.append('user_name', user_name);
       if (type) params.append('type', type);
       const queryString = params.toString();
       const endpoint = queryString
@@ -426,14 +426,14 @@ class SyncService {
       );
 
       console.log('📋 Raw categories API data:', {
-        userName,
+        user_name,
         total: data.total,
         categoryCount: data.get_categories_usage.length,
         firstCategory: data.get_categories_usage[0]
       });
 
       // If no username provided, return all categories as-is
-      if (!userName) {
+      if (!user_name) {
         console.log('✅ Returning all categories (no sorting)');
         return data;
       }
@@ -454,11 +454,11 @@ class SyncService {
 
       // Separate into used and unused categories for this user
       const usedCategories = allCategories.filter(
-        category => category.user_name === userName && category.usage_count > 0
+        category => category.user_name === user_name && category.usage_count > 0
       );
 
       console.log('📊 User category filtering:', {
-        userName,
+        user_name,
         usedCategoriesCount: usedCategories.length,
         usedCategories: usedCategories.map(c => ({ name: c.category_name, usage: c.usage_count }))
       });
@@ -482,10 +482,10 @@ class SyncService {
         allCategories.map(cat => [cat.category_name, cat.category_id])
       );
 
-      const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(categoryName => ({
-        user_name: userName,
-        category_name: categoryName,
-        category_id: categoryIdMap.get(categoryName) || 0,
+      const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(category_name => ({
+        user_name: user_name,
+        category_name: category_name,
+        category_id: categoryIdMap.get(category_name) || 0,
         usage_count: 0,
         created_at: null,
         updated_at: null,
@@ -495,7 +495,7 @@ class SyncService {
       const sortedCategories = [...usedCategories, ...unusedCategories];
 
       console.log('✅ Smart sorted category results:', {
-        requestedUser: userName,
+        requestedUser: user_name,
         usedCount: usedCategories.length,
         unusedCount: unusedCategories.length,
         totalCount: sortedCategories.length,
@@ -524,11 +524,11 @@ class SyncService {
    * Get destination name usage data with optional filtering
    * Returns destination list optionally filtered by user and/or category
    *
-   * @param userName - Optional username to filter destinations
+   * @param user_name - Optional username to filter destinations
    * @param categoryId - Optional category ID to filter destinations by category
    * @returns Destination list for the specified user/category
    */
-  public async getDestinationNameUsage(userName?: string, categoryId?: number): Promise<DestinationNameUsageResponse> {
+  public async getDestinationNameUsage(user_name?: string, categoryId?: number): Promise<DestinationNameUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
@@ -536,7 +536,7 @@ class SyncService {
 
       // Build query parameters
       const params = new URLSearchParams();
-      if (userName) params.append('user_name', userName);
+      if (user_name) params.append('user_name', user_name);
       if (categoryId) params.append('category_id', categoryId.toString());
       const queryString = params.toString();
       const endpoint = queryString
@@ -549,7 +549,7 @@ class SyncService {
       );
 
       console.log('🏪 Fetched destinations from API:', {
-        filters: { userName, categoryId },
+        filters: { user_name, categoryId },
         total: data.total,
         sample: data.get_destination_name_usage.slice(0, 3).map(d => ({
           name: d.destination_name,

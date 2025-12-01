@@ -13,11 +13,11 @@ export interface BudgetMachineContextType {
   navigateTo: (screen: string) => void;
   goHome: () => void;
   goBack: () => void;
-  updateAccount: (account: string, account_id: string, account_currency: string, username: string) => void;
+  updateAccount: (account: string, account_id: string, account_currency: string, user_name: string) => void;
   updateAmount: (amount: string) => void;
-  updateAmountForeign: (amount_foreign: string) => void;
+  updateAmountEur: (amount_eur: string) => void;
   updateCategory: (category: string) => void;
-  updateComment: (comment: string) => void;
+  updateNotes: (notes: string) => void;
   submitTransaction: () => void;
   resetTransaction: () => void;
   setTransferSource: (account: string, account_id: string, account_currency: string) => void;
@@ -26,7 +26,7 @@ export interface BudgetMachineContextType {
   updateTransferEntryAmount: (amount: string) => void;
   updateTransferExitFee: (fee: string) => void;
   updateTransferEntryFee: (fee: string) => void;
-  updateTransferComment: (comment: string) => void;
+  updateTransferNotes: (notes: string) => void;
   submitTransfer: () => void;
   resetTransfer: () => void;
   fetchAccounts: () => void;
@@ -49,9 +49,9 @@ export interface BudgetMachineContextType {
 const defaultContextValue: BudgetMachineContextType = {
   state: 'loading',
   context: {
-    user: { id: 0, username: 'Guest', fullName: 'Guest', photoUrl: null, initials: 'G', bio: '', colorScheme: 'dark', rawUser: null },
-    transaction: { account: '', amount: '', category: '', category_id: 0, budget_name: '', comment: '', destination_name: '', destination_id: 0, account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', notes: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
-    transfer: { source: { account: '', id: '', currency: '' }, destination: { account: '', id: '', currency: '' }, exitAmount: '', entryAmount: '', exitFee: '', entryFee: '', comment: '' },
+    user: { id: 0, user_name: 'Guest', fullName: 'Guest', photoUrl: null, initials: 'G', bio: '', colorScheme: 'dark', rawUser: null },
+    transaction: { account: '', amount: '', category: '', category_id: 0, budget_name: '', notes: '', destination_name: '', destination_id: 0, account_id: '', account_currency: '', user_id: undefined, user_name: '', amount_eur: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
+    transfer: { source: { account: '', id: '', currency: '' }, destination: { account: '', id: '', currency: '' }, exitAmount: '', entryAmount: '', exitFee: '', entryFee: '', notes: '' },
     data: { accounts: [], categories: [], transactions: [] },
     ui: { accounts: { loading: false, error: null }, categories: { loading: false, error: null }, transactions: { loading: false, error: null }, services: { telegram: { name: 'Telegram', status: 'checking', message: '' }, sync: { name: 'Sync', status: 'checking', message: '' }, firefly: { name: 'Firefly', status: 'checking', message: '' } } },
     selectedTransaction: { id: null, rawData: null, editing: null },
@@ -156,7 +156,7 @@ export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ ch
           // Don't persist form data during entry
           transaction: machine.context.transaction.amount
             ? machine.context.transaction
-            : { account: '', amount: '', category: '', comment: '', account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
+            : { account: '', amount: '', category: '', notes: '', account_id: '', account_currency: '', user_id: undefined, user_name: '', amount_eur: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
           transfer: machine.context.transfer,
           data: machine.context.data,
           ui: machine.context.ui,

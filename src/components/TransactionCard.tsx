@@ -104,8 +104,8 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
         </span>
 
         {/* Foreign Amount (if applicable) */}
-        {shouldShowForeignAmount(transaction) && displayData.foreignAmount && (
-          <span className="text-xs text-gray-400 mt-0.5">{displayData.foreignAmount}</span>
+        {shouldShowForeignAmount(transaction) && displayData.amount_eur && (
+          <span className="text-xs text-gray-400 mt-0.5">{displayData.amount_eur}</span>
         )}
       </div>
 
