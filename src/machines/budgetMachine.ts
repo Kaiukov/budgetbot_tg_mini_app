@@ -88,7 +88,7 @@ export const budgetMachine = createMachine(
               const maybeUser = context.user.user_name;
               const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
               return {
-                userName: isUnknown ? undefined : maybeUser,
+                user_name: isUnknown ? undefined : maybeUser,
                 type: 'withdrawal',
               };
             },
