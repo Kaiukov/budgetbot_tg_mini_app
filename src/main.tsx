@@ -6,6 +6,14 @@ import { telegramService } from './services/telegram'
 import { isBrowserMode } from './utils/fakeInitData'
 import './index.css'
 
+// Silence noisy console output during E2E/Playwright runs to keep the MCP transport stable
+if (import.meta.env.VITE_E2E_SILENT_LOGS === 'true') {
+  ['log', 'info', 'debug', 'warn'].forEach((level) => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    (console as any)[level] = () => {}
+  })
+}
+
 // Configure Telegram Mini App viewport for safe areas
 // Skip if in browser debug mode (telegramService handles initialization)
 if (!isBrowserMode()) {
