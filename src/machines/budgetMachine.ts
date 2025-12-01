@@ -7,6 +7,7 @@
 import { createMachine, assign } from 'xstate';
 import type { BudgetMachineContext } from './types';
 import { initialContext } from './types';
+import { extractBudgetName } from '../services/sync/utils';
 import {
   telegramInitActor,
   accountsFetchActor,
@@ -508,14 +509,20 @@ export const budgetMachine = createMachine(
         },
       })),
 
-      updateCategory: assign(({ context, event }: any) => ({
-        transaction: {
-          ...context.transaction,
-          category: event.category,
-          category_id: event.category_id ?? context.transaction.category_id,
-          budget_name: event.budget_name ?? context.transaction.budget_name,
-        },
-      })),
+      updateCategory: assign(({ context, event }: any) => {
+        const normalizedBudget = event.budget_name && String(event.budget_name).trim().length > 0
+          ? String(event.budget_name).trim()
+          : extractBudgetName(event.category);
+
+        return {
+          transaction: {
+            ...context.transaction,
+            category: event.category,
+            category_id: event.category_id ?? context.transaction.category_id,
+            budget_name: normalizedBudget,
+          },
+        };
+      }),
 
       updateComment: assign(({ context, event }: any) => ({
         transaction: {

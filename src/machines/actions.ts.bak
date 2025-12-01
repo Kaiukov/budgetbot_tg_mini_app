@@ -9,6 +9,7 @@ import type {
   BudgetUser,
 } from './types';
 import { initialTransactionForm as transactionFormDefault, initialTransferForm as transferFormDefault } from './types';
+import { extractBudgetName } from '../services/sync/utils';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -56,12 +57,18 @@ export const actions = {
   }),
 
   updateCategory: assign({
-    transaction: ({ context }, params: { category: string; category_id?: number; budget_name?: string }) => ({
-      ...context.transaction,
-      category: params.category,
-      category_id: params.category_id ?? context.transaction.category_id,
-      budget_name: params.budget_name ?? context.transaction.budget_name,
-    }),
+    transaction: ({ context }, params: { category: string; category_id?: number; budget_name?: string }) => {
+      const normalizedBudget = params.budget_name && params.budget_name.trim().length > 0
+        ? params.budget_name.trim()
+        : extractBudgetName(params.category);
+
+      return {
+        ...context.transaction,
+        category: params.category,
+        category_id: params.category_id ?? context.transaction.category_id,
+        budget_name: normalizedBudget,
+      };
+    },
   }),
 
   updateComment: assign({

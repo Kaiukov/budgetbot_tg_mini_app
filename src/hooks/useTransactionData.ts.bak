@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { extractBudgetName } from '../services/sync/utils';
 
 export type TransactionType = 'withdrawal' | 'income' | 'transfer';
 
@@ -18,7 +19,7 @@ export interface TransactionData {
   // Category data
   category_id: number;
   category_name: string;
-  budget_name: string; // Category name without emoji
+  budget_name: string; // Category name without emoji (Unicode preserved)
 
   // Destination/Comment data
   destination_id: number;
@@ -81,8 +82,12 @@ export const useTransactionData = (type: TransactionType = 'withdrawal') => {
     setTransactionData(prev => ({ ...prev, amount_eur }));
   };
 
-  const updateCategory = (category_name: string, category_id: number, budget_name: string) => {
-    setTransactionData(prev => ({ ...prev, category_name, category_id, budget_name }));
+  const updateCategory = (category_name: string, category_id: number, budget_name = '') => {
+    const normalizedBudget = budget_name.trim().length > 0
+      ? budget_name.trim()
+      : extractBudgetName(category_name);
+
+    setTransactionData(prev => ({ ...prev, category_name, category_id, budget_name: normalizedBudget }));
   };
 
   const updateDestination = (destination_id: number, destination_name: string) => {
