@@ -185,8 +185,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
         : new Date().toISOString();
 
       const amountValue = parseFloat(transactionData.amount);
-      const isEurAccount = (transactionData.account_currency || '').toUpperCase() === 'EUR';
-      const amountForeign = isEurAccount ? undefined : amountValue;
 
       const transactionPayload: WithdrawalTransactionData = {
         // User identification
@@ -199,7 +197,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 
         // Amounts
         amount: amountValue,
-        amount_eur: amountForeign !== undefined ? amountForeign : amountValue,
+        amount_eur: transactionData.amount_eur,
 
         // Category
         category_id: transactionData.category_id,

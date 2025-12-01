@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
 import { addTransaction, type IncomeTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
@@ -56,26 +55,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
         transactionData
       });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
+      const amountValue = parseFloat(amount);
 
       // Build income transaction payload
       const transactionPayload: IncomeTransactionData = {
@@ -83,8 +63,8 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
         account_id: transactionData.account_id,
         account_currency: transactionData.account_currency || 'EUR',
         currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_eur: amountForeignEur,
+        amount: amountValue,
+        amount_eur: transactionData.amount_eur,
         category_id: transactionData.category_id,
         category_name: transactionData.category_name,
         destination_id: transactionData.destination_id,
