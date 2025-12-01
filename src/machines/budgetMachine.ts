@@ -484,7 +484,8 @@ export const budgetMachine = createMachine(
             : {
                 amount: '',
                 amount_eur: '',
-                conversionAmount: null,
+                // Don't reset conversionAmount - preserve it across account changes
+                // User can re-enter amount which will trigger new conversion if needed
               }),
           account: event.account,
           account_id: event.account_id,

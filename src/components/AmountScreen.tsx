@@ -52,6 +52,9 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       // 2. We have a currency code
       // 3. Currency is NOT EUR (no conversion needed for same currency)
       if (!amount || !currencyCode || currencyCode === 'EUR') {
+        if (currencyCode === 'EUR') {
+          console.log('💶 EUR account - no conversion needed');
+        }
         setConversionAmount(null);
         onConversionAmountChange?.(null as any);
         return;
@@ -62,12 +65,14 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       try {
         const numAmount = parseFloat(amount);
         if (numAmount > 0) {
+          console.log(`💱 Converting ${numAmount} ${currencyCode} to EUR...`);
           const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
+          console.log(`✅ Conversion result: ${converted} EUR`);
           setConversionAmount(converted);
           onConversionAmountChange?.(converted);
         }
       } catch (error) {
-        console.error('Failed to fetch conversion:', error);
+        console.error('❌ Failed to fetch conversion:', error);
         setConversionAmount(null);
         onConversionAmountChange?.(null as any);
       } finally {
@@ -79,7 +84,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     // Debounce the conversion fetch
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [amount, currencyCode]);
+  }, [amount, currencyCode, onConversionAmountChange, onIsLoadingConversionChange]);
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 

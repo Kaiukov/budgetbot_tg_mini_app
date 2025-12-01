@@ -166,6 +166,17 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
 
+    // Validate amount_eur is available (required for API submission)
+    if (!transactionData.amount_eur || transactionData.amount_eur === 0) {
+      const errorMsg = {
+        type: 'error' as const,
+        text: 'Currency conversion failed. Please retry or check your connection.'
+      };
+      setSubmitMessage(errorMsg);
+      onSubmitMessageChange?.(errorMsg);
+      return;
+    }
+
     if (!notesInput.trim()) {
       const errorMsg = { type: 'error' as const, text: 'Please add notes before submitting.' };
       setSubmitMessage(errorMsg);

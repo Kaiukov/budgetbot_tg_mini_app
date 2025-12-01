@@ -716,7 +716,12 @@ const BudgetMiniApp = () => {
             account_id: Number(machineContext.context.transaction.account_id) || 0,
             account_currency: machineContext.context.transaction.account_currency,
             amount: machineContext.context.transaction.amount,
-            amount_eur: machineContext.context.transaction.conversionAmount ?? 0,
+            // For amount_eur: use converted amount if available, or use original amount if EUR account
+            amount_eur: machineContext.context.transaction.conversionAmount ?? (
+              machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR'
+                ? Number(machineContext.context.transaction.amount) || 0
+                : 0  // Non-EUR without conversion: 0 triggers validation error
+            ),
             category_id: machineContext.context.transaction.category_id || 0,
             category_name: machineContext.context.transaction.category,
             budget_name: (machineContext.context.transaction as any).budget_name || '',
