@@ -38,7 +38,7 @@ const getWithdrawalScreenFromMachineState = (machineState: any): string | null =
     if (machineState.matches({ ready: { withdrawalFlow: 'accounts' } })) return 'withdrawal-accounts';
     if (machineState.matches({ ready: { withdrawalFlow: 'amount' } })) return 'withdrawal-amount';
     if (machineState.matches({ ready: { withdrawalFlow: 'category' } })) return 'withdrawal-category';
-    if (machineState.matches({ ready: { withdrawalFlow: 'comment' } })) return 'withdrawal-comment';
+    if (machineState.matches({ ready: { withdrawalFlow: 'notes' } })) return 'withdrawal-notes';
     if (machineState.matches({ ready: { withdrawalFlow: 'confirm' } })) return 'withdrawal-confirm';
   }
 
@@ -157,18 +157,31 @@ const BudgetMiniApp = () => {
 
     try {
       if (enableDebugLogs) {
-        console.log('🔍 Fetching accounts for user:', user_name);
+        console.log('🔍 Fetching accounts:', {
+          user_name,
+          isAvailable,
+          isUnknownUser: user_name === 'User' || user_name === 'Guest'
+        });
       }
 
       // If user_name is known and matches users in the system, filter by user_name
       // Otherwise, return all accounts
       // Treat "User" and "Guest" as unknown users (browser mode)
       const isUnknownUser = user_name === 'User' || user_name === 'Guest';
-      const data = await syncService.getAccountsUsage(isUnknownUser ? undefined : user_name);
+      const queryUserName = isUnknownUser ? undefined : user_name;
+
+      if (enableDebugLogs) {
+        console.log('📤 Sending accounts request:', {
+          queryUserName,
+          willIncludeUserFilter: !!queryUserName
+        });
+      }
+
+      const data = await syncService.getAccountsUsage(queryUserName);
 
       if (enableDebugLogs) {
         console.log('📊 Fetched accounts:', {
-          total: data.total,
+          total_sync: data.total_sync,
           count: data.get_accounts_usage.length
         });
       }
@@ -665,7 +678,7 @@ const BudgetMiniApp = () => {
         />
       )}
 
-      {withdrawalScreen === 'withdrawal-comment' && (
+      {withdrawalScreen === 'withdrawal-notes' && (
         <DestinationNameScreen
           destination_name={
             (machineContext.context.transaction as any).destination_name ||

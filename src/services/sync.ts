@@ -37,8 +37,8 @@ export interface AccountUsage {
   owner: string;
   owner_id: string;
   usage_count: number;
-  created_at: string;
-  updated_at: string;
+  first_used_at: string | null;
+  last_used_at: string | null;
 }
 
 export interface AccountsUsageResponse {
@@ -46,7 +46,7 @@ export interface AccountsUsageResponse {
   message: string;
   timestamp: string;
   get_accounts_usage: AccountUsage[];
-  total: number;
+  total_sync: number;
 }
 
 export interface CategoryUsage {
@@ -318,7 +318,7 @@ class SyncService {
 
       console.log('📋 Raw API data:', {
         user_name,
-        total: data.total,
+        total_sync: data.total_sync,
         accountCount: data.get_accounts_usage.length,
         firstAccount: data.get_accounts_usage[0]
       });
@@ -369,7 +369,7 @@ class SyncService {
       const result = {
         ...data,
         get_accounts_usage: sortedAccounts,
-        total: sortedAccounts.length,
+        total_sync: sortedAccounts.length,
       };
 
       // Cache the result for 60 seconds
