@@ -84,7 +84,14 @@ export const budgetMachine = createMachine(
           {
             id: 'fetchCategories',
             src: categoriesFetchActor,
-            input: ({ context }) => ({ userName: context.user.username }),
+            input: ({ context }) => {
+              const maybeUser = context.user.username;
+              const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+              return {
+                userName: isUnknown ? undefined : maybeUser,
+                type: 'withdrawal',
+              };
+            },
             onDone: {
               actions: assign(({ event, context }) => ({
                 data: {
@@ -184,6 +191,25 @@ export const budgetMachine = createMachine(
                 },
               },
               category: {
+                entry: 'setCategoriesLoading',
+                invoke: {
+                  id: 'fetchExpenseCategoriesOnNavigate',
+                  src: categoriesFetchActor,
+                  input: ({ context }) => {
+                    const maybeUser = context.user.username;
+                    const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+                    return {
+                      userName: isUnknown ? undefined : maybeUser,
+                      type: 'withdrawal',
+                    };
+                  },
+                  onDone: {
+                    actions: 'setCategories',
+                  },
+                  onError: {
+                    actions: 'setCategoriesError',
+                  },
+                },
                 on: {
                   UPDATE_CATEGORY: {
                     target: 'comment',
@@ -253,6 +279,25 @@ export const budgetMachine = createMachine(
                 },
               },
               category: {
+                entry: 'setCategoriesLoading',
+                invoke: {
+                  id: 'fetchIncomeCategoriesOnNavigate',
+                  src: categoriesFetchActor,
+                  input: ({ context }) => {
+                    const maybeUser = context.user.username;
+                    const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+                    return {
+                      userName: isUnknown ? undefined : maybeUser,
+                      type: 'deposit',
+                    };
+                  },
+                  onDone: {
+                    actions: 'setCategories',
+                  },
+                  onError: {
+                    actions: 'setCategoriesError',
+                  },
+                },
                 on: {
                   UPDATE_CATEGORY: {
                     target: 'comment',
@@ -434,6 +479,13 @@ export const budgetMachine = createMachine(
       updateAccount: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
+          ...(context.transaction.account_id === event.account_id
+            ? {}
+            : {
+                amount: '',
+                amount_foreign: '',
+                conversionAmount: null,
+              }),
           account: event.account,
           account_id: event.account_id,
           account_currency: event.account_currency,
@@ -459,6 +511,8 @@ export const budgetMachine = createMachine(
         transaction: {
           ...context.transaction,
           category: event.category,
+          category_id: event.category_id ?? context.transaction.category_id,
+          budget_name: event.budget_name ?? context.transaction.budget_name,
         },
       })),
 
@@ -466,6 +520,8 @@ export const budgetMachine = createMachine(
         transaction: {
           ...context.transaction,
           comment: event.comment,
+          destination_name: event.comment,
+          destination_id: event.destination_id ?? context.transaction.destination_id,
         },
       })),
 
@@ -565,7 +621,7 @@ export const budgetMachine = createMachine(
       setCategories: assign(({ context, event }: any) => ({
         data: {
           ...context.data,
-          categories: event.categories || [],
+          categories: event.categories || event.output || [],
         },
         ui: {
           ...context.ui,
