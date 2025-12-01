@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Destination Selection**: Fixed quick destination selection from list not updating the destination field; event property was `comment` but machine expected `notes` in `handleWithdrawalDestinationChange`
+
 ### Changed
 - **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
 - **Transaction Operations**: `addTransaction()`, `fetchTransactions()`, and `fetchTransactionById()` now directly use `apiClient.request()` instead of wrapper methods

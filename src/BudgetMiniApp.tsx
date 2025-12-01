@@ -391,7 +391,7 @@ const BudgetMiniApp = () => {
   const handleWithdrawalDestinationChange = (destinationId: number | string, destination_name: string) => {
     machineContext.send({
       type: 'UPDATE_NOTES',
-      comment: destination_name,
+      notes: destination_name,
       destination_id: typeof destinationId === 'string' ? parseInt(destinationId, 10) : destinationId,
     });
   };
