@@ -11,6 +11,13 @@ import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } fr
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
 
+const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
+const debugLog = (...args: any[]) => {
+  if (enableDebugLogs) {
+    console.log(...args);
+  }
+};
+
 // ============================================================================
 // Telegram User Initialization Actor
 // ============================================================================
@@ -53,11 +60,11 @@ export const telegramInitActor = fromPromise<
       const colorScheme = telegramService.getColorScheme();
       const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
 
-      console.log('🔍 Telegram User Data:', { userName, userInitials });
+      debugLog('🔍 Telegram User Data:', { userName, userInitials });
 
       // Fetch additional user data from backend
       if (user?.id) {
-        console.log('📸 Fetching comprehensive user data from backend...');
+        debugLog('📸 Fetching comprehensive user data from backend...');
         fetchUserData(user.id)
           .then((backendData) => {
             clearTimeout(timer);
@@ -136,11 +143,11 @@ export const accountsFetchActor = fromPromise<
     }, timeout);
 
     try {
-      console.log('🔄 Fetching accounts for user:', input?.userName);
+      debugLog('🔄 Fetching accounts for user:', input?.userName);
       syncService.getAccountsUsage(input?.userName)
         .then((response) => {
           clearTimeout(timer);
-          console.log('✅ Accounts fetched:', response.get_accounts_usage.length);
+          debugLog('✅ Accounts fetched:', response.get_accounts_usage.length);
           resolve(response.get_accounts_usage);
         })
         .catch((error) => {
@@ -162,7 +169,7 @@ export const accountsFetchActor = fromPromise<
 
 export const categoriesFetchActor = fromPromise<
   CategoryUsage[],
-  { userName?: string; timeout?: number }
+  { userName?: string; type?: 'withdrawal' | 'deposit'; timeout?: number }
 >(async ({ input }) => {
   const timeout = input?.timeout || 30000; // 30s timeout
 
@@ -172,11 +179,11 @@ export const categoriesFetchActor = fromPromise<
     }, timeout);
 
     try {
-      console.log('🔄 Fetching categories for user:', input?.userName);
-      syncService.getCategoriesUsage(input?.userName)
+      debugLog('🔄 Fetching categories for user:', input?.userName, 'type:', input?.type);
+      syncService.getCategoriesUsage(input?.userName, input?.type)
         .then((response) => {
           clearTimeout(timer);
-          console.log('✅ Categories fetched:', response.get_categories_usage.length);
+          debugLog('✅ Categories fetched:', response.get_categories_usage.length);
           resolve(response.get_categories_usage);
         })
         .catch((error) => {
@@ -208,11 +215,11 @@ export const transactionsFetchActor = fromPromise<
     }, timeout);
 
     try {
-      console.log('🔄 Fetching transactions, page:', input?.page || 1);
+      debugLog('🔄 Fetching transactions, page:', input?.page || 1);
       fetchTransactions(input?.page || 1)
         .then((response) => {
           clearTimeout(timer);
-          console.log('✅ Transactions fetched:', response.transactions.length);
+          debugLog('✅ Transactions fetched:', response.transactions.length);
           resolve(response.transactions);
         })
         .catch((error) => {
@@ -237,12 +244,12 @@ export const transactionDetailFetchActor = fromPromise<
   { transactionId: string }
 >(async ({ input }) => {
   try {
-    console.log('🔄 Fetching transaction detail:', input.transactionId);
+    debugLog('🔄 Fetching transaction detail:', input.transactionId);
     const response = await fetchTransactionById(input.transactionId);
     if (!response.rawData) {
       throw new Error('Transaction not found');
     }
-    console.log('✅ Transaction detail fetched');
+    debugLog('✅ Transaction detail fetched');
     return response.rawData;
   } catch (error) {
     console.error('❌ Failed to fetch transaction detail:', error);
@@ -262,9 +269,9 @@ export const transactionCreateActor = fromPromise<
   }
 >(async ({ input }) => {
   try {
-    console.log(`🔄 Creating ${input.type} transaction...`);
+    debugLog(`🔄 Creating ${input.type} transaction...`);
     await addTransaction(input.data, input.type, true);
-    console.log(`✅ ${input.type} transaction created`);
+    debugLog(`✅ ${input.type} transaction created`);
   } catch (error) {
     console.error(`❌ Failed to create ${input.type} transaction:`, error);
     throw error;
@@ -283,7 +290,7 @@ export const transactionEditActor = fromPromise<
   }
 >(async ({ input }) => {
   try {
-    console.log('🔄 Editing transaction:', input.transactionId);
+    debugLog('🔄 Editing transaction:', input.transactionId);
     await apiClient.request<Record<string, unknown>>(
       `/api/v1/transactions/${input.transactionId}`,
       {
@@ -292,7 +299,7 @@ export const transactionEditActor = fromPromise<
         auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
       }
     );
-    console.log('✅ Transaction edited');
+    debugLog('✅ Transaction edited');
   } catch (error) {
     console.error('❌ Failed to edit transaction:', error);
     throw error;
@@ -308,7 +315,7 @@ export const transactionDeleteActor = fromPromise<
   { transactionId: string }
 >(async ({ input }) => {
   try {
-    console.log('🔄 Deleting transaction:', input.transactionId);
+    debugLog('🔄 Deleting transaction:', input.transactionId);
     await apiClient.request<Record<string, unknown>>(
       `/api/v1/transactions/${input.transactionId}`,
       {
@@ -316,7 +323,7 @@ export const transactionDeleteActor = fromPromise<
         auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
       }
     );
-    console.log('✅ Transaction deleted');
+    debugLog('✅ Transaction deleted');
   } catch (error) {
     console.error('❌ Failed to delete transaction:', error);
     throw error;
@@ -332,9 +339,9 @@ export const syncServiceHealthActor = fromPromise<
   { userName?: string }
 >(async () => {
   try {
-    console.log('🔄 Checking Sync API connection...');
+    debugLog('🔄 Checking Sync API connection...');
     const result = await syncService.checkConnection();
-    console.log('✅ Sync API status:', result);
+    debugLog('✅ Sync API status:', result);
     return result;
   } catch (error) {
     console.error('❌ Sync API health check failed:', error);
@@ -347,7 +354,7 @@ export const fireflyServiceHealthActor = fromPromise<
   {}
 >(async () => {
   try {
-    console.log('🔄 Checking Firefly API connection...');
+    debugLog('🔄 Checking Firefly API connection...');
     // Test connection by making a simple request to the API
     await apiClient.request<{ data: unknown }>(
       '/api/v1/transactions?limit=1',
@@ -357,7 +364,7 @@ export const fireflyServiceHealthActor = fromPromise<
       }
     );
     const result = { success: true, message: 'Firefly API is accessible' };
-    console.log('✅ Firefly API status:', result);
+    debugLog('✅ Firefly API status:', result);
     return result;
   } catch (error) {
     console.error('❌ Firefly API health check failed:', error);

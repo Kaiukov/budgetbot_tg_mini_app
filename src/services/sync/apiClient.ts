@@ -6,6 +6,25 @@
  * - Tier 3: Anonymous Read-Only (Public access, read-only)
  */
 
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
+}
+
 type AuthTier = 'tier1' | 'tier2' | 'tier3';
 
 interface ApiClientOptions {
@@ -216,7 +235,7 @@ export class ApiClient {
         method,
         headers,
         ...(method !== 'GET' && body && {
-          body: JSON.stringify(body),
+          body: safeJsonStringify(body),
         }),
       };
 

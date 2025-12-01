@@ -37,10 +37,47 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
   onNext
 }) => {
   const { userName } = useTelegramUser();
+  const effectiveUser = userName === 'User' || userName === 'Guest' ? undefined : userName;
+  const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
   // Use prop values if provided (from machine), otherwise use local state
   const [suggestions, setSuggestions] = useState<DestinationSuggestion[]>(propSuggestions ? propSuggestions as DestinationSuggestion[] : []);
   const [loading, setLoading] = useState(propIsLoadingSuggestions ?? false);
   const [error, setError] = useState<string | null>(propSuggestionsError ?? null);
+
+  // In browser debug mode, render a minimal stub to avoid heavy IPC/log spam that can crash Playwright transport
+  if (import.meta.env.VITE_WEB_APP_MODE === 'browser') {
+    return (
+      <div className={`${layouts.screen} ${gradients.screen}`}>
+        <div className={`${layouts.header} ${gradients.header}`}>
+          {!isAvailable && (
+            <button onClick={onBack} className="mr-3">
+              <ArrowLeft size={20} className="text-white" />
+            </button>
+          )}
+          <h1 className="text-2xl font-bold">Comment</h1>
+        </div>
+
+        <div className={layouts.content}>
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">Destination/Comment:</label>
+            <input
+              type="text"
+              value={destination_name}
+              onChange={(e) => onDestinationChange(0, e.target.value)}
+              placeholder="Enter destination or comment..."
+              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg text-sm border border-gray-700 focus:border-blue-500 focus:outline-none mb-3"
+            />
+          </div>
+          <button
+            onClick={onNext}
+            className="w-full mt-4 bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition active:scale-98"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show Telegram back button
   useEffect(() => {
@@ -50,30 +87,46 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
 
   // Fetch destination suggestions when category changes
   useEffect(() => {
-    if (!category_name || !userName || userName === 'User' || userName === 'Guest') {
-      // If no category or unknown user, don't fetch suggestions
-      setSuggestions([]);
-      return;
-    }
-
     const fetchDestinationSuggestions = async () => {
+      // In browser debug mode, skip fetching suggestions to avoid heavy payloads and Playwright transport crashes
+      if (import.meta.env.VITE_WEB_APP_MODE === 'browser') {
+        setSuggestions([]);
+        onSuggestionsChange?.([]);
+        return;
+      }
+      if (!category_name) {
+        setSuggestions([]);
+        onSuggestionsChange?.([]);
+        return;
+      }
+
+      if (!effectiveUser) {
+        setSuggestions([]);
+        onSuggestionsChange?.([]);
+        return;
+      }
+
       setLoading(true);
       onLoadingSuggestionsChange?.(true);
       setError(null);
       onSuggestionsErrorChange?.(null);
 
       try {
-        console.log('🏪 Fetching destinations filtered by category:', {
-          requestedUser: userName,
-          requestedCategory: category_name,
-          category_id
-        });
+        if (enableDebugLogs) {
+          console.log('🏪 Fetching destinations filtered by category:', {
+            requestedUser: effectiveUser,
+            requestedCategory: category_name,
+            category_id
+          });
+        }
 
         // Fetch destinations filtered by user and category
-        const data = await syncService.getDestinationNameUsage(userName, category_id);
+        const data = await syncService.getDestinationNameUsage(effectiveUser, category_id);
 
         if (data.total === 0) {
-          console.log('⚠️ No destinations available in API');
+          if (enableDebugLogs) {
+            console.log('⚠️ No destinations available in API');
+          }
           setSuggestions([]);
           onSuggestionsChange?.([]);
           return;
@@ -85,21 +138,26 @@ const CommentScreen: React.FC<CommentScreenProps> = ({
         // Sort by usage_count DESC
         allDestinations.sort((a, b) => b.usage_count - a.usage_count);
 
-        console.log('✅ Backend-filtered destinations:', {
-          requestedUser: userName,
-          requestedCategory: category_name,
-          category_id,
-          totalFetched: allDestinations.length,
-          sample: allDestinations.slice(0, 3).map(d => ({
-            name: d.destination_name,
-            user: d.user_name,
-            usage: d.usage_count
-          }))
-        });
+        if (enableDebugLogs) {
+          console.log('✅ Backend-filtered destinations:', {
+            requestedUser: effectiveUser,
+            requestedCategory: category_name,
+            category_id,
+            totalFetched: allDestinations.length,
+            sample: allDestinations.slice(0, 3).map(d => ({
+              name: d.destination_name,
+              user: d.user_name,
+              usage: d.usage_count
+            }))
+          });
+        }
 
-        if (allDestinations.length > 0) {
-          setSuggestions(allDestinations);
-          onSuggestionsChange?.(allDestinations);
+        // Cap the list to avoid passing huge payloads through state/IPC (MCP/Playwright can crash)
+        const limitedDestinations = allDestinations.slice(0, 50);
+
+        if (limitedDestinations.length > 0) {
+          setSuggestions(limitedDestinations);
+          onSuggestionsChange?.(limitedDestinations);
         } else {
           console.log('⚠️ No destinations found for this category, using empty list');
           setSuggestions([]);

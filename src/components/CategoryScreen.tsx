@@ -80,7 +80,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
               return (
                 <div
                   key={`${category.category_name}-${idx}`}
-                  onClick={() => onSelectCategory(category.category_name, category.category_id, extractBudgetName(category.category_name))}
+                  onClick={() => onSelectCategory(categoryNameWithoutEmoji, category.category_id, extractBudgetName(category.category_name))}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div

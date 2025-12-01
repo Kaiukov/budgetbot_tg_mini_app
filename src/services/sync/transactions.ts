@@ -20,7 +20,7 @@ import {
   removeNullValues,
   parseTransactionDate,
   formatAmount,
-  extractCategoryName,
+  cleanCategoryName,
   buildExpenseDescription,
   buildTransferDescription,
   buildTransactionNotes,
@@ -157,17 +157,18 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
 
     if (transactionCurrency === 'EUR') {
       // EUR expense transaction
+      const cleanCategory = cleanCategoryName(body.category);
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildExpenseDescription(body.category, body.account, body.amount, body.currency),
+        description: buildExpenseDescription(cleanCategory, body.account, body.amount, body.currency),
         currency_code: transactionCurrency,
-        category_name: body.category,
+        category_name: cleanCategory,
         source_name: body.account,
         destination_name: body.comment || 'Expense',
         notes: buildTransactionNotes(
-          `Expense ${body.category} from ${body.account} ${body.amount} ${body.currency}`,
+          `Expense ${cleanCategory} from ${body.account} ${body.amount} ${body.currency}`,
           body.comment,
           body.username
         ),
@@ -203,19 +204,20 @@ async function handleExpenseTransaction(body: ExpenseTransactionData): Promise<T
         return [false, { error: 'Currency conversion failed' }];
       }
 
+      const cleanCategory = cleanCategoryName(body.category);
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildExpenseDescription(body.category, body.account, body.amount, body.currency, foreignAmount),
+        description: buildExpenseDescription(cleanCategory, body.account, body.amount, body.currency, foreignAmount),
         currency_code: accountCurrency,
-        category_name: body.category,
+        category_name: cleanCategory,
         source_name: body.account,
         destination_name: body.comment || 'Expense',
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(foreignAmount),
         notes: buildTransactionNotes(
-          `Expense ${body.category} from ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
+          `Expense ${cleanCategory} from ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
           body.comment,
           body.username
         ),
@@ -272,16 +274,17 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
     if (transactionCurrency === 'EUR') {
       // EUR income transaction
+      const cleanCategory = cleanCategoryName(body.category);
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${body.category} income to ${body.account} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
+        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
         currency_code: accountCurrency,
-        category_name: extractCategoryName(body.category),
+        category_name: cleanCategory,
         destination_name: body.account,
         notes: buildTransactionNotes(
-          `Income ${body.category} to ${body.account} ${body.amount} ${body.currency}`,
+          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency}`,
           body.comment,
           body.username
         ),
@@ -315,18 +318,19 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         return [false, { error: 'Currency conversion failed' }];
       }
 
+      const cleanCategory = cleanCategoryName(body.category);
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${body.category} income to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR) Comment: ${body.comment || ''}`,
+        description: `${cleanCategory} income to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR) Comment: ${body.comment || ''}`,
         currency_code: accountCurrency,
-        category_name: extractCategoryName(body.category),
+        category_name: cleanCategory,
         destination_name: body.account,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(foreignAmount),
         notes: buildTransactionNotes(
-          `Income ${body.category} to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
+          `Income ${cleanCategory} to ${body.account} ${body.amount} ${body.currency} (${foreignAmount} EUR)`,
           body.comment,
           body.username
         ),

@@ -58,15 +58,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     onSubmitMessageChange?.(null);
 
     try {
-      console.log('💳 Starting transaction submission:', {
-        account_name: transactionData.account_name,
-        amount: transactionData.amount,
-        category_name: transactionData.category_name,
-        budget_name: transactionData.budget_name,
-        destination_name: transactionData.destination_name,
-        transactionData
-      });
-
       // Build transaction payload
       const transactionPayload: ExpenseTransactionData = {
         account: transactionData.account_name,

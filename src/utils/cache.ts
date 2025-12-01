@@ -5,8 +5,34 @@
  */
 
 export interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
+ data: T;
+ timestamp: number;
+}
+
+const enableDebugLogs = typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ENABLE_DEBUG_LOGS === 'true';
+const debugLog = (...args: any[]) => {
+  if (enableDebugLogs) {
+    console.log(...args);
+  }
+};
+
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
 }
 
 export class Cache<T> {
@@ -34,7 +60,7 @@ export class Cache<T> {
     // Check memory cache first
     const memoryEntry = this.memoryCache.get(key);
     if (memoryEntry && (now - memoryEntry.timestamp) < this.expiryMs) {
-      console.log(`💾 Cache HIT (memory): ${this.storageKeyPrefix}${key}`);
+      debugLog(`💾 Cache HIT (memory): ${this.storageKeyPrefix}${key}`);
       return memoryEntry.data;
     }
 
@@ -47,7 +73,7 @@ export class Cache<T> {
         const entry = JSON.parse(cached) as CacheEntry<T>;
 
         if ((now - entry.timestamp) < this.expiryMs) {
-          console.log(`💾 Cache HIT (localStorage): ${this.storageKeyPrefix}${key}`);
+          debugLog(`💾 Cache HIT (localStorage): ${this.storageKeyPrefix}${key}`);
           // Restore to memory cache for faster access
           this.memoryCache.set(key, entry);
           return entry.data;
@@ -55,14 +81,14 @@ export class Cache<T> {
           // Cache expired, remove it
           localStorage.removeItem(storageKey);
           this.memoryCache.delete(key);
-          console.log(`💾 Cache EXPIRED: ${this.storageKeyPrefix}${key}`);
+          debugLog(`💾 Cache EXPIRED: ${this.storageKeyPrefix}${key}`);
         }
       }
     } catch (error) {
       console.warn(`⚠️ Error reading cache from localStorage:`, error);
     }
 
-    console.log(`💾 Cache MISS: ${this.storageKeyPrefix}${key}`);
+    debugLog(`💾 Cache MISS: ${this.storageKeyPrefix}${key}`);
     return null;
   }
 
@@ -81,8 +107,8 @@ export class Cache<T> {
     // Store in localStorage for persistence
     try {
       const storageKey = `${this.storageKeyPrefix}${key}`;
-      localStorage.setItem(storageKey, JSON.stringify(entry));
-      console.log(`💾 Cache SET: ${this.storageKeyPrefix}${key} (expires in ${this.expiryMs / 1000}s)`);
+      localStorage.setItem(storageKey, safeJsonStringify(entry));
+      debugLog(`💾 Cache SET: ${this.storageKeyPrefix}${key} (expires in ${this.expiryMs / 1000}s)`);
     } catch (error) {
       console.warn(`⚠️ Error saving cache to localStorage:`, error);
     }
@@ -97,7 +123,7 @@ export class Cache<T> {
     try {
       const storageKey = `${this.storageKeyPrefix}${key}`;
       localStorage.removeItem(storageKey);
-      console.log(`💾 Cache DELETED: ${this.storageKeyPrefix}${key}`);
+      debugLog(`💾 Cache DELETED: ${this.storageKeyPrefix}${key}`);
     } catch (error) {
       console.warn(`⚠️ Error deleting cache from localStorage:`, error);
     }
@@ -120,7 +146,7 @@ export class Cache<T> {
       }
 
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log(`💾 Cache CLEARED: ${this.storageKeyPrefix}* (${keysToRemove.length} entries)`);
+      debugLog(`💾 Cache CLEARED: ${this.storageKeyPrefix}* (${keysToRemove.length} entries)`);
     } catch (error) {
       console.warn(`⚠️ Error clearing cache from localStorage:`, error);
     }
@@ -165,12 +191,12 @@ export const TRANSACTION_CACHE_KEYS = {
  */
 export async function refreshHomeTransactionCache(): Promise<boolean> {
   try {
-    console.log('🔄 Refreshing transaction cache...');
+    debugLog('🔄 Refreshing transaction cache...');
     const result = await fetchTransactions(1, 10);
 
     if (!result.error && result.transactions.length >= 0) {
       transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
-      console.log('✅ Transaction cache refreshed with', result.transactions.length, 'transactions');
+      debugLog('✅ Transaction cache refreshed with', result.transactions.length, 'transactions');
       return true;
     }
 
@@ -188,5 +214,5 @@ export async function refreshHomeTransactionCache(): Promise<boolean> {
  */
 export function clearTransactionCache(): void {
   transactionCache.clear();
-  console.log('🗑️ Transaction cache cleared');
+  debugLog('🗑️ Transaction cache cleared');
 }

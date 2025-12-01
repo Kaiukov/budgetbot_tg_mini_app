@@ -72,6 +72,22 @@ export function extractCategoryName(category: string): string {
 }
 
 /**
+ * Clean category name by removing emoji and extra whitespace
+ * Used to sanitize category names from API responses
+ * Example: "🦐Їжа" -> "Їжа"
+ */
+export function cleanCategoryName(category: string): string {
+  if (!category) return '';
+
+  // Remove emoji using both patterns to ensure comprehensive emoji removal
+  const cleaned = category
+    .replace(/(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*(?:\u200D[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*)*|\p{Emoji_Component}+)/gu, '')
+    .trim();
+
+  return cleaned;
+}
+
+/**
  * Extract budget name by removing emoji from category
  * Only returns name if it contains only ASCII characters
  * Cyrillic and other non-ASCII characters are excluded to prevent Firefly validation errors
@@ -82,27 +98,25 @@ export function extractCategoryName(category: string): string {
 export function extractBudgetName(category: string): string {
   if (!category) return '';
 
-  // Remove emoji and trim whitespace
-  const withoutEmoji = category
-    .replace(/[\p{Emoji}]/gu, '') // Remove all emoji characters
-    .trim();
+  // First clean the category name to remove emoji
+  const cleaned = cleanCategoryName(category);
 
-  if (!withoutEmoji) return ''; // Return empty if nothing left after emoji removal
+  if (!cleaned) return ''; // Return empty if nothing left after emoji removal
 
   // Check if the remaining text contains only ASCII characters
   // Firefly III may not accept Cyrillic or other non-ASCII budget names
   // Return empty string if non-ASCII characters are detected
   // This prevents "This value is associated with an object that does not exist" errors
   const asciiRegex = /^[a-zA-Z0-9\s\-_]+$/;
-  if (!asciiRegex.test(withoutEmoji)) {
+  if (!asciiRegex.test(cleaned)) {
     console.warn('⚠️ Budget name contains non-ASCII characters, excluding from transaction:', {
       original: category,
-      extracted: withoutEmoji
+      extracted: cleaned
     });
     return ''; // Return empty string to exclude from payload
   }
 
-  return withoutEmoji;
+  return cleaned;
 }
 
 /**

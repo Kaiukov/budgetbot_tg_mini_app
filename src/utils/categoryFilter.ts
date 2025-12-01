@@ -7,13 +7,15 @@
 import categoryConfig from '../config/categories.json';
 import type { CategoryUsage } from '../services/sync';
 
+const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
+
 export type TransactionType = 'expense' | 'income' | 'transfer';
 
 /**
  * Filter categories by transaction type
  *
  * IMPORTANT: Only filters for INCOME transactions (category_id: 4)
- * Expense and transfer transactions show ALL categories
+ * Expense and transfer transactions show ALL categories (backend handles filtering via type parameter)
  *
  * @param categories - Full list of categories from API
  * @param type - Transaction type (expense, income, transfer)
@@ -28,23 +30,27 @@ export function filterCategoriesByType(
     const allowedIds = categoryConfig.income;
     const filtered = categories.filter(cat => allowedIds.includes(cat.category_id));
 
-    console.log('🔍 Category filtering for INCOME:', {
-      type,
-      totalCategories: categories.length,
-      filteredCategories: filtered.length,
-      allowedIds,
-      filteredNames: filtered.map(c => c.category_name)
-    });
+    if (enableDebugLogs) {
+      console.log('🔍 Category filtering for INCOME:', {
+        type,
+        totalCategories: categories.length,
+        filteredCategories: filtered.length,
+        allowedIds,
+        filteredNames: filtered.map(c => c.category_name)
+      });
+    }
 
     return filtered;
   }
 
-  // For expense and transfer - return ALL categories (no filtering)
-  console.log('🔍 Category filtering for EXPENSE/TRANSFER:', {
-    type,
-    totalCategories: categories.length,
-    note: 'No filtering applied - showing all categories'
-  });
+  // For expense and transfer - return ALL categories (backend handles filtering via type parameter)
+  if (enableDebugLogs) {
+    console.log('🔍 Category filtering for EXPENSE/TRANSFER:', {
+      type,
+      totalCategories: categories.length,
+      note: 'Backend handles type filtering - showing categories as received'
+    });
+  }
 
   return categories;
 }

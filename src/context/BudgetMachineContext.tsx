@@ -50,7 +50,7 @@ const defaultContextValue: BudgetMachineContextType = {
   state: 'loading',
   context: {
     user: { id: 0, username: 'Guest', fullName: 'Guest', photoUrl: null, initials: 'G', bio: '', colorScheme: 'dark', rawUser: null },
-    transaction: { account: '', amount: '', category: '', comment: '', account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
+    transaction: { account: '', amount: '', category: '', category_id: 0, budget_name: '', comment: '', destination_name: '', destination_id: 0, account_id: '', account_currency: '', user_id: undefined, username: '', amount_foreign: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
     transfer: { source: { account: '', id: '', currency: '' }, destination: { account: '', id: '', currency: '' }, exitAmount: '', entryAmount: '', exitFee: '', entryFee: '', comment: '' },
     data: { accounts: [], categories: [], transactions: [] },
     ui: { accounts: { loading: false, error: null }, categories: { loading: false, error: null }, transactions: { loading: false, error: null }, services: { telegram: { name: 'Telegram', status: 'checking', message: '' }, sync: { name: 'Sync', status: 'checking', message: '' }, firefly: { name: 'Firefly', status: 'checking', message: '' } } },
@@ -108,17 +108,39 @@ export interface BudgetMachineProviderProps {
 
 const MACHINE_STATE_KEY = 'budget-machine-state';
 
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      // This regex matches:
+      // - High surrogate without low surrogate: /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g
+      // - Low surrogate without high surrogate: /(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
+}
+
 export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ children }) => {
   const machine = useBudgetMachine();
   const previousStateRef = useRef<any>(null);
 
-  // Add event logging (dev only)
+  // Add event logging (dev only) - log only state values to avoid emoji serialization issues
   useEffect(() => {
     const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
     if (isDev && machine.state !== previousStateRef.current) {
-      console.log(
-        `🔄 State transition: ${previousStateRef.current ? JSON.stringify(previousStateRef.current) : 'initial'} → ${JSON.stringify(machine.state)}`
-      );
+      const prevState = previousStateRef.current?.value || 'initial';
+      const currentState = machine.state.value;
+      console.log(`🔄 State transition: ${String(prevState)} → ${String(currentState)}`);
       previousStateRef.current = machine.state;
     }
   }, [machine.state]);
@@ -141,7 +163,7 @@ export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ ch
           selectedTransaction: machine.context.selectedTransaction,
         },
       };
-      localStorage.setItem(MACHINE_STATE_KEY, JSON.stringify(machineState));
+      localStorage.setItem(MACHINE_STATE_KEY, safeJsonStringify(machineState));
     } catch (error) {
       console.warn('Failed to persist machine state:', error);
     }

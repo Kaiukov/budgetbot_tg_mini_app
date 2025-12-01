@@ -340,30 +340,24 @@ const BudgetMiniApp = () => {
       account_currency: currency || '',
       username: user || userName
     });
-    machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT' });
   };
 
   const handleExpenseAmountChange = (value: string) => {
     machineContext.send({ type: 'UPDATE_AMOUNT', amount: value });
   };
 
-  const handleExpenseSelectCategory = (categoryName: string, categoryId: number, budgetName?: string) => {
+  const handleExpenseSelectCategory = (categoryName: string, _categoryId: number, _budgetName?: string) => {
     machineContext.send({
       type: 'UPDATE_CATEGORY',
-      category_name: categoryName,
-      category_id: categoryId,
-      budget_name: budgetName || '',
+      category: categoryName,
     });
-    machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT_CATEGORY' });
   };
 
-  const handleExpenseDestinationChange = (destinationId: number | string, destinationName: string) => {
+  const handleExpenseDestinationChange = (_destinationId: number | string, destinationName: string) => {
     machineContext.send({
-      type: 'UPDATE_DESTINATION',
-      destination_id: typeof destinationId === 'string' ? parseInt(destinationId, 10) : destinationId,
-      destination_name: destinationName
+      type: 'UPDATE_COMMENT',
+      comment: destinationName,
     });
-    machineContext.send({ type: 'NAVIGATE_EXPENSE_COMMENT_CONFIRM' });
   };
 
   const handleExpenseConfirm = () => {
@@ -473,8 +467,26 @@ const BudgetMiniApp = () => {
     }
   };
 
-  // Get back handler for current screen
+  // Get back handler for current screen (handles both machine and legacy states)
   const getBackHandler = () => {
+    // Machine-driven screens (priority)
+    if (machineContext.state.matches({ ready: 'expenseFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'incomeFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'transferFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'transactions' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'debug' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+
+    // Legacy screens (for backward compatibility)
     switch (currentScreen) {
       case 'accounts':
         return () => {
@@ -557,7 +569,10 @@ const BudgetMiniApp = () => {
       }}
     >
       {/* Browser Back Button (only shows in browser debug mode) */}
-      <BrowserBackButton onBack={getBackHandler()} isHome={currentScreen === 'home'} />
+      <BrowserBackButton
+        onBack={getBackHandler()}
+        isHome={machineContext.state.matches({ ready: 'home' }) && currentScreen === 'home'}
+      />
 
       {/* Screen Router */}
       {machineContext.state.matches({ ready: 'home' }) && (
@@ -607,9 +622,9 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onAmountChange={handleExpenseAmountChange}
-          onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount })}
+          onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount_eur: amount })}
           onIsLoadingConversionChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_CONVERSION', isLoading })}
-          onNext={() => machineContext.send({ type: 'NAVIGATE_EXPENSE_AMOUNT_CATEGORY' })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_CATEGORY' })}
         />
       )}
 
@@ -628,7 +643,11 @@ const BudgetMiniApp = () => {
 
       {expenseScreen === 'expense-comment' && (
         <CommentScreen
-          destination_name={(machineContext.context.transaction as any).destination_name || ''}
+          destination_name={
+            (machineContext.context.transaction as any).destination_name ||
+            machineContext.context.transaction.comment ||
+            ''
+          }
           category_name={machineContext.context.transaction.category}
           category_id={0}
           suggestions={(machineContext.context.transaction as any).suggestions || []}
@@ -640,7 +659,7 @@ const BudgetMiniApp = () => {
           onSuggestionsChange={(suggestions) => machineContext.send({ type: 'SET_SUGGESTIONS', suggestions })}
           onLoadingSuggestionsChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_SUGGESTIONS', isLoading })}
           onSuggestionsErrorChange={(error) => machineContext.send({ type: 'SET_SUGGESTIONS_ERROR', error })}
-          onNext={() => machineContext.send({ type: 'NAVIGATE_EXPENSE_COMMENT_CONFIRM' })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_CONFIRM' })}
         />
       )}
 
@@ -649,7 +668,11 @@ const BudgetMiniApp = () => {
           account_name={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
           budget_name={(machineContext.context.transaction as any).budget_name || ''}
-          destination_name={(machineContext.context.transaction as any).destination_name || ''}
+          destination_name={
+            (machineContext.context.transaction as any).destination_name ||
+            machineContext.context.transaction.comment ||
+            ''
+          }
           transactionData={{
             user_name: machineContext.context.user.username,
             account_name: machineContext.context.transaction.account,
@@ -661,7 +684,10 @@ const BudgetMiniApp = () => {
             category_name: machineContext.context.transaction.category,
             budget_name: (machineContext.context.transaction as any).budget_name || '',
             destination_id: 0,
-            destination_name: (machineContext.context.transaction as any).destination_name || '',
+            destination_name:
+              (machineContext.context.transaction as any).destination_name ||
+              machineContext.context.transaction.comment ||
+              '',
             date: ''
           } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}

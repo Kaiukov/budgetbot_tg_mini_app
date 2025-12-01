@@ -7,6 +7,25 @@
 import { Cache } from '../utils/cache';
 import { apiClient } from './sync/apiClient';
 
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
+}
+
 export interface AccountUsage {
   account_id: string;
   user_name: string;
@@ -196,7 +215,7 @@ class SyncService {
     // Store in localStorage for persistence
     try {
       const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
-      localStorage.setItem(storageKey, JSON.stringify(cacheData));
+      localStorage.setItem(storageKey, safeJsonStringify(cacheData));
       console.log('💾 Exchange rate cached:', { from, to, rate, expiresIn: '1h' });
     } catch (error) {
       console.warn('⚠️ Error saving exchange rate to localStorage:', error);

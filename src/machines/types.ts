@@ -30,7 +30,11 @@ export interface TransactionForm {
   account: string;
   amount: string;
   category: string;
+  category_id: number;
+  budget_name: string;
   comment: string;
+  destination_name: string;
+  destination_id: number;
   account_id: string;
   account_currency: string;
   user_id: number | undefined;
@@ -50,7 +54,11 @@ export const initialTransactionForm: TransactionForm = {
   account: '',
   amount: '',
   category: '',
+  category_id: 0,
+  budget_name: '',
   comment: '',
+  destination_name: '',
+  destination_id: 0,
   account_id: '',
   account_currency: '',
   user_id: undefined,
@@ -231,8 +239,8 @@ export type TransactionEvent =
   | { type: 'UPDATE_ACCOUNT'; account: string; account_id: string; account_currency: string; username: string }
   | { type: 'UPDATE_AMOUNT'; amount: string }
   | { type: 'UPDATE_AMOUNT_FOREIGN'; amount_foreign: string }
-  | { type: 'UPDATE_CATEGORY'; category: string }
-  | { type: 'UPDATE_COMMENT'; comment: string }
+  | { type: 'UPDATE_CATEGORY'; category: string; category_id?: number; budget_name?: string }
+  | { type: 'UPDATE_COMMENT'; comment: string; destination_id?: number }
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; username: string }
   | { type: 'SELECT_TRANSACTION'; id: string }

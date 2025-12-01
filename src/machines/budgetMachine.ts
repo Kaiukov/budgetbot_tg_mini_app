@@ -136,7 +136,10 @@ export const budgetMachine = createMachine(
         states: {
           home: {
             on: {
-              NAVIGATE_EXPENSE_ACCOUNTS: 'expenseFlow',
+              NAVIGATE_EXPENSE_ACCOUNTS: {
+                target: 'expenseFlow',
+                actions: 'resetTransaction',
+              },
               NAVIGATE_INCOME_ACCOUNTS: 'incomeFlow',
               NAVIGATE_TRANSFER_SOURCE: 'transferFlow',
               NAVIGATE_TRANSACTIONS: 'transactions',
@@ -147,7 +150,10 @@ export const budgetMachine = createMachine(
           expenseFlow: {
             initial: 'accounts',
             on: {
-              NAVIGATE_HOME: '#budget.ready.home',
+              NAVIGATE_HOME: {
+                target: '#budget.ready.home',
+                actions: 'resetTransaction',
+              },
             },
             states: {
               accounts: {

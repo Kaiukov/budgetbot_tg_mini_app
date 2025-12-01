@@ -10,6 +10,8 @@ import type {
 } from './types';
 import { initialTransactionForm as transactionFormDefault, initialTransferForm as transferFormDefault } from './types';
 
+const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
+
 // ============================================================================
 // Update Actions
 // ============================================================================
@@ -295,11 +297,15 @@ export const guards = {
 
 export const logActions = {
   logStateTransition: (_: { context: BudgetMachineContext }, params: { from: string; to: string }) => {
-    console.log(`🔄 State transition: ${params.from} → ${params.to}`);
+    if (enableDebugLogs) {
+      console.log(`🔄 State transition: ${params.from} → ${params.to}`);
+    }
   },
 
   logNavigate: (_: { context: BudgetMachineContext }, params: { screen: string }) => {
-    console.log(`📱 Navigating to: ${params.screen}`);
+    if (enableDebugLogs) {
+      console.log(`📱 Navigating to: ${params.screen}`);
+    }
   },
 
   logError: (_: { context: BudgetMachineContext }, params: { error: string; context: string }) => {
@@ -307,10 +313,14 @@ export const logActions = {
   },
 
   logFetch: (_: { context: BudgetMachineContext }, params: { resource: string }) => {
-    console.log(`🔄 Fetching: ${params.resource}`);
+    if (enableDebugLogs) {
+      console.log(`🔄 Fetching: ${params.resource}`);
+    }
   },
 
   logSuccess: (_: { context: BudgetMachineContext }, params: { message: string }) => {
-    console.log(`✅ ${params.message}`);
+    if (enableDebugLogs) {
+      console.log(`✅ ${params.message}`);
+    }
   },
 };
