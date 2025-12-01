@@ -88,35 +88,20 @@ export function cleanCategoryName(category: string): string {
 }
 
 /**
- * Extract budget name by removing emoji from category
- * Only returns name if it contains only ASCII characters
- * Cyrillic and other non-ASCII characters are excluded to prevent Firefly validation errors
- *
- * Example: "🍕 Food" -> "Food", "🚗 Transport" -> "Transport"
- * Example: "🛍️ Шопінг" -> "" (empty, Cyrillic not supported as budget name)
+ * Extract budget name by removing emoji from category.
+ * Unicode characters are preserved to avoid dropping valid localized names.
  */
 export function extractBudgetName(category: string): string {
   if (!category) return '';
 
-  // First clean the category name to remove emoji
   const cleaned = cleanCategoryName(category);
+  if (!cleaned) return '';
 
-  if (!cleaned) return ''; // Return empty if nothing left after emoji removal
-
-  // Check if the remaining text contains only ASCII characters
-  // Firefly III may not accept Cyrillic or other non-ASCII budget names
-  // Return empty string if non-ASCII characters are detected
-  // This prevents "This value is associated with an object that does not exist" errors
-  const asciiRegex = /^[a-zA-Z0-9\s\-_]+$/;
-  if (!asciiRegex.test(cleaned)) {
-    console.warn('⚠️ Budget name contains non-ASCII characters, excluding from transaction:', {
-      original: category,
-      extracted: cleaned
-    });
-    return ''; // Return empty string to exclude from payload
-  }
-
-  return cleaned;
+  // Normalize and collapse whitespace so Firefly receives a clean string
+  return cleaned
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
