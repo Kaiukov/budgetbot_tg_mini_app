@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Known Issues
+- **Destination Input Persistence** (P1): `DestinationNameScreen` input clears after typing due to `UPDATE_NOTES` payload key mismatch. Machine action reads `event.comment` or `event.destination_name` while callers dispatch `{ notes: value }`. Fix in progress.
+- **Account user_name Field** (P3): Account selection dispatches `username` but machine expects `user_name`, leaving transaction context blank. Alignment needed.
+
 ### Fixed
 - **Destination Selection**: Fixed quick destination selection from list not updating the destination field; event property was `comment` but machine expected `notes` in `handleWithdrawalDestinationChange`
 
