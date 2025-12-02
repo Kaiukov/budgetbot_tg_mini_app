@@ -7,6 +7,9 @@ import { assign } from 'xstate';
 import type {
   BudgetMachineContext,
   BudgetUser,
+  WithdrawalForm,
+  DepositForm,
+  TransferForm,
 } from './types';
 import { initialTransactionForm as transactionFormDefault, initialTransferForm as transferFormDefault } from './types';
 import { extractBudgetName } from '../services/sync/utils';
@@ -84,26 +87,57 @@ export const actions = {
     transaction: () => ({ ...transactionFormDefault }),
   }),
 
+  // Validation & Date Updates for Transaction/Withdrawal/Deposit
+  setWithdrawalValidationError: assign({
+    transaction: ({ context }, params: { error: string | null }) => ({
+      ...context.transaction,
+      errors: params.error ? { validation: params.error } : {},
+    }),
+  }),
+
+  setDepositValidationError: assign({
+    transaction: ({ context }, params: { error: string | null }) => ({
+      ...context.transaction,
+      errors: params.error ? { validation: params.error } : {},
+    }),
+  }),
+
+  clearTransactionValidationError: assign({
+    transaction: ({ context }) => ({
+      ...context.transaction,
+      errors: {},
+    }),
+  }),
+
+  updateTransactionDate: assign({
+    transaction: ({ context }, params: { date: string }) => ({
+      ...context.transaction,
+      date: params.date,
+    }),
+  }),
+
   // Transfer Form
   setTransferSource: assign({
-    transfer: ({ context }, params: { account: string; id: string; currency: string }) => ({
+    transfer: ({ context }, params: { account: string; id: string; currency: string; user_name?: string }) => ({
       ...context.transfer,
       source: {
         account: params.account,
         id: params.id,
         currency: params.currency,
       },
+      source_user_name: params.user_name ?? context.transfer.source_user_name,
     }),
   }),
 
   setTransferDest: assign({
-    transfer: ({ context }, params: { account: string; id: string; currency: string }) => ({
+    transfer: ({ context }, params: { account: string; id: string; currency: string; user_name?: string }) => ({
       ...context.transfer,
       destination: {
         account: params.account,
         id: params.id,
         currency: params.currency,
       },
+      dest_user_name: params.user_name ?? context.transfer.dest_user_name,
     }),
   }),
 
@@ -142,8 +176,29 @@ export const actions = {
     }),
   }),
 
+  updateTransferDate: assign({
+    transfer: ({ context }, params: { date: string }) => ({
+      ...context.transfer,
+      date: params.date,
+    }),
+  }),
+
   resetTransfer: assign({
     transfer: () => ({ ...transferFormDefault }),
+  }),
+
+  setTransferValidationError: assign({
+    transfer: ({ context }, params: { error: string | null }) => ({
+      ...context.transfer,
+      errors: params.error ? { validation: params.error } : {},
+    }),
+  }),
+
+  clearTransferValidationError: assign({
+    transfer: ({ context }) => ({
+      ...context.transfer,
+      errors: {},
+    }),
   }),
 
   // Data Management
@@ -299,6 +354,153 @@ export const guards = {
 
   isUnknownUser: (context: BudgetMachineContext) => {
     return context.user.user_name === 'User' || context.user.user_name === 'Guest';
+  },
+};
+
+// ============================================================================
+// Validation Functions (Return error message or null)
+// ============================================================================
+
+/**
+ * Validates account selection page
+ * Required fields: user_name, account_name, account_id, account_currency
+ */
+export const validateAccountPage = (form: WithdrawalForm | DepositForm): string | null => {
+  if (!form.user_name?.trim()) return 'User name is required';
+  if (!form.account_name?.trim()) return 'Account name is required';
+  if (!form.account_id) return 'Account ID is required';
+  if (!form.account_currency?.trim()) return 'Account currency is required';
+  return null;
+};
+
+/**
+ * Validates amount page
+ * Required fields: amount (positive number)
+ */
+export const validateAmountPage = (form: WithdrawalForm | DepositForm): string | null => {
+  if (!form.amount?.trim()) return 'Amount is required';
+  const num = parseFloat(form.amount);
+  if (isNaN(num)) return 'Amount must be a valid number';
+  if (num <= 0) return 'Amount must be greater than 0';
+  return null;
+};
+
+/**
+ * Validates category page
+ * Required fields: category_id, category_name
+ */
+export const validateCategoryPage = (form: WithdrawalForm | DepositForm): string | null => {
+  if (!form.category_id) return 'Category is required';
+  if (!form.category_name?.trim()) return 'Category name is required';
+  return null;
+};
+
+/**
+ * Validates destination name page (withdrawal)
+ * Required fields: destination_name
+ */
+export const validateDestinationPage = (form: WithdrawalForm): string | null => {
+  if (!form.destination_name?.trim()) return 'Destination name is required';
+  return null;
+};
+
+/**
+ * Validates source name page (deposit)
+ * Required fields: source_name
+ */
+export const validateSourcePage = (form: DepositForm): string | null => {
+  if (!form.source_name?.trim()) return 'Source name is required';
+  return null;
+};
+
+/**
+ * Validates confirmation page
+ * Required fields: date (notes can be empty)
+ */
+export const validateConfirmationPage = (form: WithdrawalForm | DepositForm | TransferForm): string | null => {
+  if (!form.date?.trim()) return 'Date is required';
+  return null;
+};
+
+/**
+ * Validates transfer source page
+ * Required fields: source account, source_user_name
+ */
+export const validateTransferSourcePage = (form: TransferForm): string | null => {
+  if (!form.source.account?.trim()) return 'Source account is required';
+  if (!form.source_user_name?.trim()) return 'User name is required';
+  return null;
+};
+
+/**
+ * Validates transfer destination page
+ * Required fields: destination account, dest_user_name
+ */
+export const validateTransferDestPage = (form: TransferForm): string | null => {
+  if (!form.destination.account?.trim()) return 'Destination account is required';
+  if (!form.dest_user_name?.trim()) return 'User name is required';
+  return null;
+};
+
+/**
+ * Validates transfer amount page
+ * Required fields: exitAmount, entryAmount
+ */
+export const validateTransferAmountPage = (form: TransferForm): string | null => {
+  if (!form.exitAmount?.trim()) return 'Exit amount is required';
+  const exitNum = parseFloat(form.exitAmount);
+  if (isNaN(exitNum) || exitNum <= 0) return 'Exit amount must be greater than 0';
+
+  if (!form.entryAmount?.trim()) return 'Entry amount is required';
+  const entryNum = parseFloat(form.entryAmount);
+  if (isNaN(entryNum) || entryNum <= 0) return 'Entry amount must be greater than 0';
+
+  return null;
+};
+
+// ============================================================================
+// Validation Guards (Used in state transitions)
+// ============================================================================
+
+/**
+ * Guards - Check if page validates before allowing navigation
+ * These are exported to be used in state machine transitions
+ */
+export const validationGuards = {
+  canProceedFromAccountPage: (form: WithdrawalForm | DepositForm): boolean => {
+    return validateAccountPage(form) === null;
+  },
+
+  canProceedFromAmountPage: (form: WithdrawalForm | DepositForm): boolean => {
+    return validateAmountPage(form) === null;
+  },
+
+  canProceedFromCategoryPage: (form: WithdrawalForm | DepositForm): boolean => {
+    return validateCategoryPage(form) === null;
+  },
+
+  canProceedFromDestinationPage: (form: WithdrawalForm): boolean => {
+    return validateDestinationPage(form) === null;
+  },
+
+  canProceedFromSourcePage: (form: DepositForm): boolean => {
+    return validateSourcePage(form) === null;
+  },
+
+  canProceedFromConfirmationPage: (form: WithdrawalForm | DepositForm | TransferForm): boolean => {
+    return validateConfirmationPage(form) === null;
+  },
+
+  canProceedFromTransferSourcePage: (form: TransferForm): boolean => {
+    return validateTransferSourcePage(form) === null;
+  },
+
+  canProceedFromTransferDestPage: (form: TransferForm): boolean => {
+    return validateTransferDestPage(form) === null;
+  },
+
+  canProceedFromTransferAmountPage: (form: TransferForm): boolean => {
+    return validateTransferAmountPage(form) === null;
   },
 };
 

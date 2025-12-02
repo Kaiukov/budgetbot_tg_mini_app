@@ -23,9 +23,163 @@ export interface BudgetUser {
 }
 
 // ============================================================================
-// Transaction Form Types
+// Transaction Form Types (Withdrawal/Deposit)
 // ============================================================================
 
+/**
+ * Withdrawal Form - Ordered per API spec
+ * Fields in spec order: user_name, account_name, account_id, account_currency,
+ * amount, amount_eur, category_id, category_name, destination_id, destination_name, notes, date
+ */
+export interface WithdrawalForm {
+  // Page 1: Account Selection
+  user_name: string;
+  account_name: string;
+  account_id: string | number;
+  account_currency: string;
+
+  // Page 2: Amount
+  amount: string;
+  amount_eur: string;
+
+  // Page 3: Category
+  category_id: number;
+  category_name: string;
+  budget_name?: string;
+
+  // Page 4: Destination Name
+  destination_id: number;
+  destination_name: string;
+
+  // Page 5: Confirmation
+  notes: string; // Can be empty
+  date: string; // ISO format, editable
+
+  // UI State (non-payload)
+  isLoadingConversion?: boolean;
+  conversionAmount?: number | null;
+  suggestions?: DestinationSuggestion[];
+  isLoadingSuggestions?: boolean;
+  suggestionsError?: string | null;
+  isSubmitting?: boolean;
+  submitMessage?: { type: 'success' | 'error'; text: string } | null;
+  errors?: Record<string, string>; // Page-level validation errors
+}
+
+export const initialWithdrawalForm: WithdrawalForm = {
+  // Page 1: Account Selection
+  user_name: '',
+  account_name: '',
+  account_id: '',
+  account_currency: '',
+
+  // Page 2: Amount
+  amount: '',
+  amount_eur: '',
+
+  // Page 3: Category
+  category_id: 0,
+  category_name: '',
+  budget_name: '',
+
+  // Page 4: Destination Name
+  destination_id: 0,
+  destination_name: '',
+
+  // Page 5: Confirmation
+  notes: '',
+  date: '',
+
+  // UI State
+  isLoadingConversion: false,
+  conversionAmount: null,
+  suggestions: [],
+  isLoadingSuggestions: false,
+  suggestionsError: null,
+  isSubmitting: false,
+  submitMessage: null,
+  errors: {},
+};
+
+/**
+ * Deposit Form - Ordered per API spec
+ * Fields in spec order: user_name, account_name, account_id, account_currency,
+ * amount, amount_eur, category_id, category_name, source_id, source_name, notes, date
+ */
+export interface DepositForm {
+  // Page 1: Account Selection
+  user_name: string;
+  account_name: string;
+  account_id: string | number;
+  account_currency: string;
+
+  // Page 2: Amount
+  amount: string;
+  amount_eur: string;
+
+  // Page 3: Category
+  category_id: number;
+  category_name: string;
+  budget_name?: string;
+
+  // Page 4: Source Name
+  source_id: number;
+  source_name: string;
+
+  // Page 5: Confirmation
+  notes: string; // Can be empty
+  date: string; // ISO format, editable
+
+  // UI State (non-payload)
+  isLoadingConversion?: boolean;
+  conversionAmount?: number | null;
+  suggestions?: SourceSuggestion[];
+  isLoadingSuggestions?: boolean;
+  suggestionsError?: string | null;
+  isSubmitting?: boolean;
+  submitMessage?: { type: 'success' | 'error'; text: string } | null;
+  errors?: Record<string, string>; // Page-level validation errors
+}
+
+export const initialDepositForm: DepositForm = {
+  // Page 1: Account Selection
+  user_name: '',
+  account_name: '',
+  account_id: '',
+  account_currency: '',
+
+  // Page 2: Amount
+  amount: '',
+  amount_eur: '',
+
+  // Page 3: Category
+  category_id: 0,
+  category_name: '',
+  budget_name: '',
+
+  // Page 4: Source Name
+  source_id: 0,
+  source_name: '',
+
+  // Page 5: Confirmation
+  notes: '',
+  date: '',
+
+  // UI State
+  isLoadingConversion: false,
+  conversionAmount: null,
+  suggestions: [],
+  isLoadingSuggestions: false,
+  suggestionsError: null,
+  isSubmitting: false,
+  submitMessage: null,
+  errors: {},
+};
+
+/**
+ * Legacy TransactionForm - Kept for backward compatibility
+ * Maps to both WithdrawalForm and DepositForm
+ */
 export interface TransactionForm {
   account: string;
   amount: string;
@@ -42,6 +196,7 @@ export interface TransactionForm {
   user_id: number | undefined;
   user_name: string;
   amount_eur: string;
+  date?: string; // ISO format, editable
   // UI State for withdrawal flow
   conversionAmount: number | null;
   isLoadingConversion: boolean;
@@ -50,6 +205,7 @@ export interface TransactionForm {
   suggestionsError: string | null;
   isSubmitting: boolean;
   submitMessage: { type: 'success' | 'error'; text: string } | null;
+  errors?: Record<string, string>; // Validation errors
 }
 
 export const initialTransactionForm: TransactionForm = {
@@ -68,6 +224,7 @@ export const initialTransactionForm: TransactionForm = {
   user_id: undefined,
   user_name: '',
   amount_eur: '',
+  date: '',
   conversionAmount: null,
   isLoadingConversion: false,
   suggestions: [],
@@ -75,6 +232,7 @@ export const initialTransactionForm: TransactionForm = {
   suggestionsError: null,
   isSubmitting: false,
   submitMessage: null,
+  errors: {},
 };
 
 // ============================================================================
@@ -87,24 +245,62 @@ export interface TransferAccount {
   currency: string;
 }
 
+/**
+ * Transfer Form - Ordered per API spec
+ * Fields: source account, destination account, amount, fees (if multi-currency), notes, date
+ */
 export interface TransferForm {
+  // Page 1: Source Account
   source: TransferAccount;
+  source_user_name: string;
+
+  // Page 2: Destination Account
   destination: TransferAccount;
+  dest_user_name: string;
+
+  // Page 3: Amount
   exitAmount: string;
   entryAmount: string;
+
+  // Page 4: Fees (if multi-currency)
   exitFee: string;
   entryFee: string;
-  notes: string;
+
+  // Page 5: Confirmation
+  notes: string; // Can be empty
+  date: string; // ISO format, editable
+
+  // UI State (non-payload)
+  isLoadingConversion?: boolean;
+  isSubmitting?: boolean;
+  errors?: Record<string, string>; // Page-level validation errors
 }
 
 export const initialTransferForm: TransferForm = {
+  // Page 1: Source Account
   source: { account: '', id: '', currency: '' },
+  source_user_name: '',
+
+  // Page 2: Destination Account
   destination: { account: '', id: '', currency: '' },
+  dest_user_name: '',
+
+  // Page 3: Amount
   exitAmount: '',
   entryAmount: '',
+
+  // Page 4: Fees
   exitFee: '',
   entryFee: '',
+
+  // Page 5: Confirmation
   notes: '',
+  date: '',
+
+  // UI State
+  isLoadingConversion: false,
+  isSubmitting: false,
+  errors: {},
 };
 
 // ============================================================================
@@ -246,10 +442,14 @@ export type TransactionEvent =
   | { type: 'UPDATE_CATEGORY'; category: string; category_id?: number; budget_name?: string }
   | { type: 'UPDATE_NOTES'; notes: string; comment?: string; destination_name?: string; destination_id?: number }
   | { type: 'UPDATE_SOURCE_NAME'; source_id: number; source_name: string }
+  | { type: 'UPDATE_DATE'; date: string }
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; user_name: string }
   | { type: 'SELECT_TRANSACTION'; id: string }
   | { type: 'CLEAR_SELECTED_TRANSACTION' }
+  // Validation events
+  | { type: 'VALIDATE_PAGE'; page: string }
+  | { type: 'SET_VALIDATION_ERROR'; page: string; error: string | null }
   // UI state events for withdrawal flow
   | { type: 'SET_CONVERSION_AMOUNT'; amount_eur: number }
   | { type: 'SET_IS_LOADING_CONVERSION'; isLoading: boolean }
@@ -262,14 +462,18 @@ export type TransactionEvent =
 
 // Transfer Events
 export type TransferEvent =
-  | { type: 'SET_TRANSFER_SOURCE'; account: string; id: string; currency: string }
-  | { type: 'SET_TRANSFER_DEST'; account: string; id: string; currency: string }
+  | { type: 'SET_TRANSFER_SOURCE'; account: string; id: string; currency: string; user_name: string }
+  | { type: 'SET_TRANSFER_DEST'; account: string; id: string; currency: string; user_name: string }
   | { type: 'UPDATE_TRANSFER_EXIT_AMOUNT'; amount: string }
   | { type: 'UPDATE_TRANSFER_ENTRY_AMOUNT'; amount: string }
   | { type: 'UPDATE_TRANSFER_EXIT_FEE'; fee: string }
   | { type: 'UPDATE_TRANSFER_ENTRY_FEE'; fee: string }
   | { type: 'UPDATE_TRANSFER_NOTES'; notes: string }
-  | { type: 'RESET_TRANSFER' };
+  | { type: 'UPDATE_TRANSFER_DATE'; date: string }
+  | { type: 'RESET_TRANSFER' }
+  // Validation events
+  | { type: 'VALIDATE_TRANSFER_PAGE'; page: string }
+  | { type: 'SET_TRANSFER_VALIDATION_ERROR'; page: string; error: string | null };
 
 // Data Fetch Events
 export type DataEvent =
@@ -326,10 +530,13 @@ export const isTransactionEvent = (event: BudgetMachineEvent): event is Transact
     'UPDATE_CATEGORY',
     'UPDATE_NOTES',
     'UPDATE_SOURCE_NAME',
+    'UPDATE_DATE',
     'RESET_TRANSACTION',
     'SET_USER_DATA',
     'SELECT_TRANSACTION',
     'CLEAR_SELECTED_TRANSACTION',
+    'VALIDATE_PAGE',
+    'SET_VALIDATION_ERROR',
     'SET_CONVERSION_AMOUNT',
     'SET_IS_LOADING_CONVERSION',
     'SET_SUGGESTIONS',
@@ -350,6 +557,9 @@ export const isTransferEvent = (event: BudgetMachineEvent): event is TransferEve
     'UPDATE_TRANSFER_EXIT_FEE',
     'UPDATE_TRANSFER_ENTRY_FEE',
     'UPDATE_TRANSFER_NOTES',
+    'UPDATE_TRANSFER_DATE',
     'RESET_TRANSFER',
+    'VALIDATE_TRANSFER_PAGE',
+    'SET_TRANSFER_VALIDATION_ERROR',
   ].includes(event.type as any);
 };
