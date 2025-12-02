@@ -86,7 +86,7 @@ export async function addTransaction(
       // Normalize payload to ensure all required fields are present for inspection
       const normalizedType = (transactionType as string).toLowerCase();
 
-      // Build base normalized payload
+      // Build normalized payload with consistent field ordering across all transaction types
       const normalized: Record<string, any> = {
         transactionType,
         user_name: (body as any).user_name || (body as any).username || 'unknown',
@@ -97,12 +97,9 @@ export async function addTransaction(
         amount_eur: (body as any).amount_eur ?? '',
         category_id: (body as any).category_id ?? '',
         category_name: (body as any).category_name || (body as any).category || '',
-        date: (body as any).date ?? new Date().toISOString(),
-        notes: (body as any).notes ?? '',
-        timestamp: new Date().toISOString()
       };
 
-      // Add transaction-type-specific fields
+      // Add transaction-type-specific fields in consistent position (after category_name)
       if (normalizedType === 'withdrawal') {
         // Withdrawals use destination fields
         normalized.destination_id = (body as any).destination_id ?? '';
@@ -119,6 +116,11 @@ export async function addTransaction(
         normalized.destination_id = (body as any).destination_id ?? '';
         normalized.destination_name = (body as any).destination_name || '';
       }
+
+      // Add remaining fields in consistent order
+      normalized.date = (body as any).date ?? new Date().toISOString();
+      normalized.notes = (body as any).notes ?? '';
+      normalized.timestamp = new Date().toISOString();
 
       await fetch(DEBUG_WEBHOOK_URL, {
         method: 'POST',
