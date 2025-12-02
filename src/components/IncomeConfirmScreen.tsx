@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { syncService } from '../services/sync';
-import { addTransaction, extractBudgetName, type IncomeTransactionData } from '../services/sync/index';
+import { addTransaction, type IncomeTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
@@ -9,12 +8,11 @@ import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface IncomeConfirmScreenProps {
-  account: string;
+  account_name: string;
   amount: string;
-  category: string;
-  comment: string;
+  budget_name: string;
+  destination_name: string;
   transactionData: TransactionData;
-  userName: string;
   isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
@@ -23,12 +21,11 @@ interface IncomeConfirmScreenProps {
 }
 
 const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
-  account,
+  account_name,
   amount,
-  category,
-  comment,
+  budget_name,
+  destination_name,
   transactionData,
-  userName,
   isAvailable,
   onBack,
   onCancel,
@@ -52,49 +49,31 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 
     try {
       console.log('💰 Starting income transaction submission:', {
-        account,
+        account_name,
         amount,
-        category,
+        budget_name,
         transactionData
       });
 
-      // Convert amount to EUR if needed
-      let amountForeignEur: number | null = null;
-
-      if (transactionData.account_currency && transactionData.account_currency.toUpperCase() !== 'EUR') {
-        console.log('💱 Converting', transactionData.account_currency, 'to EUR');
-        amountForeignEur = await syncService.getExchangeRate(
-          transactionData.account_currency,
-          'EUR',
-          parseFloat(amount)
-        );
-
-        if (amountForeignEur === null) {
-          console.warn('⚠️ Currency conversion failed, using amount as-is');
-          amountForeignEur = parseFloat(amount);
-        }
-      } else {
-        amountForeignEur = parseFloat(amount);
-      }
-
-      console.log('✅ Amount converted to EUR:', amountForeignEur);
+      const amountValue = parseFloat(amount);
 
       // Build income transaction payload
-      const budgetName = extractBudgetName(category);
       const transactionPayload: IncomeTransactionData = {
-        account: transactionData.account,
-        account_id: parseInt(transactionData.account_id || '0'),
+        account_name: transactionData.account_name,
+        account_id: transactionData.account_id,
         account_currency: transactionData.account_currency || 'EUR',
         currency: transactionData.account_currency || 'EUR',
-        amount: parseFloat(amount),
-        amount_foreign: amountForeignEur,
-        category: category,
-        comment: comment || '',
-        date: new Date().toISOString(),
-        user_id: transactionData.user_id || 0,
-        username: userName || transactionData.username || 'unknown',
+        amount: amountValue,
+        amount_eur: transactionData.amount_eur,
+        category_id: transactionData.category_id,
+        category_name: transactionData.category_name,
+        destination_id: transactionData.destination_id,
+        destination_name: destination_name || '',
+        notes: transactionData.notes || '',
+        date: transactionData.date || new Date().toISOString(),
+        user_name: transactionData.user_name || 'unknown',
         // Only include budget_name if it's not empty
-        ...(budgetName && { budget_name: budgetName })
+        ...(budget_name && { budget_name })
       };
 
       console.log('📝 Income transaction payload built:', transactionPayload);
@@ -166,15 +145,15 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
           <div className="space-y-0">
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Account:</span>
-              <span className="text-xs font-medium text-white">{account}</span>
+              <span className="text-xs font-medium text-white">{account_name}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
               <span className="text-xs text-gray-400">Category:</span>
-              <span className="text-xs font-medium text-white">{category}</span>
+              <span className="text-xs font-medium text-white">{budget_name || transactionData.category_name}</span>
             </div>
             <div className="flex justify-between py-2.5 border-b border-gray-700">
-              <span className="text-xs text-gray-400">Comment:</span>
-              <span className="text-xs font-medium text-white text-right max-w-[60%]">{comment || 'No comment'}</span>
+              <span className="text-xs text-gray-400">Destination:</span>
+              <span className="text-xs font-medium text-white text-right max-w-[60%]">{destination_name || 'None'}</span>
             </div>
             <div className="flex justify-between py-2.5">
               <span className="text-xs text-gray-400">Date:</span>

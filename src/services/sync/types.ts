@@ -3,7 +3,7 @@
  */
 
 export enum TransactionType {
-  EXPENSE = 'expense',
+  WITHDRAWAL = 'withdrawal',
   INCOME = 'income',
   TRANSFER = 'transfer',
 }
@@ -12,24 +12,29 @@ export enum TransactionType {
  * Base transaction data - common to all transaction types
  */
 export interface BaseTransactionData {
-  username: string;
+  user_name: string;
   date: string | Date;
   amount: string | number;
-  currency: string;
-  account: string;
+  currency?: string;
+  account?: string;
+  account_name?: string;
   account_currency?: string;
   comment?: string;
   notes?: string;
 }
 
 /**
- * Expense-specific transaction data
+ * Withdrawal-specific transaction data
  */
-export interface ExpenseTransactionData extends BaseTransactionData {
-  category: string;
+export interface WithdrawalTransactionData extends BaseTransactionData {
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  destination_id?: string | number;
+  destination_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 
@@ -37,10 +42,14 @@ export interface ExpenseTransactionData extends BaseTransactionData {
  * Income-specific transaction data
  */
 export interface IncomeTransactionData extends BaseTransactionData {
-  category: string;
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  destination_id?: string | number;
+  destination_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 
@@ -48,7 +57,7 @@ export interface IncomeTransactionData extends BaseTransactionData {
  * Transfer-specific transaction data
  */
 export interface TransferTransactionData {
-  username: string;
+  user_name: string;
   date: string | Date;
   currency?: string;
   exit_account: string;

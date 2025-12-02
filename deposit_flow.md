@@ -1,0 +1,5 @@
+Confirm scope/wording: all “income” flow/type labels become “deposit” (UI, routes, state names, API payloads); note backend already uses deposit in some places (e.g., BudgetMiniApp.tsx (line 452)).
+Types/helpers: switch unions/enums and helpers to deposit (src/services/sync/types.ts, src/hooks/useTransactionData.ts, src/utils/categoryFilter.ts, src/utils/transactionHelpers.ts, src/types/transaction.ts).
+State machine/navigation: rename flow IDs/routes/events from income → deposit (src/machines/budgetMachine.ts, src/machines/actors.ts, screen keys like income-accounts in src/BudgetMiniApp.tsx).
+UI components: rename Income screens/components and copy to deposit (src/components/IncomeConfirmScreen.tsx, HomeScreen.tsx, TransactionCard.tsx, TransactionDetailScreen.tsx, CategoryScreen.tsx, DestinationNameScreen.tsx if referenced).
+Services: adjust income transaction handling/logging/description builders to deposit (src/services/sync/transactions.ts, src/services/sync/utils.ts:142+, transactionsFetch.ts).

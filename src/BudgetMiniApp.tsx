@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTelegramUser } from './hooks/useTelegramUser';
 import { useTransactionData, type TransactionType } from './hooks/useTransactionData';
 import { syncService, type AccountUsage, type CategoryUsage } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 import { refreshHomeTransactionCache } from './utils/cache';
+import { useBudgetMachineContext } from './context/BudgetMachineContext';
 
 // Components
 import HomeScreen from './components/HomeScreen';
 import AccountsScreen from './components/AccountsScreen';
 import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
-import CommentScreen from './components/CommentScreen';
+import DestinationNameScreen from './components/DestinationNameScreen';
 import ConfirmScreen from './components/ConfirmScreen';
 import IncomeConfirmScreen from './components/IncomeConfirmScreen';
 import TransferAmountScreen from './components/TransferAmountScreen';
@@ -22,11 +23,31 @@ import TransactionsListScreen from './components/TransactionsListScreen';
 import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
 import BrowserBackButton from './components/BrowserBackButton';
-import type { DisplayTransaction, TransactionData } from './types/transaction';
+import type { DisplayTransaction, TransactionData as APITransactionData } from './types/transaction';
+import type { TransactionData as HookTransactionData } from './hooks/useTransactionData';
+
+const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
+
+// Helper to determine withdrawal screen from machine state
+const getWithdrawalScreenFromMachineState = (machineState: any): string | null => {
+  if (!machineState?.matches) return null;
+
+  // Check if in withdrawalFlow
+  if (machineState.matches({ ready: 'withdrawalFlow' })) {
+    // Get the substate
+    if (machineState.matches({ ready: { withdrawalFlow: 'accounts' } })) return 'withdrawal-accounts';
+    if (machineState.matches({ ready: { withdrawalFlow: 'amount' } })) return 'withdrawal-amount';
+    if (machineState.matches({ ready: { withdrawalFlow: 'category' } })) return 'withdrawal-category';
+    if (machineState.matches({ ready: { withdrawalFlow: 'notes' } })) return 'withdrawal-notes';
+    if (machineState.matches({ ready: { withdrawalFlow: 'confirm' } })) return 'withdrawal-confirm';
+  }
+
+  return null;
+};
 
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
+  const [transactionType, setTransactionType] = useState<TransactionType>('withdrawal');
 
   // Service status states
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>(getInitialServiceStatuses());
@@ -41,6 +62,7 @@ const BudgetMiniApp = () => {
   const [categories, setCategories] = useState<CategoryUsage[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const lastCategoriesKeyRef = useRef<string | null>(null);
 
   // Transfer-specific state
   const [transferSourceAccount, setTransferSourceAccount] = useState('');
@@ -54,26 +76,40 @@ const BudgetMiniApp = () => {
   const [transferExitFee, setTransferExitFee] = useState('');
   const [transferEntryFee, setTransferEntryFee] = useState('');
   const [transferComment, setTransferComment] = useState('');
+  const [withdrawalNotes, setWithdrawalNotes] = useState('');
 
   // Transaction view/edit state
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [selectedTransactionData, setSelectedTransactionData] = useState<TransactionData | null>(null);
+  const [selectedTransactionData, setSelectedTransactionData] = useState<APITransactionData | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<DisplayTransaction | null>(null);
 
   // Get Telegram user data
-  const { userName, userFullName, userPhotoUrl, userInitials, userBio, isAvailable, user } = useTelegramUser();
+  const { user_name, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
 
-  // Get transaction data hook (supports expense and income)
+  // Get machine context for state and actions (withdrawal flow)
+  const machineContext = useBudgetMachineContext();
+
+  // Determine current withdrawal screen from machine state
+  const withdrawalScreen = getWithdrawalScreenFromMachineState(machineContext.state);
+
+  // Reset notes when a fresh withdrawal flow starts
+  useEffect(() => {
+    if (withdrawalScreen === 'withdrawal-accounts') {
+      setWithdrawalNotes('');
+    }
+  }, [withdrawalScreen]);
+
+  // Get transaction data hook (supports expense and income - for income/transfer flows only)
   const {
     transactionData,
-    updateAccount,
+    setUserName,
     updateAccountWithDetails,
     updateAmount,
     updateCategory,
-    updateComment,
-    setUserData,
+    updateDestination,
+    updateNotes,
     resetTransactionData
-  } = useTransactionData(transactionType);
+  } = useTransactionData(transactionType) as any;
 
   // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
   useEffect(() => {
@@ -81,14 +117,21 @@ const BudgetMiniApp = () => {
         currentScreen === 'transfer-source-accounts' || currentScreen === 'transfer-dest-accounts') {
       fetchAccounts();
     }
-  }, [currentScreen, userName]);
+  }, [currentScreen, user_name]);
 
   // Fetch categories when category screen is opened
   useEffect(() => {
     if (currentScreen === 'category') {
       fetchCategories();
     }
-  }, [currentScreen, userName]);
+  }, [currentScreen, user_name]);
+
+  // Fetch categories with correct type for machine-driven expense flow
+  useEffect(() => {
+    if (withdrawalScreen === 'withdrawal-category') {
+      fetchCategories();
+    }
+  }, [withdrawalScreen, user_name]);
 
   // Check service connections when debug screen is opened
   useEffect(() => {
@@ -96,21 +139,6 @@ const BudgetMiniApp = () => {
       checkServiceConnections();
     }
   }, [currentScreen]);
-
-  // Preload categories after 5 seconds (background optimization)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (userName) {
-        console.log('🚀 Preloading categories in background...');
-        fetchCategories().catch(error => {
-          console.warn('⚠️ Background category preload failed:', error);
-        });
-      }
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [userName]);
-
 
 
   // Handle transaction detail navigation from sessionStorage
@@ -128,18 +156,35 @@ const BudgetMiniApp = () => {
     setAccountsError(null);
 
     try {
-      console.log('🔍 Fetching accounts for user:', userName);
+      if (enableDebugLogs) {
+        console.log('🔍 Fetching accounts:', {
+          user_name,
+          isAvailable,
+          isUnknownUser: user_name === 'User' || user_name === 'Guest'
+        });
+      }
 
-      // If userName is known and matches users in the system, filter by userName
+      // If user_name is known and matches users in the system, filter by user_name
       // Otherwise, return all accounts
       // Treat "User" and "Guest" as unknown users (browser mode)
-      const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getAccountsUsage(isUnknownUser ? undefined : userName);
+      const isUnknownUser = user_name === 'User' || user_name === 'Guest';
+      const queryUserName = isUnknownUser ? undefined : user_name;
 
-      console.log('📊 Fetched accounts:', {
-        total: data.total,
-        count: data.get_accounts_usage.length
-      });
+      if (enableDebugLogs) {
+        console.log('📤 Sending accounts request:', {
+          queryUserName,
+          willIncludeUserFilter: !!queryUserName
+        });
+      }
+
+      const data = await syncService.getAccountsUsage(queryUserName);
+
+      if (enableDebugLogs) {
+        console.log('📊 Fetched accounts:', {
+          total_sync: data.total_sync,
+          count: data.get_accounts_usage.length
+        });
+      }
 
       // Deduplicate by account_id (defensive - ensures unique accounts only)
       const uniqueAccounts = data.get_accounts_usage.filter(
@@ -147,11 +192,13 @@ const BudgetMiniApp = () => {
           index === self.findIndex((a) => a.account_id === account.account_id)
       );
 
-      console.log('🔍 Deduplication:', {
-        original: data.get_accounts_usage.length,
-        unique: uniqueAccounts.length,
-        duplicatesRemoved: data.get_accounts_usage.length - uniqueAccounts.length
-      });
+      if (enableDebugLogs) {
+        console.log('🔍 Deduplication:', {
+          original: data.get_accounts_usage.length,
+          unique: uniqueAccounts.length,
+          duplicatesRemoved: data.get_accounts_usage.length - uniqueAccounts.length
+        });
+      }
 
       // Accounts are already sorted by syncService.getAccountsUsage()
       // Used accounts (high → low by usage_count) followed by unused accounts (usage_count = 0)
@@ -161,7 +208,7 @@ const BudgetMiniApp = () => {
       console.error('❌ Failed to fetch accounts:', {
         error,
         message: errorMessage,
-        userName,
+        user_name,
         syncConfigured: syncService.isConfigured()
       });
       setAccountsError(errorMessage);
@@ -171,32 +218,54 @@ const BudgetMiniApp = () => {
   };
 
   const fetchCategories = async () => {
+    const typeParam = transactionType === 'withdrawal'
+      ? 'withdrawal'
+      : transactionType === 'income'
+        ? 'deposit'
+        : undefined;
+    const typeKey = `${user_name || 'unknown'}|${typeParam || 'all'}`;
+
+    // Skip duplicate fetches for the same user/type when we already have data
+    if (lastCategoriesKeyRef.current === typeKey && categories.length > 0) {
+      return;
+    }
+
     setCategoriesLoading(true);
     setCategoriesError(null);
 
     try {
-      console.log('🔍 Fetching categories for user:', userName);
+      if (enableDebugLogs) {
+        console.log('🔍 Fetching categories for user:', user_name, 'type:', transactionType);
+      }
 
-      // If userName is known and matches users in the system, filter by userName
+      // If user_name is known and matches users in the system, filter by user_name
       // Otherwise, return all categories
       // Treat "User" and "Guest" as unknown users (browser mode)
-      const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const data = await syncService.getCategoriesUsage(isUnknownUser ? undefined : userName);
+      const isUnknownUser = user_name === 'User' || user_name === 'Guest';
 
-      console.log('📊 Fetched categories:', {
-        total: data.total,
-        count: data.get_categories_usage.length
-      });
+      const data = await syncService.getCategoriesUsage(
+        isUnknownUser ? undefined : user_name,
+        typeParam as 'withdrawal' | 'deposit' | undefined
+      );
+
+      if (enableDebugLogs) {
+        console.log('📊 Fetched categories:', {
+          total: data.total,
+          count: data.get_categories_usage.length,
+          type: typeParam
+        });
+      }
 
       // Categories are already sorted by syncService.getCategoriesUsage()
       // Used categories (high → low by usage_count) followed by unused categories (usage_count = 0)
       setCategories(data.get_categories_usage);
+      lastCategoriesKeyRef.current = typeKey;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch categories';
       console.error('❌ Failed to fetch categories:', {
         error,
         message: errorMessage,
-        userName,
+        user_name,
         syncConfigured: syncService.isConfigured()
       });
       setCategoriesError(errorMessage);
@@ -295,8 +364,53 @@ const BudgetMiniApp = () => {
     }, 1500);
   };
 
+  // ===== WITHDRAWAL FLOW HANDLERS (Machine-driven) =====
+  const handleWithdrawalSelectAccount = (accountName: string, accountId?: string, currency?: string, user?: string) => {
+    machineContext.send({
+      type: 'UPDATE_ACCOUNT',
+      account: accountName,
+      account_id: accountId || '',
+      account_currency: currency || '',
+      user_name: user || user_name
+    });
+  };
+
+  const handleWithdrawalAmountChange = (value: string) => {
+    machineContext.send({ type: 'UPDATE_AMOUNT', amount: value });
+  };
+
+  const handleWithdrawalSelectCategory = (category_name: string, categoryId: number, budgetName?: string) => {
+    machineContext.send({
+      type: 'UPDATE_CATEGORY',
+      category: category_name,
+      category_id: categoryId,
+      budget_name: budgetName || '',
+    });
+  };
+
+  const handleWithdrawalDestinationChange = (destinationId: number | string, destination_name: string) => {
+    machineContext.send({
+      type: 'UPDATE_NOTES',
+      notes: destination_name,
+      destination_id: typeof destinationId === 'string' ? parseInt(destinationId, 10) : destinationId,
+    });
+  };
+
+  const handleWithdrawalConfirm = () => {
+    setWithdrawalNotes('');
+    machineContext.send({ type: 'SUBMIT_TRANSACTION' });
+  };
+
+  // ===== INCOME FLOW HANDLERS (useTransactionData-driven) =====
   // Navigation handlers
   const handleNavigate = (screen: string) => {
+    // For withdrawal flow, dispatch machine event
+    if (screen === 'accounts') {
+      machineContext.send({ type: 'NAVIGATE_WITHDRAWAL_ACCOUNTS' });
+      return;
+    }
+
+    // For other screens, use currentScreen state
     setCurrentScreen(screen);
   };
 
@@ -308,21 +422,15 @@ const BudgetMiniApp = () => {
     const selectedAccount = accounts.find(acc => acc.account_name === accountName);
 
     if (selectedAccount) {
+      // Store user name
+      setUserName(selectedAccount.user_name);
+
       // Store account details
       updateAccountWithDetails(
         selectedAccount.account_name,
-        selectedAccount.account_id,
-        selectedAccount.account_currency,
-        selectedAccount.user_name
+        parseInt(selectedAccount.account_id),
+        selectedAccount.account_currency
       );
-
-      // Store user data if available
-      if (user?.id) {
-        setUserData(user.id, userName);
-      }
-    } else {
-      // Fallback to old method if account not found
-      updateAccount(accountName);
     }
 
     setCurrentScreen('amount');
@@ -334,7 +442,7 @@ const BudgetMiniApp = () => {
 
   const handleConfirmTransaction = () => {
     resetTransactionData();
-    setTransactionType('expense'); // Reset to default
+    setTransactionType('withdrawal'); // Reset to default
     setCurrentScreen('home');
   };
 
@@ -345,7 +453,7 @@ const BudgetMiniApp = () => {
     setCurrentScreen('transaction-detail');
   };
 
-  const handleEditTransaction = async (transactionId: string, rawData: TransactionData) => {
+  const handleEditTransaction = async (transactionId: string, rawData: APITransactionData) => {
     setSelectedTransactionData(rawData);
     // Get the display transaction from session or reconstruct from raw data
     const storedId = sessionStorage.getItem('selectedTransactionId');
@@ -354,20 +462,20 @@ const BudgetMiniApp = () => {
       // In a real scenario, we'd have already fetched this
       setEditingTransaction({
         id: transactionId,
-        type: rawData.type === 'deposit' ? 'income' : rawData.type === 'withdrawal' ? 'expense' : 'transfer',
+        type: rawData.type === 'deposit' ? 'income' : rawData.type === 'withdrawal' ? 'withdrawal' : 'transfer',
         date: rawData.date,
         amount: parseFloat(rawData.amount),
         currency: rawData.currency_code,
-        currencySymbol: rawData.currency_symbol,
-        foreignAmount: rawData.foreign_amount ? parseFloat(rawData.foreign_amount) : undefined,
+        currency_symbol: rawData.currency_symbol,
+        amount_eur: rawData.foreign_amount ? parseFloat(rawData.foreign_amount) : undefined,
         foreignCurrency: rawData.foreign_currency_code,
-        foreignCurrencySymbol: rawData.foreign_currency_symbol,
-        categoryName: rawData.category_name,
-        sourceName: rawData.source_name,
-        destinationName: rawData.destination_name,
+        foreign_currency_symbol: rawData.foreign_currency_symbol,
+        category_name: rawData.category_name,
+        source_name: rawData.source_name,
+        destination_name: rawData.destination_name,
         description: rawData.description,
         username: rawData.tags?.[0] || 'Unknown',
-        journalId: rawData.transaction_journal_id,
+        journal_id: rawData.transaction_journal_id,
       });
       setCurrentScreen('transaction-edit');
     }
@@ -396,8 +504,26 @@ const BudgetMiniApp = () => {
     }
   };
 
-  // Get back handler for current screen
+  // Get back handler for current screen (handles both machine and legacy states)
   const getBackHandler = () => {
+    // Machine-driven screens (priority)
+    if (machineContext.state.matches({ ready: 'withdrawalFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'incomeFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'transferFlow' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'transactions' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+    if (machineContext.state.matches({ ready: 'debug' })) {
+      return () => machineContext.send({ type: 'NAVIGATE_BACK' });
+    }
+
+    // Legacy screens (for backward compatibility)
     switch (currentScreen) {
       case 'accounts':
         return () => {
@@ -407,7 +533,7 @@ const BudgetMiniApp = () => {
       case 'income-accounts':
         return () => {
           resetTransactionData();
-          setTransactionType('expense');
+          setTransactionType('withdrawal');
           setCurrentScreen('home');
         };
       case 'amount':
@@ -480,10 +606,13 @@ const BudgetMiniApp = () => {
       }}
     >
       {/* Browser Back Button (only shows in browser debug mode) */}
-      <BrowserBackButton onBack={getBackHandler()} isHome={currentScreen === 'home'} />
+      <BrowserBackButton
+        onBack={getBackHandler()}
+        isHome={machineContext.state.matches({ ready: 'home' }) && currentScreen === 'home'}
+      />
 
       {/* Screen Router */}
-      {currentScreen === 'home' && (
+      {machineContext.state.matches({ ready: 'home' }) && (
         <HomeScreen
           userFullName={userFullName}
           userPhotoUrl={userPhotoUrl}
@@ -494,6 +623,136 @@ const BudgetMiniApp = () => {
         />
       )}
 
+      {/* WITHDRAWAL FLOW - Machine-driven */}
+      {withdrawalScreen === 'withdrawal-accounts' && (
+        <AccountsScreen
+          accounts={machineContext.context.data.accounts}
+          accountsLoading={machineContext.context.ui.accounts.loading}
+          accountsError={machineContext.context.ui.accounts.error}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onSelectAccount={handleWithdrawalSelectAccount}
+          onRetry={fetchAccounts}
+        />
+      )}
+
+      {withdrawalScreen === 'withdrawal-amount' && (
+        <AmountScreen
+          account={machineContext.context.transaction.account}
+          amount={machineContext.context.transaction.amount}
+          transactionData={{
+            user_name: machineContext.context.user.user_name,
+            account_name: machineContext.context.transaction.account,
+            account_id: 0,
+            account_currency: machineContext.context.transaction.account_currency,
+            amount: machineContext.context.transaction.amount,
+            amount_eur: machineContext.context.transaction.conversionAmount || 0,
+            category_id: 0,
+            category_name: '',
+            budget_name: '',
+            destination_id: 0,
+            destination_name: '',
+            date: ''
+          } as HookTransactionData}
+          conversionAmount={machineContext.context.transaction.conversionAmount}
+          isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onAmountChange={handleWithdrawalAmountChange}
+          onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount_eur: amount })}
+          onIsLoadingConversionChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_CONVERSION', isLoading })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_CATEGORY' })}
+        />
+      )}
+
+      {withdrawalScreen === 'withdrawal-category' && (
+        <CategoryScreen
+          categories={machineContext.context.data.categories}
+          categoriesLoading={machineContext.context.ui.categories.loading}
+          categoriesError={machineContext.context.ui.categories.error}
+          transactionType="withdrawal"
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onSelectCategory={handleWithdrawalSelectCategory}
+          onRetry={fetchCategories}
+        />
+      )}
+
+      {withdrawalScreen === 'withdrawal-notes' && (
+        <DestinationNameScreen
+          destination_name={
+            (machineContext.context.transaction as any).destination_name ||
+            machineContext.context.transaction.comment ||
+            ''
+          }
+          category_name={machineContext.context.transaction.category}
+          category_id={machineContext.context.transaction.category_id}
+          suggestions={(machineContext.context.transaction as any).suggestions || []}
+          isLoadingSuggestions={(machineContext.context.transaction as any).isLoadingSuggestions || false}
+          suggestionsError={(machineContext.context.transaction as any).suggestionsError || null}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onDestinationChange={handleWithdrawalDestinationChange}
+          onSuggestionsChange={(suggestions) => machineContext.send({ type: 'SET_SUGGESTIONS', suggestions })}
+          onLoadingSuggestionsChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_SUGGESTIONS', isLoading })}
+          onSuggestionsErrorChange={(error) => machineContext.send({ type: 'SET_SUGGESTIONS_ERROR', error })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_CONFIRM' })}
+        />
+      )}
+
+      {withdrawalScreen === 'withdrawal-confirm' && (
+        <ConfirmScreen
+          account_name={machineContext.context.transaction.account}
+          amount={machineContext.context.transaction.amount}
+          budget_name={(machineContext.context.transaction as any).budget_name || ''}
+          destination_name={
+            (machineContext.context.transaction as any).destination_name ||
+            machineContext.context.transaction.comment ||
+            ''
+          }
+          transactionData={{
+            user_name: machineContext.context.user.user_name,
+            account_name: machineContext.context.transaction.account,
+            account_id: Number(machineContext.context.transaction.account_id) || 0,
+            account_currency: machineContext.context.transaction.account_currency,
+            amount: machineContext.context.transaction.amount,
+            // For amount_eur: use converted amount if available, or use original amount if EUR account
+            amount_eur: machineContext.context.transaction.conversionAmount ?? (
+              machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR'
+                ? Number(machineContext.context.transaction.amount) || 0
+                : 0  // Non-EUR without conversion: 0 triggers validation error
+            ),
+            category_id: machineContext.context.transaction.category_id || 0,
+            category_name: machineContext.context.transaction.category,
+            budget_name: (machineContext.context.transaction as any).budget_name || '',
+            destination_id: (machineContext.context.transaction as any).destination_id || 0,
+            destination_name:
+              (machineContext.context.transaction as any).destination_name ||
+              machineContext.context.transaction.comment ||
+              '',
+            notes: withdrawalNotes,
+            date: ''
+          } as HookTransactionData}
+          isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
+          submitMessage={(machineContext.context.transaction as any).submitMessage || null}
+          isAvailable={isAvailable}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onCancel={() => {
+            setWithdrawalNotes('');
+            machineContext.send({ type: 'NAVIGATE_HOME' });
+          }}
+          onConfirm={handleWithdrawalConfirm}
+          onSuccess={() => {
+            setWithdrawalNotes('');
+            machineContext.send({ type: 'NAVIGATE_HOME' });
+          }}
+          onIsSubmittingChange={(isSubmitting) => machineContext.send({ type: 'SET_IS_SUBMITTING', isSubmitting })}
+          onSubmitMessageChange={(message) => machineContext.send({ type: 'SET_SUBMIT_MESSAGE', message })}
+          onNotesChange={setWithdrawalNotes}
+        />
+      )}
+
+      {/* INCOME FLOW - useTransactionData-driven (legacy) */}
       {currentScreen === 'accounts' && (
         <AccountsScreen
           accounts={accounts}
@@ -517,7 +776,7 @@ const BudgetMiniApp = () => {
           isAvailable={isAvailable}
           onBack={() => {
             resetTransactionData();
-            setTransactionType('expense'); // Reset to default
+            setTransactionType('withdrawal'); // Reset to default
             setCurrentScreen('home');
           }}
           onSelectAccount={(accountName) => {
@@ -530,7 +789,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'amount' && (
         <AmountScreen
-          account={transactionData.account}
+          account={transactionData.account_name}
           amount={transactionData.amount}
           transactionData={transactionData}
           isAvailable={isAvailable}
@@ -548,8 +807,8 @@ const BudgetMiniApp = () => {
           transactionType={transactionType}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('amount')}
-          onSelectCategory={(category) => {
-            updateCategory(category);
+          onSelectCategory={(category_name, categoryId, budgetName) => {
+            updateCategory(category_name, categoryId, budgetName || '');
             setCurrentScreen('comment');
           }}
           onRetry={fetchCategories}
@@ -557,59 +816,59 @@ const BudgetMiniApp = () => {
       )}
 
       {currentScreen === 'comment' && (
-        <CommentScreen
-          comment={transactionData.comment}
-          category={transactionData.category}
+        <DestinationNameScreen
+          destination_name={transactionData.destination_name}
+          category_name={transactionData.category_name}
+          category_id={transactionData.category_id}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('category')}
-          onCommentChange={updateComment}
+          onDestinationChange={(dest_id, dest_name) => updateDestination(typeof dest_id === 'string' ? parseInt(dest_id, 10) : dest_id, dest_name)}
           onNext={() => setCurrentScreen('confirm')}
         />
       )}
 
-      {currentScreen === 'confirm' && transactionType === 'expense' && (
+      {currentScreen === 'confirm' && transactionType === 'withdrawal' && (
         <ConfirmScreen
-          account={transactionData.account}
+          account_name={transactionData.account_name}
           amount={transactionData.amount}
-          category={transactionData.category}
-          comment={transactionData.comment}
+          budget_name={transactionData.budget_name}
+          destination_name={transactionData.destination_name}
           transactionData={transactionData}
-          userName={userName}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
-            setTransactionType('expense');
+            setTransactionType('withdrawal');
             setCurrentScreen('home');
           }}
           onConfirm={handleConfirmTransaction}
           onSuccess={() => {
             resetTransactionData();
-            setTransactionType('expense');
+            setTransactionType('withdrawal');
             setCurrentScreen('home');
           }}
+          onNotesChange={updateNotes}
         />
       )}
 
       {currentScreen === 'confirm' && transactionType === 'income' && (
         <IncomeConfirmScreen
-          account={transactionData.account}
+          account_name={transactionData.account_name}
           amount={transactionData.amount}
-          category={transactionData.category}
-          comment={transactionData.comment}
+          budget_name={transactionData.budget_name}
+          destination_name={transactionData.destination_name}
           transactionData={transactionData}
-          userName={userName}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
           onCancel={() => {
             resetTransactionData();
-            setTransactionType('expense');
+            setTransactionType('withdrawal');
             setCurrentScreen('home');
           }}
           onConfirm={handleConfirmTransaction}
           onSuccess={() => {
             resetTransactionData();
-            setTransactionType('expense');
+            setTransactionType('withdrawal');
             setCurrentScreen('home');
           }}
         />
@@ -727,12 +986,12 @@ const BudgetMiniApp = () => {
       )}
 
       {currentScreen === 'transfer-comment' && (
-        <CommentScreen
-          comment={transferComment}
-          category="Transfer"
+        <DestinationNameScreen
+          destination_name={transferComment}
+          category_name="Transfer"
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-fees')}
-          onCommentChange={setTransferComment}
+          onDestinationChange={(_, dest) => setTransferComment(dest)}
           onNext={() => setCurrentScreen('transfer-confirm')}
         />
       )}
@@ -748,7 +1007,7 @@ const BudgetMiniApp = () => {
           exitFee={transferExitFee}
           entryFee={transferEntryFee}
           comment={transferComment}
-          userName={userName}
+          user_name={user_name}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-comment')}
           onCancel={() => {
@@ -789,7 +1048,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'debug' && (
         <DebugScreen
-          userName={userName}
+          user_name={user_name}
           isAvailable={isAvailable}
           serviceStatuses={serviceStatuses}
           telegramStatus={telegramStatus || undefined}

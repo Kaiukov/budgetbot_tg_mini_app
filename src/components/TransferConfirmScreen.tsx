@@ -34,7 +34,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   exitFee,
   entryFee,
   comment,
-  userName,
+  user_name,
   isAvailable,
   onBack,
   onCancel,
@@ -73,7 +73,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
 
       // Build transfer transaction payload
       const transactionPayload: TransferTransactionData = {
-        username: userName || 'unknown',
+        user_name: user_name || 'unknown',
         date: new Date().toISOString(),
         exit_account: sourceAccount,
         entry_account: destAccount,

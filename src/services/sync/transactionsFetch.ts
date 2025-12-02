@@ -149,28 +149,28 @@ export async function fetchTransactionById(id: string | number): Promise<{
 
 /**
  * Transform API transaction data to display-friendly format
- * Handles all three transaction types: income, expense, transfer
+ * Handles all three transaction types: income, withdrawal, transfer
  */
 function transformTransactionForDisplay(data: TransactionData): DisplayTransaction {
   const isIncome = data.type === 'deposit';
-  const isExpense = data.type === 'withdrawal';
+  const isWithdrawal = data.type === 'withdrawal';
   const isTransfer = data.type === 'transfer';
 
   // Determine transaction type for display
-  let displayType: 'income' | 'expense' | 'transfer' = 'expense';
+  let displayType: 'income' | 'withdrawal' | 'transfer' = 'withdrawal';
   if (isIncome) displayType = 'income';
   else if (isTransfer) displayType = 'transfer';
 
   // Parse amounts
   const amount = parseFloat(data.amount || '0');
-  const foreignAmount = data.foreign_amount ? parseFloat(data.foreign_amount) : undefined;
+  const amount_eur = data.foreign_amount ? parseFloat(data.foreign_amount) : undefined;
 
   // Get category name
-  let categoryName = data.category_name || 'Uncategorized';
+  let category_name = data.category_name || 'Uncategorized';
 
   // Get source/destination names
-  let sourceName = data.source_name || 'Unknown Account';
-  let destinationName = data.destination_name || 'Unknown Account';
+  let source_name = data.source_name || 'Unknown Account';
+  let destination_name = data.destination_name || 'Unknown Account';
 
   // Build description - remove duplicate info that's in category/account names
   let description = data.description || '';
@@ -185,16 +185,16 @@ function transformTransactionForDisplay(data: TransactionData): DisplayTransacti
     date: data.date,
     amount,
     currency: data.currency_code,
-    currencySymbol: data.currency_symbol,
-    foreignAmount,
+    currency_symbol: data.currency_symbol,
+    amount_eur,
     foreignCurrency: data.foreign_currency_code,
-    foreignCurrencySymbol: data.foreign_currency_symbol,
-    categoryName: isTransfer ? undefined : categoryName,
-    sourceName: isExpense || isTransfer ? sourceName : undefined,
-    destinationName: isIncome || isTransfer ? destinationName : undefined,
+    foreign_currency_symbol: data.foreign_currency_symbol,
+    category_name: isTransfer ? undefined : category_name,
+    source_name: isWithdrawal || isTransfer ? source_name : undefined,
+    destination_name: isIncome || isTransfer ? destination_name : undefined,
     description,
     username: data.tags?.[0] || 'Unknown User',
-    journalId: data.transaction_journal_id,
+    journal_id: data.transaction_journal_id,
   };
 }
 

@@ -35,11 +35,11 @@ The application uses **XState v5** for centralized state management with hierarc
   - `fetchTransactions` → Loads transaction history (30s timeout)
 
 **Substates (within `ready`):**
-- **`home`** - Default screen with navigation options
-- **`expenseFlow`** - Hierarchical flow: accounts → amount → category → comment → confirm
-- **`incomeFlow`** - Similar to expense flow
-- **`transferFlow`** - Transfer-specific flow: sourceAccounts → destAccounts → amount → fees → confirm
-- **`transactions`** - Transaction list screen
+- **`home`** - Default screen with navigation options and quick action tiles
+- **`withdrawalFlow`** - Hierarchical flow: accounts → amount → category → notes → confirm (renamed from expenseFlow in v1.3.0)
+- **`incomeFlow`** - Similar structure: accounts → amount → category → comment → confirm
+- **`transferFlow`** - Transfer-specific flow: sourceAccounts → destAccounts → amount → fees → comment → confirm
+- **`transactions`** - Transaction list with detail view and edit capabilities
 - **`debug`** - Debug screen for service health monitoring
 
 ### Actor System

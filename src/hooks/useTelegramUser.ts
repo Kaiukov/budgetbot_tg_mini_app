@@ -10,7 +10,7 @@ import { fetchUserData } from '../utils/fetchUserData';
 
 export interface TelegramUserData {
   user: TelegramWebAppUser | null;
-  userName: string;           // Telegram username for API filtering (e.g., "Kaiukov")
+  user_name: string;           // Telegram username for API filtering (e.g., "Kaiukov")
   userFullName: string;        // Full display name (e.g., "Oleksandr 🇺🇦 Kaiukov")
   userPhotoUrl: string | null;
   userInitials: string;
@@ -22,7 +22,7 @@ export interface TelegramUserData {
 export function useTelegramUser(): TelegramUserData {
   const [userData, setUserData] = useState<TelegramUserData>({
     user: null,
-    userName: 'Guest',
+    user_name: 'Guest',
     userFullName: 'Guest',
     userPhotoUrl: null,
     userInitials: 'G',
@@ -37,7 +37,7 @@ export function useTelegramUser(): TelegramUserData {
 
     if (isAvailable) {
       const user = telegramService.getUser();
-      const userName = telegramService.getUserName();
+      const user_name = telegramService.getUserName();
       let userPhotoUrl = telegramService.getUserPhotoUrl();
       const userInitials = telegramService.getUserInitials();
       const colorScheme = telegramService.getColorScheme();
@@ -46,8 +46,8 @@ export function useTelegramUser(): TelegramUserData {
       // Set initial data
       setUserData({
         user,
-        userName,
-        userFullName: userName, // Initially use username, will be updated from backend
+        user_name,
+        userFullName: user_name || 'Guest', // Initially use username, will be updated from backend
         userPhotoUrl,
         userInitials,
         userBio,
@@ -57,7 +57,7 @@ export function useTelegramUser(): TelegramUserData {
 
       console.log('🔍 Telegram User Data:', {
         user,
-        userName,
+        user_name,
         userPhotoUrl,
         userInitials,
         userBio,
@@ -72,7 +72,7 @@ export function useTelegramUser(): TelegramUserData {
           if (backendData?.success && backendData.userData) {
             setUserData((prev) => ({
               ...prev,
-              userName: backendData.userData.username || prev.userName,      // Username for API
+              user_name: backendData.userData.username || prev.user_name,      // Username for API
               userFullName: backendData.userData.name || prev.userFullName,  // Full name for display
               userBio: backendData.userData.bio || prev.userBio,
             }));

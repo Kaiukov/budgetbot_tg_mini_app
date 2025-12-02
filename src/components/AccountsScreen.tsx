@@ -13,7 +13,7 @@ interface AccountsScreenProps {
   title?: string;
   isAvailable?: boolean;
   onBack: () => void;
-  onSelectAccount: (accountName: string) => void;
+  onSelectAccount: (accountName: string, accountId?: string, currency?: string, user_name?: string) => void;
   onRetry: () => void;
 }
 
@@ -75,7 +75,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
               return (
                 <div
                   key={account.account_id}
-                  onClick={() => onSelectAccount(account.account_name)}
+                  onClick={() => onSelectAccount(account.account_name, account.account_id, account.account_currency, account.user_name)}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div

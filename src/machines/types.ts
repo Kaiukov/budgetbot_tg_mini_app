@@ -4,7 +4,7 @@
  */
 
 import type { TelegramWebAppUser } from '../types/telegram';
-import type { AccountUsage, CategoryUsage } from '../services/sync';
+import type { AccountUsage, CategoryUsage, DestinationSuggestion } from '../services/sync';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 
 // ============================================================================
@@ -13,7 +13,7 @@ import type { DisplayTransaction, TransactionData } from '../types/transaction';
 
 export interface BudgetUser {
   id: number;
-  username: string;
+  user_name: string;
   fullName: string;
   photoUrl: string | null;
   initials: string;
@@ -30,24 +30,47 @@ export interface TransactionForm {
   account: string;
   amount: string;
   category: string;
-  comment: string;
+  category_id: number;
+  budget_name: string;
+  notes: string;
+  destination_name: string;
+  destination_id: number;
   account_id: string;
   account_currency: string;
   user_id: number | undefined;
-  username: string;
-  amount_foreign: string;
+  user_name: string;
+  amount_eur: string;
+  // UI State for withdrawal flow
+  conversionAmount: number | null;
+  isLoadingConversion: boolean;
+  suggestions: DestinationSuggestion[];
+  isLoadingSuggestions: boolean;
+  suggestionsError: string | null;
+  isSubmitting: boolean;
+  submitMessage: { type: 'success' | 'error'; text: string } | null;
 }
 
 export const initialTransactionForm: TransactionForm = {
   account: '',
   amount: '',
   category: '',
-  comment: '',
+  category_id: 0,
+  budget_name: '',
+  notes: '',
+  destination_name: '',
+  destination_id: 0,
   account_id: '',
   account_currency: '',
   user_id: undefined,
-  username: '',
-  amount_foreign: '',
+  user_name: '',
+  amount_eur: '',
+  conversionAmount: null,
+  isLoadingConversion: false,
+  suggestions: [],
+  isLoadingSuggestions: false,
+  suggestionsError: null,
+  isSubmitting: false,
+  submitMessage: null,
 };
 
 // ============================================================================
@@ -67,7 +90,7 @@ export interface TransferForm {
   entryAmount: string;
   exitFee: string;
   entryFee: string;
-  comment: string;
+  notes: string;
 }
 
 export const initialTransferForm: TransferForm = {
@@ -77,7 +100,7 @@ export const initialTransferForm: TransferForm = {
   entryAmount: '',
   exitFee: '',
   entryFee: '',
-  comment: '',
+  notes: '',
 };
 
 // ============================================================================
@@ -165,7 +188,7 @@ export interface BudgetMachineContext {
 export const initialContext: BudgetMachineContext = {
   user: {
     id: 0,
-    username: 'Guest',
+    user_name: 'Guest',
     fullName: 'Guest',
     photoUrl: null,
     initials: 'G',
@@ -193,7 +216,7 @@ export type InitEvent =
 // Navigation Events
 export type NavigationEvent =
   | { type: 'NAVIGATE_HOME' }
-  | { type: 'NAVIGATE_EXPENSE_ACCOUNTS' }
+  | { type: 'NAVIGATE_WITHDRAWAL_ACCOUNTS' }
   | { type: 'NAVIGATE_INCOME_ACCOUNTS' }
   | { type: 'NAVIGATE_AMOUNT' }
   | { type: 'NAVIGATE_CATEGORY' }
@@ -213,15 +236,23 @@ export type NavigationEvent =
 
 // Transaction Form Events
 export type TransactionEvent =
-  | { type: 'UPDATE_ACCOUNT'; account: string; account_id: string; account_currency: string; username: string }
+  | { type: 'UPDATE_ACCOUNT'; account: string; account_id: string; account_currency: string; user_name: string }
   | { type: 'UPDATE_AMOUNT'; amount: string }
-  | { type: 'UPDATE_AMOUNT_FOREIGN'; amount_foreign: string }
-  | { type: 'UPDATE_CATEGORY'; category: string }
-  | { type: 'UPDATE_COMMENT'; comment: string }
+  | { type: 'UPDATE_AMOUNT_EUR'; amount_eur: string }
+  | { type: 'UPDATE_CATEGORY'; category: string; category_id?: number; budget_name?: string }
+  | { type: 'UPDATE_NOTES'; notes: string; comment?: string; destination_name?: string; destination_id?: number }
   | { type: 'RESET_TRANSACTION' }
-  | { type: 'SET_USER_DATA'; user_id: number; username: string }
+  | { type: 'SET_USER_DATA'; user_id: number; user_name: string }
   | { type: 'SELECT_TRANSACTION'; id: string }
-  | { type: 'CLEAR_SELECTED_TRANSACTION' };
+  | { type: 'CLEAR_SELECTED_TRANSACTION' }
+  // UI state events for withdrawal flow
+  | { type: 'SET_CONVERSION_AMOUNT'; amount_eur: number }
+  | { type: 'SET_IS_LOADING_CONVERSION'; isLoading: boolean }
+  | { type: 'SET_SUGGESTIONS'; suggestions: DestinationSuggestion[] }
+  | { type: 'SET_IS_LOADING_SUGGESTIONS'; isLoading: boolean }
+  | { type: 'SET_SUGGESTIONS_ERROR'; error: string | null }
+  | { type: 'SET_IS_SUBMITTING'; isSubmitting: boolean }
+  | { type: 'SET_SUBMIT_MESSAGE'; message: { type: 'success' | 'error'; text: string } | null };
 
 // Transfer Events
 export type TransferEvent =
@@ -231,7 +262,7 @@ export type TransferEvent =
   | { type: 'UPDATE_TRANSFER_ENTRY_AMOUNT'; amount: string }
   | { type: 'UPDATE_TRANSFER_EXIT_FEE'; fee: string }
   | { type: 'UPDATE_TRANSFER_ENTRY_FEE'; fee: string }
-  | { type: 'UPDATE_TRANSFER_COMMENT'; comment: string }
+  | { type: 'UPDATE_TRANSFER_NOTES'; notes: string }
   | { type: 'RESET_TRANSFER' };
 
 // Data Fetch Events
@@ -285,13 +316,20 @@ export const isTransactionEvent = (event: BudgetMachineEvent): event is Transact
   return [
     'UPDATE_ACCOUNT',
     'UPDATE_AMOUNT',
-    'UPDATE_AMOUNT_FOREIGN',
+    'UPDATE_AMOUNT_EUR',
     'UPDATE_CATEGORY',
-    'UPDATE_COMMENT',
+    'UPDATE_NOTES',
     'RESET_TRANSACTION',
     'SET_USER_DATA',
     'SELECT_TRANSACTION',
     'CLEAR_SELECTED_TRANSACTION',
+    'SET_CONVERSION_AMOUNT',
+    'SET_IS_LOADING_CONVERSION',
+    'SET_SUGGESTIONS',
+    'SET_IS_LOADING_SUGGESTIONS',
+    'SET_SUGGESTIONS_ERROR',
+    'SET_IS_SUBMITTING',
+    'SET_SUBMIT_MESSAGE',
   ].includes(event.type as any);
 };
 
@@ -303,7 +341,7 @@ export const isTransferEvent = (event: BudgetMachineEvent): event is TransferEve
     'UPDATE_TRANSFER_ENTRY_AMOUNT',
     'UPDATE_TRANSFER_EXIT_FEE',
     'UPDATE_TRANSFER_ENTRY_FEE',
-    'UPDATE_TRANSFER_COMMENT',
+    'UPDATE_TRANSFER_NOTES',
     'RESET_TRANSFER',
   ].includes(event.type as any);
 };

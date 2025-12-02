@@ -27,10 +27,10 @@ export function formatTransactionAmount(amount: number, currency: string): strin
 
 /**
  * Get transaction icon information based on type
- * @param type - Transaction type ('income', 'expense', 'transfer')
+ * @param type - Transaction type ('income', 'withdrawal', 'transfer')
  * @returns Object with icon info
  */
-export function getTransactionIcon(type: 'income' | 'expense' | 'transfer'): {
+export function getTransactionIcon(type: 'income' | 'withdrawal' | 'transfer'): {
   name: string;
   color: string;
   bgColor: string;
@@ -42,9 +42,9 @@ export function getTransactionIcon(type: 'income' | 'expense' | 'transfer'): {
         color: '#10B981', // green
         bgColor: '#10B98120',
       };
-    case 'expense':
+    case 'withdrawal':
       return {
-        name: 'expense',
+        name: 'withdrawal',
         color: '#EF4444', // red
         bgColor: '#EF444420',
       };
@@ -71,15 +71,15 @@ export function getTransactionIcon(type: 'income' | 'expense' | 'transfer'): {
 export function getTransactionLabel(transaction: DisplayTransaction): string {
   switch (transaction.type) {
     case 'income':
-      return transaction.destinationName || 'Income';
-    case 'expense':
+      return transaction.destination_name || 'Income';
+    case 'withdrawal':
       // If destination or category is "Fee", display as "Fee"
-      if (transaction.destinationName === 'Fee' || transaction.categoryName === 'Fee') {
+      if (transaction.destination_name === 'Fee' || transaction.category_name === 'Fee') {
         return 'Fee';
       }
-      return transaction.categoryName || 'Expense';
+      return transaction.category_name || 'Withdrawal';
     case 'transfer':
-      return transaction.sourceName || 'Transfer';
+      return transaction.source_name || 'Transfer';
     default:
       return 'Transaction';
   }
@@ -94,10 +94,10 @@ export function getTransactionSecondaryLabel(transaction: DisplayTransaction): s
   switch (transaction.type) {
     case 'income':
       return transaction.description || 'No comment';
-    case 'expense':
-      return transaction.sourceName || 'Unknown Account';
+    case 'withdrawal':
+      return transaction.source_name || 'Unknown Account';
     case 'transfer':
-      return transaction.destinationName || 'Transfer';
+      return transaction.destination_name || 'Transfer';
     default:
       return transaction.description || 'No comment';
   }
@@ -141,12 +141,12 @@ export function formatTransactionTime(dateStr: string): string {
 
 /**
  * Determine if amount is displayed as positive or negative
- * Income amounts are positive, expenses negative
+ * Income amounts are positive, withdrawals negative
  * @param transaction - Transaction data
  * @returns Numeric amount with appropriate sign
  */
 export function getDisplayAmount(transaction: DisplayTransaction): number {
-  if (transaction.type === 'expense') {
+  if (transaction.type === 'withdrawal') {
     return -transaction.amount;
   }
   return transaction.amount;
@@ -159,9 +159,9 @@ export function getDisplayAmount(transaction: DisplayTransaction): number {
  */
 export function shouldShowForeignAmount(transaction: DisplayTransaction): boolean {
   return (
-    !!transaction.foreignAmount &&
-    !!transaction.foreignCurrency &&
-    transaction.foreignCurrency !== transaction.currency
+    !!transaction.amount_eur &&
+    !!transaction.foreign_currency &&
+    transaction.foreign_currency !== transaction.currency
   );
 }
 
@@ -193,20 +193,20 @@ export function formatTransactionForDisplay(transaction: DisplayTransaction): {
   label: string;
   secondaryLabel: string;
   amount: string;
-  foreignAmount?: string;
+  amount_eur?: string;
   date: string;
   time: string;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'withdrawal' | 'transfer';
   icon: ReturnType<typeof getTransactionIcon>;
 } {
   return {
     label: getTransactionLabel(transaction),
     secondaryLabel: getTransactionSecondaryLabel(transaction),
     amount: formatTransactionAmount(getDisplayAmount(transaction), transaction.currency),
-    foreignAmount: shouldShowForeignAmount(transaction)
+    amount_eur: shouldShowForeignAmount(transaction)
       ? formatForeignAmountComparison(
-          transaction.type === 'expense' ? -transaction.foreignAmount! : transaction.foreignAmount!,
-          transaction.foreignCurrency!
+          transaction.type === 'withdrawal' ? -transaction.amount_eur! : transaction.amount_eur!,
+          transaction.foreign_currency!
         )
       : undefined,
     date: formatTransactionDate(transaction.date),

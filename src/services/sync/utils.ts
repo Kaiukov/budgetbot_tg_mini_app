@@ -72,53 +72,52 @@ export function extractCategoryName(category: string): string {
 }
 
 /**
- * Extract budget name by removing emoji from category
- * Only returns name if it contains only ASCII characters
- * Cyrillic and other non-ASCII characters are excluded to prevent Firefly validation errors
- *
- * Example: "🍕 Food" -> "Food", "🚗 Transport" -> "Transport"
- * Example: "🛍️ Шопінг" -> "" (empty, Cyrillic not supported as budget name)
+ * Clean category name by removing emoji and extra whitespace
+ * Used to sanitize category names from API responses
+ * Example: "🦐Їжа" -> "Їжа"
+ */
+export function cleanCategoryName(category: string): string {
+  if (!category) return '';
+
+  // Remove emoji using both patterns to ensure comprehensive emoji removal
+  const cleaned = category
+    .replace(/(?:[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*(?:\u200D[\p{Emoji_Presentation}\p{Extended_Pictographic}][\p{Emoji_Modifier}]*)*|\p{Emoji_Component}+)/gu, '')
+    .trim();
+
+  return cleaned;
+}
+
+/**
+ * Extract budget name by removing emoji from category.
+ * Unicode characters are preserved to avoid dropping valid localized names.
  */
 export function extractBudgetName(category: string): string {
   if (!category) return '';
 
-  // Remove emoji and trim whitespace
-  const withoutEmoji = category
-    .replace(/[\p{Emoji}]/gu, '') // Remove all emoji characters
+  const cleaned = cleanCategoryName(category);
+  if (!cleaned) return '';
+
+  // Normalize and collapse whitespace so Firefly receives a clean string
+  return cleaned
+    .normalize('NFKC')
+    .replace(/\s+/g, ' ')
     .trim();
-
-  if (!withoutEmoji) return ''; // Return empty if nothing left after emoji removal
-
-  // Check if the remaining text contains only ASCII characters
-  // Firefly III may not accept Cyrillic or other non-ASCII budget names
-  // Return empty string if non-ASCII characters are detected
-  // This prevents "This value is associated with an object that does not exist" errors
-  const asciiRegex = /^[a-zA-Z0-9\s\-_]+$/;
-  if (!asciiRegex.test(withoutEmoji)) {
-    console.warn('⚠️ Budget name contains non-ASCII characters, excluding from transaction:', {
-      original: category,
-      extracted: withoutEmoji
-    });
-    return ''; // Return empty string to exclude from payload
-  }
-
-  return withoutEmoji;
 }
 
 /**
- * Build description string for expense transactions
+ * Build description string for withdrawal transactions
  */
-export function buildExpenseDescription(
+export function buildWithdrawalDescription(
   category: string,
   account: string,
   amount: string | number,
   currency: string,
-  foreignAmount?: string | number
+  amount_eur?: string | number
 ): string {
-  const baseDesc = `Expense ${category} from ${account} ${amount} ${currency}`;
+  const baseDesc = `Withdrawal ${category} from ${account} ${amount} ${currency}`;
 
-  if (foreignAmount) {
-    return `${baseDesc} (${foreignAmount} EUR)`;
+  if (amount_eur) {
+    return `${baseDesc} (${amount_eur} EUR)`;
   }
 
   return baseDesc;
@@ -133,7 +132,7 @@ export function buildIncomeDescription(
   amount: string | number,
   currency: string,
   comment?: string,
-  foreignAmount?: string | number
+  amount_eur?: string | number
 ): string {
   let baseDesc = `${category} income to ${account} ${amount} ${currency}`;
 
@@ -141,8 +140,8 @@ export function buildIncomeDescription(
     baseDesc += ` Comment: ${comment}`;
   }
 
-  if (foreignAmount) {
-    return `${baseDesc} (${foreignAmount} EUR)`;
+  if (amount_eur) {
+    return `${baseDesc} (${amount_eur} EUR)`;
   }
 
   return baseDesc;

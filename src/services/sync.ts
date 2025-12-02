@@ -7,6 +7,25 @@
 import { Cache } from '../utils/cache';
 import { apiClient } from './sync/apiClient';
 
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
+}
+
 export interface AccountUsage {
   account_id: string;
   user_name: string;
@@ -18,8 +37,8 @@ export interface AccountUsage {
   owner: string;
   owner_id: string;
   usage_count: number;
-  created_at: string;
-  updated_at: string;
+  first_used_at: string | null;
+  last_used_at: string | null;
 }
 
 export interface AccountsUsageResponse {
@@ -27,7 +46,7 @@ export interface AccountsUsageResponse {
   message: string;
   timestamp: string;
   get_accounts_usage: AccountUsage[];
-  total: number;
+  total_sync: number;
 }
 
 export interface CategoryUsage {
@@ -49,13 +68,13 @@ export interface CategoriesUsageResponse {
 
 export interface DestinationSuggestion {
   user_name: string;
+  destination_id: string;
   destination_name: string;
+  category_id: string;
   category_name: string;
   usage_count: number;
   global_usage?: number;
   user_has_used?: boolean;
-  created_at: string | null;
-  updated_at: string | null;
 }
 
 export interface DestinationNameUsageResponse {
@@ -97,13 +116,13 @@ class SyncService {
   private readonly CACHE_EXPIRY_MS = 3600000; // 1 hour in milliseconds
   private readonly CACHE_KEY_PREFIX = 'exchange_rate_';
 
-  // Category cache with 1-minute expiry
+  // Category cache with 5-minute expiry
   private categoryCache: Cache<CategoriesUsageResponse>;
-  private readonly CATEGORY_CACHE_EXPIRY_MS = 60000; // 1 minute in milliseconds
+  private readonly CATEGORY_CACHE_EXPIRY_MS = 300000; // 5 minutes in milliseconds
 
-  // Account cache with 60-second expiry
+  // Account cache with 5-minute expiry
   private accountCache: Cache<AccountsUsageResponse>;
-  private readonly ACCOUNT_CACHE_EXPIRY_MS = 60000; // 60 seconds in milliseconds
+  private readonly ACCOUNT_CACHE_EXPIRY_MS = 300000; // 5 minutes in milliseconds
 
   // Balance cache with 5-minute expiry
   private balanceCache: Cache<CurrentBalanceResponse>;
@@ -196,7 +215,7 @@ class SyncService {
     // Store in localStorage for persistence
     try {
       const storageKey = `${this.CACHE_KEY_PREFIX}${cacheKey}`;
-      localStorage.setItem(storageKey, JSON.stringify(cacheData));
+      localStorage.setItem(storageKey, safeJsonStringify(cacheData));
       console.log('💾 Exchange rate cached:', { from, to, rate, expiresIn: '1h' });
     } catch (error) {
       console.warn('⚠️ Error saving exchange rate to localStorage:', error);
@@ -267,16 +286,16 @@ class SyncService {
    * - Top: Accounts user has used (usage_count > 0), sorted high to low
    * - Bottom: Accounts user hasn't used (usage_count = 0)
    *
-   * @param userName - Optional username to sort accounts by usage
+   * @param user_name - Optional username to sort accounts by usage
    */
-  public async getAccountsUsage(userName?: string): Promise<AccountsUsageResponse> {
+  public async getAccountsUsage(user_name?: string): Promise<AccountsUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
       // Generate cache key
-      const cacheKey = userName || 'all';
+      const cacheKey = user_name || 'all';
 
       // Check cache first
       const cachedData = this.accountCache.get(cacheKey);
@@ -288,8 +307,8 @@ class SyncService {
       console.log('🔄 Fetching fresh accounts for:', cacheKey);
 
       // Build URL with optional user_name query parameter
-      const endpoint = userName
-        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(userName)}`
+      const endpoint = user_name
+        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(user_name)}`
         : '/api/v1/get_accounts_usage';
 
       const data = await this.makeRequest<AccountsUsageResponse>(
@@ -298,24 +317,24 @@ class SyncService {
       );
 
       console.log('📋 Raw API data:', {
-        userName,
-        total: data.total,
+        user_name,
+        total_sync: data.total_sync,
         accountCount: data.get_accounts_usage.length,
         firstAccount: data.get_accounts_usage[0]
       });
 
       // If no username provided, return all accounts as-is
-      if (!userName) {
+      if (!user_name) {
         console.log('✅ Returning all accounts (no sorting)');
         return data;
       }
 
-      // When userName is provided, API already filtered the results server-side
+      // When user_name is provided, API already filtered the results server-side
       // We just need to sort by usage_count: high to low, with 0 usage at the end
       const allAccounts = data.get_accounts_usage;
 
       console.log('📊 API returned accounts for user:', {
-        userName,
+        user_name,
         totalAccounts: allAccounts.length,
         accountsData: allAccounts.map(a => ({
           name: a.account_name,
@@ -335,7 +354,7 @@ class SyncService {
       const sortedAccounts = [...usedAccounts, ...unusedAccounts];
 
       console.log('✅ Sorted account results:', {
-        requestedUser: userName,
+        requestedUser: user_name,
         usedCount: usedAccounts.length,
         unusedCount: unusedAccounts.length,
         totalCount: sortedAccounts.length,
@@ -350,7 +369,7 @@ class SyncService {
       const result = {
         ...data,
         get_accounts_usage: sortedAccounts,
-        total: sortedAccounts.length,
+        total_sync: sortedAccounts.length,
       };
 
       // Cache the result for 60 seconds
@@ -369,18 +388,19 @@ class SyncService {
    * - Top: Categories user has used (usage_count > 0), sorted high to low
    * - Bottom: Categories user hasn't used (usage_count = 0)
    *
-   * Uses 1-minute cache to reduce API calls
+   * Uses 5-minute cache to reduce API calls
    *
-   * @param userName - Optional username to sort categories by usage
+   * @param user_name - Optional username to sort categories by usage
+   * @param type - Optional transaction type filter: 'withdrawal' for expenses, 'deposit' for income
    */
-  public async getCategoriesUsage(userName?: string): Promise<CategoriesUsageResponse> {
+  public async getCategoriesUsage(user_name?: string, type?: 'withdrawal' | 'deposit'): Promise<CategoriesUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
-      // Generate cache key
-      const cacheKey = userName || 'all';
+      // Generate cache key including type parameter
+      const cacheKey = `${user_name || 'all'}_${type || 'all'}`;
 
       // Check cache first
       const cachedData = this.categoryCache.get(cacheKey);
@@ -391,9 +411,13 @@ class SyncService {
 
       console.log('🔄 Fetching fresh categories for:', cacheKey);
 
-      // Build URL with optional user_name query parameter
-      const endpoint = userName
-        ? `/api/v1/get_categories_usage?user_name=${encodeURIComponent(userName)}`
+      // Build URL with optional user_name and type query parameters
+      const params = new URLSearchParams();
+      if (user_name) params.append('user_name', user_name);
+      if (type) params.append('type', type);
+      const queryString = params.toString();
+      const endpoint = queryString
+        ? `/api/v1/get_categories_usage?${queryString}`
         : '/api/v1/get_categories_usage';
 
       const data = await this.makeRequest<CategoriesUsageResponse>(
@@ -402,14 +426,14 @@ class SyncService {
       );
 
       console.log('📋 Raw categories API data:', {
-        userName,
+        user_name,
         total: data.total,
         categoryCount: data.get_categories_usage.length,
         firstCategory: data.get_categories_usage[0]
       });
 
       // If no username provided, return all categories as-is
-      if (!userName) {
+      if (!user_name) {
         console.log('✅ Returning all categories (no sorting)');
         return data;
       }
@@ -430,11 +454,11 @@ class SyncService {
 
       // Separate into used and unused categories for this user
       const usedCategories = allCategories.filter(
-        category => category.user_name === userName && category.usage_count > 0
+        category => category.user_name === user_name && category.usage_count > 0
       );
 
       console.log('📊 User category filtering:', {
-        userName,
+        user_name,
         usedCategoriesCount: usedCategories.length,
         usedCategories: usedCategories.map(c => ({ name: c.category_name, usage: c.usage_count }))
       });
@@ -458,10 +482,10 @@ class SyncService {
         allCategories.map(cat => [cat.category_name, cat.category_id])
       );
 
-      const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(categoryName => ({
-        user_name: userName,
-        category_name: categoryName,
-        category_id: categoryIdMap.get(categoryName) || 0,
+      const unusedCategories: CategoryUsage[] = unusedCategoryNames.map(category_name => ({
+        user_name: user_name,
+        category_name: category_name,
+        category_id: categoryIdMap.get(category_name) || 0,
         usage_count: 0,
         created_at: null,
         updated_at: null,
@@ -471,7 +495,7 @@ class SyncService {
       const sortedCategories = [...usedCategories, ...unusedCategories];
 
       console.log('✅ Smart sorted category results:', {
-        requestedUser: userName,
+        requestedUser: user_name,
         usedCount: usedCategories.length,
         unusedCount: unusedCategories.length,
         totalCount: sortedCategories.length,
@@ -497,28 +521,35 @@ class SyncService {
   }
 
   /**
-   * Get all destination name usage data (no filtering)
-   * Returns complete destination list from all users and categories
-   * Client-side filtering is preferred over backend filtering to avoid encoding issues with Cyrillic/emoji
+   * Get destination name usage data with optional filtering
+   * Returns destination list optionally filtered by user and/or category
    *
-   * @returns Full destination list for client-side filtering
+   * @param user_name - Optional username to filter destinations
+   * @param categoryId - Optional category ID to filter destinations by category
+   * @returns Destination list for the specified user/category
    */
-  public async getDestinationNameUsage(): Promise<DestinationNameUsageResponse> {
+  public async getDestinationNameUsage(user_name?: string, categoryId?: number): Promise<DestinationNameUsageResponse> {
     try {
       if (!this.isConfigured()) {
         throw new Error('Sync API not configured');
       }
 
-      // Fetch all destinations without query parameters
-      // Avoids backend filtering issues with special characters (Cyrillic, emoji)
-      const endpoint = '/api/v1/get_destination_name_usage';
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (user_name) params.append('user_name', user_name);
+      if (categoryId) params.append('category_id', categoryId.toString());
+      const queryString = params.toString();
+      const endpoint = queryString
+        ? `/api/v1/get_destination_name_usage?${queryString}`
+        : '/api/v1/get_destination_name_usage';
 
       const data = await this.makeRequest<DestinationNameUsageResponse>(
         endpoint,
         { method: 'GET' }
       );
 
-      console.log('🏪 Fetched all destinations from API:', {
+      console.log('🏪 Fetched destinations from API:', {
+        filters: { user_name, categoryId },
         total: data.total,
         sample: data.get_destination_name_usage.slice(0, 3).map(d => ({
           name: d.destination_name,

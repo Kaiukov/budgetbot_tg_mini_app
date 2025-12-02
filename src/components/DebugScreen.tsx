@@ -36,7 +36,7 @@ const getStatusColor = (status: 'connected' | 'disconnected' | 'checking') => {
 };
 
 const DebugScreen: React.FC<DebugScreenProps> = ({
-  userName,
+  user_name,
   isAvailable,
   serviceStatuses,
   onBack,
@@ -129,7 +129,7 @@ const DebugScreen: React.FC<DebugScreenProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">User:</span>
-              <span className="text-gray-300">{userName}</span>
+              <span className="text-gray-300">{user_name}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Timestamp:</span>

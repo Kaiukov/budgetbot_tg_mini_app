@@ -12,7 +12,7 @@ export function useBudgetMachine() {
 
   return {
     // State
-    state: state.value,
+    state: state,
     context: state.context,
 
     // Navigation
@@ -21,26 +21,26 @@ export function useBudgetMachine() {
     goBack: () => send({ type: 'NAVIGATE_BACK' }),
 
     // Transaction Form
-    updateAccount: (account: string, account_id: string, account_currency: string, username: string) => {
+    updateAccount: (account: string, account_id: string, account_currency: string, user_name: string) => {
       send({
         type: 'UPDATE_ACCOUNT',
         account,
         account_id,
         account_currency,
-        username,
+        user_name,
       });
     },
     updateAmount: (amount: string) => {
       send({ type: 'UPDATE_AMOUNT', amount });
     },
     updateAmountForeign: (amount_foreign: string) => {
-      send({ type: 'UPDATE_AMOUNT_FOREIGN', amount_foreign });
+      send({ type: 'UPDATE_AMOUNT_EUR', amount_foreign });
     },
     updateCategory: (category: string) => {
       send({ type: 'UPDATE_CATEGORY', category });
     },
     updateComment: (comment: string) => {
-      send({ type: 'UPDATE_COMMENT', comment });
+      send({ type: 'UPDATE_NOTES', notes: comment });
     },
     submitTransaction: () => {
       send({ type: 'SUBMIT_TRANSACTION' });
@@ -79,7 +79,7 @@ export function useBudgetMachine() {
       send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee });
     },
     updateTransferComment: (comment: string) => {
-      send({ type: 'UPDATE_TRANSFER_COMMENT', comment });
+      send({ type: 'UPDATE_TRANSFER_NOTES', comment });
     },
     submitTransfer: () => {
       send({ type: 'SUBMIT_TRANSFER' });

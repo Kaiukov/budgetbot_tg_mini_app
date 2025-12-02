@@ -5,11 +5,11 @@ import { useState, useCallback } from 'react';
  * Eliminates duplication between accounts and categories fetching
  *
  * @param fetchFn - Function that fetches data from Sync API
- * @param userName - Optional username for filtering
+ * @param user_name - Optional username for filtering
  */
 export function useSyncData<T>(
-  fetchFn: (userName?: string) => Promise<{ success: boolean; message: string; total: number; [key: string]: any }>,
-  userName?: string
+  fetchFn: (user_name?: string) => Promise<{ success: boolean; message: string; total: number; [key: string]: any }>,
+  user_name?: string
 ) {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,15 +20,15 @@ export function useSyncData<T>(
     setError(null);
 
     try {
-      console.log('🔍 Fetching data for user:', userName);
+      console.log('🔍 Fetching data for user:', user_name);
 
       // Treat "User" and "Guest" as unknown users (browser mode)
-      const isUnknownUser = userName === 'User' || userName === 'Guest';
-      const response = await fetchFn(isUnknownUser ? undefined : userName);
+      const isUnknownUser = user_name === 'User' || user_name === 'Guest';
+      const response = await fetchFn(isUnknownUser ? undefined : user_name);
 
       console.log('📊 Fetched data:', {
         total: response.total,
-        userName
+        user_name
       });
 
       // Extract the data array from response (works for both accounts and categories)
@@ -39,13 +39,13 @@ export function useSyncData<T>(
       console.error('❌ Failed to fetch data:', {
         error: err,
         message: errorMessage,
-        userName
+        user_name
       });
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [fetchFn, userName]);
+  }, [fetchFn, user_name]);
 
   return {
     data,

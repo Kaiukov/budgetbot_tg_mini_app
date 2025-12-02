@@ -9,9 +9,13 @@ interface AmountScreenProps {
   account: string;
   amount: string;
   transactionData: TransactionData;
+  conversionAmount?: number | null;
+  isLoadingConversion?: boolean;
   isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
+  onConversionAmountChange?: (amount: number | null) => void;
+  onIsLoadingConversionChange?: (isLoading: boolean) => void;
   onNext: () => void;
 }
 
@@ -19,13 +23,17 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   account,
   amount,
   transactionData,
+  conversionAmount: propConversionAmount,
+  isLoadingConversion: propIsLoadingConversion,
   isAvailable,
   onBack,
   onAmountChange,
+  onConversionAmountChange,
+  onIsLoadingConversionChange,
   onNext
 }) => {
-  const [conversionAmount, setConversionAmount] = useState<number | null>(null);
-  const [isLoadingConversion, setIsLoadingConversion] = useState(false);
+  const [conversionAmount, setConversionAmount] = useState<number | null>(propConversionAmount ?? null);
+  const [isLoadingConversion, setIsLoadingConversion] = useState(propIsLoadingConversion ?? false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -44,29 +52,39 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       // 2. We have a currency code
       // 3. Currency is NOT EUR (no conversion needed for same currency)
       if (!amount || !currencyCode || currencyCode === 'EUR') {
+        if (currencyCode === 'EUR') {
+          console.log('💶 EUR account - no conversion needed');
+        }
         setConversionAmount(null);
+        onConversionAmountChange?.(null as any);
         return;
       }
 
       setIsLoadingConversion(true);
+      onIsLoadingConversionChange?.(true);
       try {
         const numAmount = parseFloat(amount);
         if (numAmount > 0) {
+          console.log(`💱 Converting ${numAmount} ${currencyCode} to EUR...`);
           const converted = await syncService.getExchangeRate(currencyCode, 'EUR', numAmount);
+          console.log(`✅ Conversion result: ${converted} EUR`);
           setConversionAmount(converted);
+          onConversionAmountChange?.(converted);
         }
       } catch (error) {
-        console.error('Failed to fetch conversion:', error);
+        console.error('❌ Failed to fetch conversion:', error);
         setConversionAmount(null);
+        onConversionAmountChange?.(null as any);
       } finally {
         setIsLoadingConversion(false);
+        onIsLoadingConversionChange?.(false);
       }
     };
 
     // Debounce the conversion fetch
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [amount, currencyCode]);
+  }, [amount, currencyCode, onConversionAmountChange, onIsLoadingConversionChange]);
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 

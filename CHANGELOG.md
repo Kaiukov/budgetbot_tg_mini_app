@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Known Issues
+- None.
+
+### Fixed
+- **Destination Input Persistence**: Standardized `UPDATE_NOTES` payloads so destination input text and IDs persist correctly across the withdrawal flow.
+- **Account user_name Field**: Aligned account selection event payload with machine expectations to capture the selected account's `user_name`.
+- **Destination Selection**: Fixed quick destination selection from list not updating the destination field; event property was `comment` but machine expected `notes` in `handleWithdrawalDestinationChange`
+
 ### Changed
 - **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
 - **Transaction Operations**: `addTransaction()`, `fetchTransactions()`, and `fetchTransactionById()` now directly use `apiClient.request()` instead of wrapper methods
@@ -22,6 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - `src/services/sync/firefly.ts` - Removed wrapper service entirely
 - `fireflyService` exports from `src/services/sync/index.ts`
+
+## [1.3.0] - 2025-12-01
+
+### Added
+- **Withdrawal Debugging**: Optional debug webhook on withdrawal confirmation; `VITE_DEBUG_API=true` can short-circuit requests and POST payloads to `VITE_DEBUG_WEBHOOK_URL`.
+- **Playwright E2E Suite**: Added `playwright.config.ts` and `tests/e2e/withdrawal-flow.spec.ts` with HTML reporter and scripts `test`, `test:ui`, `test:headed`, `test:debug`.
+- **Documentation**: New `rename_flow.md` (expense→withdrawal rename plan) and `deposit_flow.md` (upcoming income→deposit scope).
+
+### Changed
+- **Terminology**: Expense flow renamed to **withdrawal** across UI, state machine, hooks, services, helpers, and types; default transaction type now withdrawal.
+- **Confirmation UX**: Withdrawal confirm screen requires notes, adds date input, pre-fills context-aware note, improves error messaging, and exposes optional payload debugging.
+- **Category & State Handling**: Category fetch now keyed by user+type and cached to prevent duplicate calls; withdrawal notes live in machine context and reset on flow start/cancel.
+- **UI Labels**: Home tiles, transaction cards/detail/edit, and helper text now use withdrawal wording with updated color logic.
+- **Sync Layer**: Withdrawal handler renamed, uses `user_name` consistently, safer stringification, and clearer error payloads.
+
+### Removed
+- **CommentScreen**: Replaced by shared `DestinationNameScreen` for withdrawal/transfer/comment steps.
 
 ## [1.2.4] - 2025-11-29
 

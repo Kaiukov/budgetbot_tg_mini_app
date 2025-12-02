@@ -7,6 +7,7 @@
 import { createMachine, assign } from 'xstate';
 import type { BudgetMachineContext } from './types';
 import { initialContext } from './types';
+import { extractBudgetName } from '../services/sync/utils';
 import {
   telegramInitActor,
   accountsFetchActor,
@@ -59,7 +60,7 @@ export const budgetMachine = createMachine(
           {
             id: 'fetchAccounts',
             src: accountsFetchActor,
-            input: ({ context }) => ({ userName: context.user.username }),
+            input: ({ context }) => ({ user_name: context.user.user_name }),
             onDone: {
               actions: assign(({ event, context }) => ({
                 data: {
@@ -84,7 +85,14 @@ export const budgetMachine = createMachine(
           {
             id: 'fetchCategories',
             src: categoriesFetchActor,
-            input: ({ context }) => ({ userName: context.user.username }),
+            input: ({ context }) => {
+              const maybeUser = context.user.user_name;
+              const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+              return {
+                user_name: isUnknown ? undefined : maybeUser,
+                type: 'withdrawal',
+              };
+            },
             onDone: {
               actions: assign(({ event, context }) => ({
                 data: {
@@ -136,7 +144,10 @@ export const budgetMachine = createMachine(
         states: {
           home: {
             on: {
-              NAVIGATE_EXPENSE_ACCOUNTS: 'expenseFlow',
+              NAVIGATE_WITHDRAWAL_ACCOUNTS: {
+                target: 'withdrawalFlow',
+                actions: 'resetTransaction',
+              },
               NAVIGATE_INCOME_ACCOUNTS: 'incomeFlow',
               NAVIGATE_TRANSFER_SOURCE: 'transferFlow',
               NAVIGATE_TRANSACTIONS: 'transactions',
@@ -144,10 +155,13 @@ export const budgetMachine = createMachine(
             },
           },
 
-          expenseFlow: {
+          withdrawalFlow: {
             initial: 'accounts',
             on: {
-              NAVIGATE_HOME: '#budget.ready.home',
+              NAVIGATE_HOME: {
+                target: '#budget.ready.home',
+                actions: 'resetTransaction',
+              },
             },
             states: {
               accounts: {
@@ -164,26 +178,60 @@ export const budgetMachine = createMachine(
                   UPDATE_AMOUNT: {
                     actions: 'updateAmount',
                   },
-                  UPDATE_AMOUNT_FOREIGN: {
+                  UPDATE_AMOUNT_EUR: {
                     actions: 'updateAmountForeign',
+                  },
+                  SET_CONVERSION_AMOUNT: {
+                    actions: 'setConversionAmount',
+                  },
+                  SET_IS_LOADING_CONVERSION: {
+                    actions: 'setIsLoadingConversion',
                   },
                   NAVIGATE_CATEGORY: 'category',
                   NAVIGATE_BACK: 'accounts',
                 },
               },
               category: {
+                entry: 'setCategoriesLoading',
+                invoke: {
+                  id: 'fetchWithdrawalCategoriesOnNavigate',
+                  src: categoriesFetchActor,
+                  input: ({ context }) => {
+                    const maybeUser = context.user.user_name;
+                    const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+                    return {
+                      user_name: isUnknown ? undefined : maybeUser,
+                      type: 'withdrawal',
+                    };
+                  },
+                  onDone: {
+                    actions: 'setCategories',
+                  },
+                  onError: {
+                    actions: 'setCategoriesError',
+                  },
+                },
                 on: {
                   UPDATE_CATEGORY: {
-                    target: 'comment',
+                    target: 'notes',
                     actions: 'updateCategory',
                   },
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_COMMENT: {
+                  UPDATE_NOTES: {
                     actions: 'updateComment',
+                  },
+                  SET_SUGGESTIONS: {
+                    actions: 'setSuggestions',
+                  },
+                  SET_IS_LOADING_SUGGESTIONS: {
+                    actions: 'setIsLoadingSuggestions',
+                  },
+                  SET_SUGGESTIONS_ERROR: {
+                    actions: 'setSuggestionsError',
                   },
                   NAVIGATE_CONFIRM: 'confirm',
                   NAVIGATE_BACK: 'category',
@@ -195,7 +243,13 @@ export const budgetMachine = createMachine(
                     target: '#budget.ready.home',
                     actions: 'resetTransaction',
                   },
-                  NAVIGATE_BACK: 'comment',
+                  SET_IS_SUBMITTING: {
+                    actions: 'setIsSubmitting',
+                  },
+                  SET_SUBMIT_MESSAGE: {
+                    actions: 'setSubmitMessage',
+                  },
+                  NAVIGATE_BACK: 'notes',
                 },
               },
             },
@@ -226,17 +280,36 @@ export const budgetMachine = createMachine(
                 },
               },
               category: {
+                entry: 'setCategoriesLoading',
+                invoke: {
+                  id: 'fetchIncomeCategoriesOnNavigate',
+                  src: categoriesFetchActor,
+                  input: ({ context }) => {
+                    const maybeUser = context.user.user_name;
+                    const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+                    return {
+                      user_name: isUnknown ? undefined : maybeUser,
+                      type: 'deposit',
+                    };
+                  },
+                  onDone: {
+                    actions: 'setCategories',
+                  },
+                  onError: {
+                    actions: 'setCategoriesError',
+                  },
+                },
                 on: {
                   UPDATE_CATEGORY: {
-                    target: 'comment',
+                    target: 'notes',
                     actions: 'updateCategory',
                   },
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_COMMENT: {
+                  UPDATE_NOTES: {
                     actions: 'updateComment',
                   },
                   NAVIGATE_CONFIRM: 'confirm',
@@ -249,7 +322,7 @@ export const budgetMachine = createMachine(
                     target: '#budget.ready.home',
                     actions: 'resetTransaction',
                   },
-                  NAVIGATE_BACK: 'comment',
+                  NAVIGATE_BACK: 'notes',
                 },
               },
             },
@@ -299,13 +372,13 @@ export const budgetMachine = createMachine(
                   UPDATE_TRANSFER_ENTRY_FEE: {
                     actions: 'updateTransferEntryFee',
                   },
-                  NAVIGATE_TRANSFER_COMMENT: 'comment',
+                  NAVIGATE_TRANSFER_COMMENT: 'notes',
                   NAVIGATE_BACK: 'amount',
                 },
               },
-              comment: {
+              notes: {
                 on: {
-                  UPDATE_TRANSFER_COMMENT: {
+                  UPDATE_TRANSFER_NOTES: {
                     actions: 'updateTransferComment',
                   },
                   NAVIGATE_TRANSFER_CONFIRM: 'confirm',
@@ -318,7 +391,7 @@ export const budgetMachine = createMachine(
                     target: '#budget.ready.home',
                     actions: 'resetTransfer',
                   },
-                  NAVIGATE_BACK: 'comment',
+                  NAVIGATE_BACK: 'notes',
                 },
               },
             },
@@ -407,10 +480,18 @@ export const budgetMachine = createMachine(
       updateAccount: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
+          ...(context.transaction.account_id === event.account_id
+            ? {}
+            : {
+                amount: '',
+                amount_eur: '',
+                // Don't reset conversionAmount - preserve it across account changes
+                // User can re-enter amount which will trigger new conversion if needed
+              }),
           account: event.account,
           account_id: event.account_id,
           account_currency: event.account_currency,
-          username: event.username || context.transaction.username,
+          user_name: event.user_name || context.transaction.user_name,
         },
       })),
 
@@ -424,26 +505,43 @@ export const budgetMachine = createMachine(
       updateAmountForeign: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
-          amount_foreign: event.amount_foreign,
+          amount_eur: event.amount_foreign,
         },
       })),
 
-      updateCategory: assign(({ context, event }: any) => ({
-        transaction: {
-          ...context.transaction,
-          category: event.category,
-        },
-      })),
+      updateCategory: assign(({ context, event }: any) => {
+        const normalizedBudget = event.budget_name && String(event.budget_name).trim().length > 0
+          ? String(event.budget_name).trim()
+          : extractBudgetName(event.category);
 
-      updateComment: assign(({ context, event }: any) => ({
-        transaction: {
-          ...context.transaction,
-          comment: event.comment,
-        },
-      })),
+        return {
+          transaction: {
+            ...context.transaction,
+            category: event.category,
+            category_id: event.category_id ?? context.transaction.category_id,
+            budget_name: normalizedBudget,
+          },
+        };
+      }),
+
+      updateComment: assign(({ context, event }: any) => {
+        const nextNotes = event.notes ?? event.comment ?? event.destination_name;
+
+        return {
+          transaction: {
+            ...context.transaction,
+            notes: nextNotes ?? '',
+            destination_name: nextNotes ?? '',
+            destination_id: event.destination_id ?? context.transaction.destination_id,
+          },
+        };
+      }),
 
       resetTransaction: assign({
-        transaction: initialContext.transaction,
+        transaction: {
+          ...initialContext.transaction,
+          user_name: initialContext.transaction.user_name,
+        },
       }),
 
       setTransferSource: assign(({ context, event }: any) => ({
@@ -499,7 +597,7 @@ export const budgetMachine = createMachine(
       updateTransferComment: assign(({ context, event }: any) => ({
         transfer: {
           ...context.transfer,
-          comment: event.comment,
+          notes: event.notes,
         },
       })),
 
@@ -535,7 +633,7 @@ export const budgetMachine = createMachine(
       setCategories: assign(({ context, event }: any) => ({
         data: {
           ...context.data,
-          categories: event.categories || [],
+          categories: event.categories || event.output || [],
         },
         ui: {
           ...context.ui,
@@ -590,6 +688,56 @@ export const budgetMachine = createMachine(
             ...context.ui.services,
             [event.service]: event.status,
           },
+        },
+      })),
+
+      // UI State actions for withdrawal flow
+      setConversionAmount: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          conversionAmount: event.amount_eur,
+        },
+      })),
+
+      setIsLoadingConversion: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isLoadingConversion: event.isLoading,
+        },
+      })),
+
+      setSuggestions: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          suggestions: event.suggestions || [],
+        },
+      })),
+
+      setIsLoadingSuggestions: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isLoadingSuggestions: event.isLoading,
+        },
+      })),
+
+      setSuggestionsError: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          suggestionsError: event.error,
+        },
+      })),
+
+      setIsSubmitting: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          isSubmitting: event.isSubmitting,
+        },
+      })),
+
+      setSubmitMessage: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          submitMessage: event.message,
         },
       })),
     },
