@@ -229,7 +229,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             amount_eur: transactionData.amount_eur,
             category_id: transactionData.category_id,
             category_name: transactionData.category_name,
-            budget_name: transactionData.budget_name,
             source_id: transactionData.source_id,
             source_name: transactionData.source_name || '',
             notes: notesInput.trim(),

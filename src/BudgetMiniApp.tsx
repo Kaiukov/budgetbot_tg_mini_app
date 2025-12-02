@@ -786,12 +786,16 @@ const BudgetMiniApp = () => {
             account_id: Number(machineContext.context.transaction.account_id) || 0,
             account_currency: machineContext.context.transaction.account_currency,
             amount: machineContext.context.transaction.amount,
-            // For amount_eur: use converted amount if available, or use original amount if EUR account
-            amount_eur: machineContext.context.transaction.conversionAmount ?? (
-              machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR'
-                ? Number(machineContext.context.transaction.amount) || 0
-                : 0  // Non-EUR without conversion: 0 triggers validation error
-            ),
+            amount_eur: (() => {
+              const conversionAmount = machineContext.context.transaction.conversionAmount;
+              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
+              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
+
+              // Priority: Use conversion if valid, else use original amount for EUR, else 0
+              if (conversionAmount && conversionAmount > 0) return conversionAmount;
+              if (isEUR && parsedAmount > 0) return parsedAmount;
+              return 0;
+            })(),
             category_id: machineContext.context.transaction.category_id || 0,
             category_name: machineContext.context.transaction.category,
             budget_name: (machineContext.context.transaction as any).budget_name || '',
@@ -919,11 +923,16 @@ const BudgetMiniApp = () => {
             account_id: Number(machineContext.context.transaction.account_id) || 0,
             account_currency: machineContext.context.transaction.account_currency,
             amount: machineContext.context.transaction.amount,
-            amount_eur:
-              machineContext.context.transaction.conversionAmount ??
-              (machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR'
-                ? Number(machineContext.context.transaction.amount) || 0
-                : 0),
+            amount_eur: (() => {
+              const conversionAmount = machineContext.context.transaction.conversionAmount;
+              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
+              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
+
+              // Priority: Use conversion if valid, else use original amount for EUR, else 0
+              if (conversionAmount && conversionAmount > 0) return conversionAmount;
+              if (isEUR && parsedAmount > 0) return parsedAmount;
+              return 0;
+            })(),
             category_id: machineContext.context.transaction.category_id,
             category_name: machineContext.context.transaction.category,
             budget_name: machineContext.context.transaction.budget_name,
