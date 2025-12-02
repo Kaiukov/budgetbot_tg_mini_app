@@ -367,12 +367,13 @@ async function handleDepositTransaction(body: DepositTransactionData): Promise<T
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildDepositDescription(cleanCategory, body.account_name, body.amount, body.currency, body.comment),
+        description: buildDepositDescription(cleanCategory, body.source_name || body.account_name, body.amount, body.currency, body.comment),
         currency_code: accountCurrency,
         category_name: cleanCategory,
+        source_name: body.source_name || 'External Source',
         destination_name: body.account_name,
         notes: buildTransactionNotes(
-          `Deposit ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency}`,
+          `Deposit ${cleanCategory} from ${body.source_name || 'external source'} to ${body.account_name} ${body.amount} ${body.currency}`,
           body.comment,
           body.user_name
         ),
@@ -411,14 +412,15 @@ async function handleDepositTransaction(body: DepositTransactionData): Promise<T
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildDepositDescription(cleanCategory, body.account_name, body.amount, body.currency, body.comment, amount_eur),
+        description: buildDepositDescription(cleanCategory, body.source_name || body.account_name, body.amount, body.currency, body.comment, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
+        source_name: body.source_name || 'External Source',
         destination_name: body.account_name,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
         notes: buildTransactionNotes(
-          `Deposit ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
+          `Deposit ${cleanCategory} from ${body.source_name || 'external source'} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           body.comment,
           body.user_name
         ),
