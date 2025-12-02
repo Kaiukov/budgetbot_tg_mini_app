@@ -21,9 +21,13 @@ export interface TransactionData {
   category_name: string;
   budget_name: string; // Category name without emoji (Unicode preserved)
 
-  // Destination/Comment data
+  // Destination/Comment data (for withdrawals)
   destination_id: number;
   destination_name: string;
+
+  // Source data (for deposits)
+  source_id: number;
+  source_name: string;
 
   // Notes (free-form memo)
   notes: string;
@@ -44,6 +48,8 @@ const initialTransactionData: TransactionData = {
   budget_name: '',
   destination_id: 0,
   destination_name: '',
+  source_id: 0,
+  source_name: '',
   notes: '',
   date: '',
 };

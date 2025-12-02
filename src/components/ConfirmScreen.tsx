@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft, Wallet, Tag, MapPin, Calendar, FileText } from 'lucide-react';
-import { addTransaction, type WithdrawalTransactionData } from '../services/sync/index';
+import { addTransaction, type WithdrawalTransactionData, type DepositTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
@@ -9,14 +9,14 @@ import { gradients, layouts } from '../theme/dark';
 
 const DEBUG_WEBHOOK_URL = import.meta.env.VITE_DEBUG_WEBHOOK_URL || 'https://n8n.neon-chuckwalla.ts.net/webhook-test/test_me';
 
-const postDebugPayload = async (payload: WithdrawalTransactionData) => {
+const postDebugPayload = async (payload: WithdrawalTransactionData | DepositTransactionData, type: 'withdrawal' | 'deposit') => {
   try {
     await fetch(DEBUG_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ type: 'withdrawal_confirm_payload', payload })
+      body: JSON.stringify({ type: `${type}_confirm_payload`, payload })
     });
   } catch (error) {
     console.warn('Debug webhook post failed (non-blocking):', error);
@@ -48,10 +48,13 @@ const safeStringify = (value: unknown): string => {
 };
 
 interface ConfirmScreenProps {
+  transactionType: 'withdrawal' | 'deposit';
   account_name: string;
   amount: string;
   budget_name: string;
   destination_name: string;
+  source_name?: string;
+  source_id?: number | string;
   transactionData: TransactionData;
   isSubmitting?: boolean;
   submitMessage?: { type: 'success' | 'error'; text: string } | null;
@@ -67,10 +70,10 @@ interface ConfirmScreenProps {
 }
 
 const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
+  transactionType,
   account_name,
   amount,
   budget_name,
-  destination_name,
   transactionData,
   isSubmitting: propIsSubmitting,
   submitMessage: propSubmitMessage,
@@ -113,18 +116,19 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   }, [transactionData.date]);
 
   const buildNotesSuggestion = () => {
-    const category = transactionData.category_name || 'Withdrawal';
+    const category = transactionData.category_name || (transactionType === 'withdrawal' ? 'Withdrawal' : 'Deposit');
     const account = transactionData.account_name || 'Account';
     const amountRaw = transactionData.amount || '0';
     const currency = (transactionData.account_currency || 'EUR').toUpperCase();
     const amountEur = (transactionData.amount_eur ?? parseFloat(amountRaw)) || 0;
-    const transactionLabel = 'Withdrawal';
+    const transactionLabel = transactionType === 'withdrawal' ? 'Withdrawal' : 'Deposit';
+    const sourceOrDest = transactionType === 'withdrawal' ? 'from' : 'to';
 
     if (currency === 'EUR') {
-      return `${transactionLabel} ${category} from ${account} ${amountRaw} ${currency}`;
+      return `${transactionLabel} ${category} ${sourceOrDest} ${account} ${amountRaw} ${currency}`;
     }
 
-    return `${transactionLabel} ${category} from ${account} ${amountRaw} ${currency} (${amountEur.toFixed(2)} EUR)`;
+    return `${transactionLabel} ${category} ${sourceOrDest} ${account} ${amountRaw} ${currency} (${amountEur.toFixed(2)} EUR)`;
   };
 
   // Prefill notes when untouched
@@ -197,49 +201,58 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
 
       const amountValue = parseFloat(transactionData.amount);
 
-      const transactionPayload: WithdrawalTransactionData = {
-        // User identification
-        user_name: transactionData.user_name || 'unknown',
-
-        // Account
-        account_name: transactionData.account_name,
-        account_id: transactionData.account_id,
-        account_currency: transactionData.account_currency,
-
-        // Amounts
-        amount: amountValue,
-        amount_eur: transactionData.amount_eur,
-
-        // Category
-        category_id: transactionData.category_id,
-        category_name: transactionData.category_name,
-        budget_name: transactionData.budget_name,
-
-        // Destination
-        destination_id: transactionData.destination_id,
-        destination_name: transactionData.destination_name || '',
-
-        // Meta
-        notes: notesInput.trim(),
-        date: effectiveDateIso
-      };
+      // Build payload based on transaction type
+      const transactionPayload: WithdrawalTransactionData | DepositTransactionData = transactionType === 'withdrawal'
+        ? {
+            // Withdrawal payload
+            user_name: transactionData.user_name || 'unknown',
+            account_name: transactionData.account_name,
+            account_id: transactionData.account_id,
+            account_currency: transactionData.account_currency,
+            amount: amountValue,
+            amount_eur: transactionData.amount_eur,
+            category_id: transactionData.category_id,
+            category_name: transactionData.category_name,
+            budget_name: transactionData.budget_name,
+            destination_id: transactionData.destination_id,
+            destination_name: transactionData.destination_name || '',
+            notes: notesInput.trim(),
+            date: effectiveDateIso,
+          }
+        : {
+            // Deposit payload
+            user_name: transactionData.user_name || 'unknown',
+            account_name: transactionData.account_name,
+            account_id: transactionData.account_id,
+            account_currency: transactionData.account_currency,
+            amount: amountValue,
+            amount_eur: transactionData.amount_eur,
+            category_id: transactionData.category_id,
+            category_name: transactionData.category_name,
+            budget_name: transactionData.budget_name,
+            source_id: transactionData.source_id,
+            source_name: transactionData.source_name || '',
+            notes: notesInput.trim(),
+            date: effectiveDateIso,
+          };
 
       // Fire-and-forget debug webhook (does not block main submission)
-      void postDebugPayload(transactionPayload);
+      void postDebugPayload(transactionPayload, transactionType);
 
-      console.log('📝 Transaction payload built:', transactionPayload);
+      console.log(`📝 ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} payload built:`, transactionPayload);
 
       // Submit to Firefly
-      const [success, response] = await addTransaction(transactionPayload, 'withdrawal', true);
+      const [success, response] = await addTransaction(transactionPayload, transactionType, true);
 
       if (success) {
-        console.log('✅ Transaction submitted successfully:', response);
+        console.log(`✅ ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} submitted successfully:`, response);
 
         // Proactively refresh transaction cache
         await refreshHomeTransactionCache();
 
         // Show Telegram alert for success
-        telegramService.showAlert('✅ Withdrawal saved successfully!', () => {
+        const successMsg = transactionType === 'withdrawal' ? '✅ Withdrawal saved successfully!' : '✅ Deposit saved successfully!';
+        telegramService.showAlert(successMsg, () => {
           onSuccess();
           onConfirm();
         });
@@ -298,6 +311,18 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   };
 
   const displayCategory = transactionData.category_name || budget_name;
+  const isWithdrawal = transactionType === 'withdrawal';
+  const amountColorClass = isWithdrawal ? 'text-red-400' : 'text-green-400';
+  const amountBgClass = isWithdrawal
+    ? 'bg-gradient-to-br from-red-900/40 to-red-900/20 border border-red-800/50'
+    : 'bg-gradient-to-br from-green-900/40 to-green-900/20 border border-green-800/50';
+  const amountLabelColorClass = isWithdrawal ? 'text-red-200' : 'text-green-200';
+  const amountPrefix = isWithdrawal ? '-' : '+';
+  const sourceOrDestLabel = isWithdrawal ? 'Destination' : 'Source';
+  const sourceOrDestValue = isWithdrawal ? transactionData.destination_name : transactionData.source_name;
+  const sourceOrDestIcon = isWithdrawal ? 'text-green-400' : 'text-blue-400';
+  const transactionTypeLabel = isWithdrawal ? 'Withdrawal' : 'Deposit';
+  const notesPlaceholder = isWithdrawal ? 'Describe the withdrawal...' : 'Describe the deposit...';
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -307,17 +332,17 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             <ArrowLeft size={20} className="text-white" />
           </button>
         )}
-        <h1 className="text-2xl font-bold">Confirm Withdrawal</h1>
+        <h1 className="text-2xl font-bold">Confirm {transactionTypeLabel}</h1>
       </div>
 
       <div className={layouts.content}>
         {/* Amount Card - Prominent Display */}
-        <div className="mb-4 p-3 rounded-lg bg-gradient-to-br from-red-900/40 to-red-900/20 border border-red-800/50 shadow-lg">
-          <p className="text-xs text-red-200 uppercase tracking-wider font-semibold mb-1">Amount</p>
-          <div className="text-3xl font-bold text-red-400 mb-1">
-            -{getCurrencySymbol(transactionData.account_currency)}{amount}
+        <div className={`mb-4 p-3 rounded-lg ${amountBgClass} shadow-lg`}>
+          <p className={`text-xs ${amountLabelColorClass} uppercase tracking-wider font-semibold mb-1`}>Amount</p>
+          <div className={`text-3xl font-bold ${amountColorClass} mb-1`}>
+            {amountPrefix}{getCurrencySymbol(transactionData.account_currency)}{amount}
           </div>
-          <p className="text-xs text-gray-400">Withdrawal Transaction</p>
+          <p className="text-xs text-gray-400">{transactionTypeLabel} Transaction</p>
         </div>
 
         {/* Details Card */}
@@ -340,13 +365,13 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             <span className="text-xs font-medium text-white ml-5">{displayCategory}</span>
           </div>
 
-          {/* Destination */}
+          {/* Destination / Source */}
           <div className="p-3 border-b border-gray-700/50">
             <div className="flex items-center gap-2 mb-0.5">
-              <MapPin size={14} className="text-green-400 flex-shrink-0" />
-              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Destination</span>
+              <MapPin size={14} className={`${sourceOrDestIcon} flex-shrink-0`} />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{sourceOrDestLabel}</span>
             </div>
-            <span className="text-xs font-medium text-white ml-5">{destination_name || 'Not specified'}</span>
+            <span className="text-xs font-medium text-white ml-5">{sourceOrDestValue || 'Not specified'}</span>
           </div>
 
           {/* Date */}
@@ -373,7 +398,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
             <textarea
               value={notesInput}
               onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder="Describe the withdrawal..."
+              placeholder={notesPlaceholder}
               rows={4}
               className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-y min-h-[100px] w-[calc(100%-20px)]"
             />
