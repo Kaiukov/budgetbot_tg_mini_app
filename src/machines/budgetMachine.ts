@@ -10,9 +10,8 @@ import { initialContext } from './types';
 import { extractBudgetName } from '../services/sync/utils';
 import {
   telegramInitActor,
-  accountsFetchActor,
+  dataLoadingOrchestratorActor,
   categoriesFetchActor,
-  transactionsFetchActor,
   depositSourceNameFetchActor,
 } from './actors';
 
@@ -59,85 +58,37 @@ export const budgetMachine = createMachine(
 
         invoke: [
           {
-            id: 'fetchAccounts',
-            src: accountsFetchActor,
+            id: 'loadData',
+            src: dataLoadingOrchestratorActor,
             input: ({ context }) => ({ user_name: context.user.user_name }),
             onDone: {
               actions: assign(({ event, context }) => ({
                 data: {
                   ...context.data,
-                  accounts: event.output || [],
+                  accounts: event.output.accounts || [],
+                  categories: event.output.categories || [],
+                  transactions: event.output.transactions || [],
                 },
                 ui: {
                   ...context.ui,
                   accounts: { loading: false, error: null },
-                },
-              })),
-            },
-            onError: {
-              actions: assign(({ event, context }) => ({
-                ui: {
-                  ...context.ui,
-                  accounts: { loading: false, error: String(event.error) },
-                },
-              })),
-            },
-          },
-          {
-            id: 'fetchCategories',
-            src: categoriesFetchActor,
-            input: ({ context }) => {
-              const maybeUser = context.user.user_name;
-              const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
-              return {
-                user_name: isUnknown ? undefined : maybeUser,
-                type: 'withdrawal',
-              };
-            },
-            onDone: {
-              actions: assign(({ event, context }) => ({
-                data: {
-                  ...context.data,
-                  categories: event.output || [],
-                },
-                ui: {
-                  ...context.ui,
                   categories: { loading: false, error: null },
-                },
-              })),
-            },
-            onError: {
-              actions: assign(({ event, context }) => ({
-                ui: {
-                  ...context.ui,
-                  categories: { loading: false, error: String(event.error) },
-                },
-              })),
-            },
-          },
-          {
-            id: 'fetchTransactions',
-            src: transactionsFetchActor,
-            input: () => ({ page: 1 }),
-            onDone: {
-              actions: assign(({ event, context }) => ({
-                data: {
-                  ...context.data,
-                  transactions: event.output || [],
-                },
-                ui: {
-                  ...context.ui,
                   transactions: { loading: false, error: null },
                 },
               })),
             },
             onError: {
-              actions: assign(({ event, context }) => ({
-                ui: {
-                  ...context.ui,
-                  transactions: { loading: false, error: String(event.error) },
-                },
-              })),
+              actions: assign(({ event, context }) => {
+                const errorMsg = String(event.error);
+                return {
+                  ui: {
+                    ...context.ui,
+                    accounts: { loading: false, error: errorMsg },
+                    categories: { loading: false, error: errorMsg },
+                    transactions: { loading: false, error: errorMsg },
+                  },
+                };
+              }),
             },
           },
         ],
@@ -149,7 +100,10 @@ export const budgetMachine = createMachine(
                 target: 'withdrawalFlow',
                 actions: 'resetTransaction',
               },
-              NAVIGATE_DEPOSIT_ACCOUNTS: 'depositFlow',
+              NAVIGATE_DEPOSIT_ACCOUNTS: {
+                target: 'depositFlow',
+                actions: 'resetTransaction',
+              },
               NAVIGATE_TRANSFER_SOURCE: 'transferFlow',
               NAVIGATE_TRANSACTIONS: 'transactions',
               NAVIGATE_DEBUG: 'debug',
@@ -259,7 +213,10 @@ export const budgetMachine = createMachine(
           depositFlow: {
             initial: 'accounts',
             on: {
-              NAVIGATE_HOME: '#budget.ready.home',
+              NAVIGATE_HOME: {
+                target: '#budget.ready.home',
+                actions: 'resetTransaction',
+              },
             },
             states: {
               accounts: {
@@ -275,6 +232,15 @@ export const budgetMachine = createMachine(
                 on: {
                   UPDATE_AMOUNT: {
                     actions: 'updateAmount',
+                  },
+                  UPDATE_AMOUNT_EUR: {
+                    actions: 'updateAmountForeign',
+                  },
+                  SET_CONVERSION_AMOUNT: {
+                    actions: 'setConversionAmount',
+                  },
+                  SET_IS_LOADING_CONVERSION: {
+                    actions: 'setIsLoadingConversion',
                   },
                   NAVIGATE_CATEGORY: 'category',
                   NAVIGATE_BACK: 'accounts',
@@ -353,6 +319,12 @@ export const budgetMachine = createMachine(
                   SUBMIT_TRANSACTION: {
                     target: '#budget.ready.home',
                     actions: 'resetTransaction',
+                  },
+                  SET_IS_SUBMITTING: {
+                    actions: 'setIsSubmitting',
+                  },
+                  SET_SUBMIT_MESSAGE: {
+                    actions: 'setSubmitMessage',
                   },
                   NAVIGATE_BACK: 'notes',
                 },
@@ -537,7 +509,8 @@ export const budgetMachine = createMachine(
       updateAmountForeign: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
-          amount_eur: event.amount_foreign,
+          // Support both amount_foreign (legacy) and amount_eur (current) payload shapes
+          amount_eur: event.amount_foreign ?? event.amount_eur,
         },
       })),
 

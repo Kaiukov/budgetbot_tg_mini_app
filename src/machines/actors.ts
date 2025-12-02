@@ -410,3 +410,80 @@ export const fireflyServiceHealthActor = fromPromise<
     };
   }
 });
+
+// ============================================================================
+// Sequential Data Loading Orchestrator Actor
+// ============================================================================
+// Loads accounts first, then categories and transactions in parallel
+// This improves perceived performance by unblocking UI with accounts data sooner
+
+export interface DataLoadingResult {
+  accounts: AccountUsage[];
+  categories: CategoryUsage[];
+  transactions: DisplayTransaction[];
+}
+
+export const dataLoadingOrchestratorActor = fromPromise<
+  DataLoadingResult,
+  { user_name?: string; timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || 30000; // 30s total timeout
+  const startTime = Date.now();
+
+  try {
+    debugLog('🔄 Sequential data loading: Starting accounts fetch...');
+
+    // Step 1: Load accounts first (blocking step)
+    const accountsResponse = await Promise.race([
+      syncService.getAccountsUsage(input?.user_name),
+      new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error('Accounts fetch timeout')), timeout)
+      ),
+    ]);
+
+    const accounts = accountsResponse.get_accounts_usage || [];
+    const accountsTime = Date.now() - startTime;
+    debugLog(`✅ Accounts loaded in ${accountsTime}ms, starting parallel loads...`);
+
+    // Step 2: Load categories and transactions in parallel (non-blocking step)
+    const isUnknown = input?.user_name === 'User' || input?.user_name === 'Guest';
+    const [categoriesResponse, transactionsResponse] = await Promise.all([
+      Promise.race([
+        syncService.getCategoriesUsage(
+          isUnknown ? undefined : input?.user_name,
+          'withdrawal'
+        ),
+        new Promise<any>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Categories fetch timeout')),
+            Math.max(timeout - accountsTime, 5000)
+          )
+        ),
+      ]),
+      Promise.race([
+        fetchTransactions(1),
+        new Promise<any>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Transactions fetch timeout')),
+            Math.max(timeout - accountsTime, 5000)
+          )
+        ),
+      ]),
+    ]);
+
+    const categories = categoriesResponse.get_categories_usage || [];
+    const transactions = transactionsResponse.transactions || [];
+    const totalTime = Date.now() - startTime;
+
+    debugLog(`✅ All data loaded in ${totalTime}ms:`, {
+      accounts: accounts.length,
+      categories: categories.length,
+      transactions: transactions.length,
+    });
+
+    return { accounts, categories, transactions };
+  } catch (error) {
+    console.error('❌ Error in sequential data loading:', error);
+    throw error;
+  }
+});

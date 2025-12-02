@@ -25,10 +25,12 @@ export function filterCategoriesByType(
   categories: CategoryUsage[],
   type: TransactionType
 ): CategoryUsage[] {
-  // Only filter for deposit - show only category_id: 4
+  // Deposit categories are already filtered by backend; keep config whitelist but fall back to full list
   if (type === 'deposit') {
     const allowedIds = categoryConfig.deposit;
-    const filtered = categories.filter(cat => allowedIds.includes(cat.category_id));
+    const filtered = allowedIds?.length
+      ? categories.filter(cat => allowedIds.includes(Number(cat.category_id)))
+      : categories;
 
     if (enableDebugLogs) {
       console.log('🔍 Category filtering for DEPOSIT:', {
@@ -40,7 +42,8 @@ export function filterCategoriesByType(
       });
     }
 
-    return filtered;
+    // If filtering removes everything (e.g., config mismatch), show all categories to avoid empty UI
+    return filtered.length > 0 ? filtered : categories;
   }
 
   // For withdrawal and transfer - return ALL categories (backend handles filtering via type parameter)
@@ -67,7 +70,8 @@ export function isCategoryAllowed(
   type: TransactionType
 ): boolean {
   if (type === 'deposit') {
-    return categoryConfig.deposit.includes(categoryId);
+    const allowedIds = categoryConfig.deposit;
+    return !allowedIds?.length || allowedIds.includes(Number(categoryId));
   }
 
   // All categories allowed for withdrawal and transfer

@@ -279,7 +279,10 @@ class SyncService {
       const cachedData = this.balanceCache.get(cacheKey);
       if (cachedData) {
         console.log('💾 Using cached balance');
-        return cachedData.get_current_balance[0]?.balance_in_USD || 0;
+        const cachedBalance = cachedData?.get_current_balance?.[0]?.balance_in_USD;
+        if (cachedBalance !== undefined) {
+          return cachedBalance;
+        }
       }
 
       console.log('🔄 Fetching fresh balance');
@@ -289,13 +292,19 @@ class SyncService {
         { method: 'GET' }
       );
 
+      // Validate response structure before accessing
+      if (!data || !data.get_current_balance || !Array.isArray(data.get_current_balance) || data.get_current_balance.length === 0) {
+        console.warn('⚠️ Invalid balance response structure, returning 0');
+        return 0;
+      }
+
       // Cache the result for 5 minutes
       this.balanceCache.set(cacheKey, data);
 
       return data.get_current_balance[0]?.balance_in_USD || 0;
     } catch (error) {
       console.error('Failed to fetch current balance:', error);
-      throw error;
+      return 0; // Return 0 instead of throwing to prevent UI breakage
     }
   }
 

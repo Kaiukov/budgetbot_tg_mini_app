@@ -100,6 +100,10 @@ export const useTransactionData = (type: TransactionType = 'withdrawal') => {
     setTransactionData(prev => ({ ...prev, destination_id, destination_name }));
   };
 
+  const updateSource = (source_id: number, source_name: string) => {
+    setTransactionData(prev => ({ ...prev, source_id, source_name }));
+  };
+
   const updateNotes = (notes: string) => {
     setTransactionData(prev => ({ ...prev, notes }));
   };
@@ -128,6 +132,7 @@ export const useTransactionData = (type: TransactionType = 'withdrawal') => {
     updateAmountEUR,
     updateCategory,
     updateDestination,
+    updateSource,
     updateNotes,
     setDate,
     resetTransactionData,
