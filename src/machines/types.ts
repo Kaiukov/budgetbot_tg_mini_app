@@ -4,7 +4,7 @@
  */
 
 import type { TelegramWebAppUser } from '../types/telegram';
-import type { AccountUsage, CategoryUsage, DestinationSuggestion } from '../services/sync';
+import type { AccountUsage, CategoryUsage, DestinationSuggestion, SourceSuggestion } from '../services/sync';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 
 // ============================================================================
@@ -35,6 +35,8 @@ export interface TransactionForm {
   notes: string;
   destination_name: string;
   destination_id: number;
+  source_name: string;
+  source_id: number;
   account_id: string;
   account_currency: string;
   user_id: number | undefined;
@@ -43,7 +45,7 @@ export interface TransactionForm {
   // UI State for withdrawal flow
   conversionAmount: number | null;
   isLoadingConversion: boolean;
-  suggestions: DestinationSuggestion[];
+  suggestions: DestinationSuggestion[] | SourceSuggestion[];
   isLoadingSuggestions: boolean;
   suggestionsError: string | null;
   isSubmitting: boolean;
@@ -59,6 +61,8 @@ export const initialTransactionForm: TransactionForm = {
   notes: '',
   destination_name: '',
   destination_id: 0,
+  source_name: '',
+  source_id: 0,
   account_id: '',
   account_currency: '',
   user_id: undefined,
@@ -241,6 +245,7 @@ export type TransactionEvent =
   | { type: 'UPDATE_AMOUNT_EUR'; amount_eur: string }
   | { type: 'UPDATE_CATEGORY'; category: string; category_id?: number; budget_name?: string }
   | { type: 'UPDATE_NOTES'; notes: string; comment?: string; destination_name?: string; destination_id?: number }
+  | { type: 'UPDATE_SOURCE_NAME'; source_id: number; source_name: string }
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; user_name: string }
   | { type: 'SELECT_TRANSACTION'; id: string }
@@ -249,6 +254,7 @@ export type TransactionEvent =
   | { type: 'SET_CONVERSION_AMOUNT'; amount_eur: number }
   | { type: 'SET_IS_LOADING_CONVERSION'; isLoading: boolean }
   | { type: 'SET_SUGGESTIONS'; suggestions: DestinationSuggestion[] }
+  | { type: 'SET_DEPOSIT_SUGGESTIONS'; suggestions: SourceSuggestion[] }
   | { type: 'SET_IS_LOADING_SUGGESTIONS'; isLoading: boolean }
   | { type: 'SET_SUGGESTIONS_ERROR'; error: string | null }
   | { type: 'SET_IS_SUBMITTING'; isSubmitting: boolean }
@@ -319,6 +325,7 @@ export const isTransactionEvent = (event: BudgetMachineEvent): event is Transact
     'UPDATE_AMOUNT_EUR',
     'UPDATE_CATEGORY',
     'UPDATE_NOTES',
+    'UPDATE_SOURCE_NAME',
     'RESET_TRANSACTION',
     'SET_USER_DATA',
     'SELECT_TRANSACTION',
@@ -326,6 +333,7 @@ export const isTransactionEvent = (event: BudgetMachineEvent): event is Transact
     'SET_CONVERSION_AMOUNT',
     'SET_IS_LOADING_CONVERSION',
     'SET_SUGGESTIONS',
+    'SET_DEPOSIT_SUGGESTIONS',
     'SET_IS_LOADING_SUGGESTIONS',
     'SET_SUGGESTIONS_ERROR',
     'SET_IS_SUBMITTING',

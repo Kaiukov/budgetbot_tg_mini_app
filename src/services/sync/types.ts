@@ -9,6 +9,24 @@ export enum TransactionType {
 }
 
 /**
+ * Destination suggestions for withdrawal flows
+ */
+export interface DestinationSuggestion {
+  destination_id: number | string;
+  destination_name: string;
+  usage_count: number;
+}
+
+/**
+ * Source suggestions for deposit flows
+ */
+export interface SourceSuggestion {
+  source_id: number | string;
+  source_name: string;
+  usage_count: number;
+}
+
+/**
  * Base transaction data - common to all transaction types
  */
 export interface BaseTransactionData {
@@ -47,8 +65,8 @@ export interface DepositTransactionData extends BaseTransactionData {
   budget_name?: string;
   account_name?: string;
   account_id?: string | number;
-  destination_id?: string | number;
-  destination_name?: string;
+  source_id?: string | number;
+  source_name?: string;
   amount_eur?: string | number;
   user_id?: number;
 }

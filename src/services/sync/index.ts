@@ -76,4 +76,6 @@ export {
   type FireflyTransactionResponse,
   type TransactionResult,
   type VerificationResponse,
+  type DestinationSuggestion,
+  type SourceSuggestion,
 } from './types';
