@@ -84,7 +84,10 @@ export async function addTransaction(
   if (isDebugApi) {
     try {
       // Normalize payload to ensure all required fields are present for inspection
-      const normalized = {
+      const normalizedType = (transactionType as string).toLowerCase();
+
+      // Build base normalized payload
+      const normalized: Record<string, any> = {
         transactionType,
         user_name: (body as any).user_name || (body as any).username || 'unknown',
         account_name: (body as any).account_name || (body as any).account || '',
@@ -94,13 +97,28 @@ export async function addTransaction(
         amount_eur: (body as any).amount_eur ?? '',
         category_id: (body as any).category_id ?? '',
         category_name: (body as any).category_name || (body as any).category || '',
-        destination_id: (body as any).destination_id ?? '',
-        destination_name: (body as any).destination_name || (body as any).comment || '',
         date: (body as any).date ?? new Date().toISOString(),
         notes: (body as any).notes ?? '',
-        budget_name: (body as any).budget_name ?? '',
         timestamp: new Date().toISOString()
       };
+
+      // Add transaction-type-specific fields
+      if (normalizedType === 'withdrawal') {
+        // Withdrawals use destination fields
+        normalized.destination_id = (body as any).destination_id ?? '';
+        normalized.destination_name = (body as any).destination_name || (body as any).comment || '';
+        normalized.budget_name = (body as any).budget_name ?? '';
+      } else if (normalizedType === 'deposit') {
+        // Deposits use source fields (not destination)
+        normalized.source_id = (body as any).source_id ?? '';
+        normalized.source_name = (body as any).source_name || '';
+      } else if (normalizedType === 'transfer') {
+        // Transfers use both source and destination
+        normalized.source_id = (body as any).source_id ?? '';
+        normalized.source_name = (body as any).source_name || '';
+        normalized.destination_id = (body as any).destination_id ?? '';
+        normalized.destination_name = (body as any).destination_name || '';
+      }
 
       await fetch(DEBUG_WEBHOOK_URL, {
         method: 'POST',
