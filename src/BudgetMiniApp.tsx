@@ -14,7 +14,7 @@ import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
 import DestinationNameScreen from './components/DestinationNameScreen';
 import ConfirmScreen from './components/ConfirmScreen';
-import DepositConfirmScreen from './components/DepositConfirmScreen';
+import SourceNameScreen from './components/SourceNameScreen';
 import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
@@ -702,6 +702,7 @@ const BudgetMiniApp = () => {
 
       {withdrawalScreen === 'withdrawal-confirm' && (
         <ConfirmScreen
+          transactionType="withdrawal"
           account_name={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
           budget_name={(machineContext.context.transaction as any).budget_name || ''}
@@ -829,6 +830,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'confirm' && transactionType === 'withdrawal' && (
         <ConfirmScreen
+          transactionType="withdrawal"
           account_name={transactionData.account_name}
           amount={transactionData.amount}
           budget_name={transactionData.budget_name}
@@ -852,11 +854,14 @@ const BudgetMiniApp = () => {
       )}
 
       {currentScreen === 'confirm' && transactionType === 'deposit' && (
-        <DepositConfirmScreen
+        <ConfirmScreen
+          transactionType="deposit"
           account_name={transactionData.account_name}
           amount={transactionData.amount}
           budget_name={transactionData.budget_name}
           destination_name={transactionData.destination_name}
+          source_name={transactionData.source_name}
+          source_id={transactionData.source_id}
           transactionData={transactionData}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('comment')}
