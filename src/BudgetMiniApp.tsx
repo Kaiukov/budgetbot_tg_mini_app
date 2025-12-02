@@ -371,7 +371,7 @@ const BudgetMiniApp = () => {
       account: accountName,
       account_id: accountId || '',
       account_currency: currency || '',
-      username: user || user_name
+      user_name: user || user_name
     });
   };
 

@@ -240,7 +240,7 @@ export type TransactionEvent =
   | { type: 'UPDATE_AMOUNT'; amount: string }
   | { type: 'UPDATE_AMOUNT_EUR'; amount_eur: string }
   | { type: 'UPDATE_CATEGORY'; category: string; category_id?: number; budget_name?: string }
-  | { type: 'UPDATE_NOTES'; notes: string; destination_id?: number }
+  | { type: 'UPDATE_NOTES'; notes: string; comment?: string; destination_name?: string; destination_id?: number }
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; user_name: string }
   | { type: 'SELECT_TRANSACTION'; id: string }

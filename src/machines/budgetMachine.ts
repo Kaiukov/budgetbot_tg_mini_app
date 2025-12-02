@@ -491,7 +491,7 @@ export const budgetMachine = createMachine(
           account: event.account,
           account_id: event.account_id,
           account_currency: event.account_currency,
-          user_name: event.user_name || context.transaction.username,
+          user_name: event.user_name || context.transaction.user_name,
         },
       })),
 
@@ -524,19 +524,23 @@ export const budgetMachine = createMachine(
         };
       }),
 
-      updateComment: assign(({ context, event }: any) => ({
-        transaction: {
-          ...context.transaction,
-          notes: event.notes,
-          destination_name: event.notes,
-          destination_id: event.destination_id ?? context.transaction.destination_id,
-        },
-      })),
+      updateComment: assign(({ context, event }: any) => {
+        const nextNotes = event.notes ?? event.comment ?? event.destination_name;
+
+        return {
+          transaction: {
+            ...context.transaction,
+            notes: nextNotes ?? '',
+            destination_name: nextNotes ?? '',
+            destination_id: event.destination_id ?? context.transaction.destination_id,
+          },
+        };
+      }),
 
       resetTransaction: assign({
         transaction: {
           ...initialContext.transaction,
-          user_name: initialContext.transaction.username,
+          user_name: initialContext.transaction.user_name,
         },
       }),
 
@@ -687,7 +691,7 @@ export const budgetMachine = createMachine(
         },
       })),
 
-      // UI State actions for expense flow
+      // UI State actions for withdrawal flow
       setConversionAmount: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,

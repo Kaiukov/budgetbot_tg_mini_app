@@ -21,13 +21,13 @@ export function useBudgetMachine() {
     goBack: () => send({ type: 'NAVIGATE_BACK' }),
 
     // Transaction Form
-    updateAccount: (account: string, account_id: string, account_currency: string, username: string) => {
+    updateAccount: (account: string, account_id: string, account_currency: string, user_name: string) => {
       send({
         type: 'UPDATE_ACCOUNT',
         account,
         account_id,
         account_currency,
-        username,
+        user_name,
       });
     },
     updateAmount: (amount: string) => {
@@ -40,7 +40,7 @@ export function useBudgetMachine() {
       send({ type: 'UPDATE_CATEGORY', category });
     },
     updateComment: (comment: string) => {
-      send({ type: 'UPDATE_NOTES', comment });
+      send({ type: 'UPDATE_NOTES', notes: comment });
     },
     submitTransaction: () => {
       send({ type: 'SUBMIT_TRANSACTION' });
