@@ -13,6 +13,7 @@ import {
   accountsFetchActor,
   categoriesFetchActor,
   transactionsFetchActor,
+  depositSourceNameFetchActor,
 } from './actors';
 
 export const budgetMachine = createMachine(
@@ -308,9 +309,40 @@ export const budgetMachine = createMachine(
                 },
               },
               notes: {
+                entry: 'setSuggestionsLoading',
+                invoke: {
+                  id: 'fetchDepositSourceSuggestionsOnNavigate',
+                  src: depositSourceNameFetchActor,
+                  input: ({ context }) => {
+                    const maybeUser = context.user.user_name;
+                    const isUnknown = maybeUser === 'User' || maybeUser === 'Guest';
+                    return {
+                      user_name: isUnknown ? undefined : maybeUser,
+                      category_id: context.transaction.category_id || 0,
+                    };
+                  },
+                  onDone: {
+                    actions: 'setSuggestions',
+                  },
+                  onError: {
+                    actions: 'setSuggestionsError',
+                  },
+                },
                 on: {
                   UPDATE_NOTES: {
                     actions: 'updateComment',
+                  },
+                  UPDATE_SOURCE_NAME: {
+                    actions: 'updateSourceName',
+                  },
+                  SET_SUGGESTIONS: {
+                    actions: 'setSuggestions',
+                  },
+                  SET_IS_LOADING_SUGGESTIONS: {
+                    actions: 'setIsLoadingSuggestions',
+                  },
+                  SET_SUGGESTIONS_ERROR: {
+                    actions: 'setSuggestionsError',
                   },
                   NAVIGATE_CONFIRM: 'confirm',
                   NAVIGATE_BACK: 'category',
@@ -537,6 +569,14 @@ export const budgetMachine = createMachine(
         };
       }),
 
+      updateSourceName: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          source_name: event.source_name ?? context.transaction.source_name,
+          source_id: event.source_id ?? context.transaction.source_id,
+        },
+      })),
+
       resetTransaction: assign({
         transaction: {
           ...initialContext.transaction,
@@ -710,6 +750,14 @@ export const budgetMachine = createMachine(
         transaction: {
           ...context.transaction,
           suggestions: event.suggestions || [],
+        },
+      })),
+
+      setSuggestionsLoading: assign(({ context }) => ({
+        transaction: {
+          ...context.transaction,
+          isLoadingSuggestions: true,
+          suggestionsError: null,
         },
       })),
 
