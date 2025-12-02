@@ -264,7 +264,7 @@ export const transactionDetailFetchActor = fromPromise<
 export const transactionCreateActor = fromPromise<
   void,
   {
-    type: 'expense' | 'income' | 'transfer';
+    type: 'expense' | 'deposit' | 'transfer';
     data: any;
   }
 >(async ({ input }) => {

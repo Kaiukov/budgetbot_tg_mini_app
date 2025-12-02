@@ -14,7 +14,7 @@ import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
 import DestinationNameScreen from './components/DestinationNameScreen';
 import ConfirmScreen from './components/ConfirmScreen';
-import IncomeConfirmScreen from './components/IncomeConfirmScreen';
+import DepositConfirmScreen from './components/DepositConfirmScreen';
 import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
@@ -99,7 +99,7 @@ const BudgetMiniApp = () => {
     }
   }, [withdrawalScreen]);
 
-  // Get transaction data hook (supports expense and income - for income/transfer flows only)
+  // Get transaction data hook (supports expense and deposit - for deposit/transfer flows only)
   const {
     transactionData,
     setUserName,
@@ -111,9 +111,9 @@ const BudgetMiniApp = () => {
     resetTransactionData
   } = useTransactionData(transactionType) as any;
 
-  // Fetch accounts when accounts screen is opened (for expense, income, and transfer flows)
+  // Fetch accounts when accounts screen is opened (for expense, deposit, and transfer flows)
   useEffect(() => {
-    if (currentScreen === 'accounts' || currentScreen === 'income-accounts' ||
+    if (currentScreen === 'accounts' || currentScreen === 'deposit-accounts' ||
         currentScreen === 'transfer-source-accounts' || currentScreen === 'transfer-dest-accounts') {
       fetchAccounts();
     }
@@ -220,7 +220,7 @@ const BudgetMiniApp = () => {
   const fetchCategories = async () => {
     const typeParam = transactionType === 'withdrawal'
       ? 'withdrawal'
-      : transactionType === 'income'
+      : transactionType === 'deposit'
         ? 'deposit'
         : undefined;
     const typeKey = `${user_name || 'unknown'}|${typeParam || 'all'}`;
@@ -401,7 +401,7 @@ const BudgetMiniApp = () => {
     machineContext.send({ type: 'SUBMIT_TRANSACTION' });
   };
 
-  // ===== INCOME FLOW HANDLERS (useTransactionData-driven) =====
+  // ===== DEPOSIT FLOW HANDLERS (useTransactionData-driven) =====
   // Navigation handlers
   const handleNavigate = (screen: string) => {
     // For withdrawal flow, dispatch machine event
@@ -462,19 +462,19 @@ const BudgetMiniApp = () => {
       // In a real scenario, we'd have already fetched this
       setEditingTransaction({
         id: transactionId,
-        type: rawData.type === 'deposit' ? 'income' : rawData.type === 'withdrawal' ? 'withdrawal' : 'transfer',
+        type: rawData.type === 'deposit' ? 'deposit' : rawData.type === 'withdrawal' ? 'withdrawal' : 'transfer',
         date: rawData.date,
         amount: parseFloat(rawData.amount),
         currency: rawData.currency_code,
         currency_symbol: rawData.currency_symbol,
         amount_eur: rawData.foreign_amount ? parseFloat(rawData.foreign_amount) : undefined,
-        foreignCurrency: rawData.foreign_currency_code,
+        foreign_currency: rawData.foreign_currency_code,
         foreign_currency_symbol: rawData.foreign_currency_symbol,
         category_name: rawData.category_name,
         source_name: rawData.source_name,
         destination_name: rawData.destination_name,
         description: rawData.description,
-        username: rawData.tags?.[0] || 'Unknown',
+        user_name: rawData.tags?.[0] || 'Unknown',
         journal_id: rawData.transaction_journal_id,
       });
       setCurrentScreen('transaction-edit');
@@ -510,7 +510,7 @@ const BudgetMiniApp = () => {
     if (machineContext.state.matches({ ready: 'withdrawalFlow' })) {
       return () => machineContext.send({ type: 'NAVIGATE_BACK' });
     }
-    if (machineContext.state.matches({ ready: 'incomeFlow' })) {
+    if (machineContext.state.matches({ ready: 'depositFlow' })) {
       return () => machineContext.send({ type: 'NAVIGATE_BACK' });
     }
     if (machineContext.state.matches({ ready: 'transferFlow' })) {
@@ -530,14 +530,14 @@ const BudgetMiniApp = () => {
           resetTransactionData();
           setCurrentScreen('home');
         };
-      case 'income-accounts':
+      case 'deposit-accounts':
         return () => {
           resetTransactionData();
           setTransactionType('withdrawal');
           setCurrentScreen('home');
         };
       case 'amount':
-        return () => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts');
+        return () => setCurrentScreen(transactionType === 'deposit' ? 'deposit-accounts' : 'accounts');
       case 'category':
         return () => setCurrentScreen('amount');
       case 'comment':
@@ -752,7 +752,7 @@ const BudgetMiniApp = () => {
         />
       )}
 
-      {/* INCOME FLOW - useTransactionData-driven (legacy) */}
+      {/* DEPOSIT FLOW - useTransactionData-driven (legacy) */}
       {currentScreen === 'accounts' && (
         <AccountsScreen
           accounts={accounts}
@@ -768,7 +768,7 @@ const BudgetMiniApp = () => {
         />
       )}
 
-      {currentScreen === 'income-accounts' && (
+      {currentScreen === 'deposit-accounts' && (
         <AccountsScreen
           accounts={accounts}
           accountsLoading={accountsLoading}
@@ -780,7 +780,7 @@ const BudgetMiniApp = () => {
             setCurrentScreen('home');
           }}
           onSelectAccount={(accountName) => {
-            setTransactionType('income'); // Set transaction type to income
+            setTransactionType('deposit'); // Set transaction type to deposit
             handleSelectAccount(accountName);
           }}
           onRetry={fetchAccounts}
@@ -793,7 +793,7 @@ const BudgetMiniApp = () => {
           amount={transactionData.amount}
           transactionData={transactionData}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen(transactionType === 'income' ? 'income-accounts' : 'accounts')}
+          onBack={() => setCurrentScreen(transactionType === 'deposit' ? 'deposit-accounts' : 'accounts')}
           onAmountChange={handleAmountChange}
           onNext={() => setCurrentScreen('category')}
         />
@@ -851,8 +851,8 @@ const BudgetMiniApp = () => {
         />
       )}
 
-      {currentScreen === 'confirm' && transactionType === 'income' && (
-        <IncomeConfirmScreen
+      {currentScreen === 'confirm' && transactionType === 'deposit' && (
+        <DepositConfirmScreen
           account_name={transactionData.account_name}
           amount={transactionData.amount}
           budget_name={transactionData.budget_name}

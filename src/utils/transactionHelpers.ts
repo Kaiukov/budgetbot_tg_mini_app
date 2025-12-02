@@ -27,18 +27,18 @@ export function formatTransactionAmount(amount: number, currency: string): strin
 
 /**
  * Get transaction icon information based on type
- * @param type - Transaction type ('income', 'withdrawal', 'transfer')
+ * @param type - Transaction type ('deposit', 'withdrawal', 'transfer')
  * @returns Object with icon info
  */
-export function getTransactionIcon(type: 'income' | 'withdrawal' | 'transfer'): {
+export function getTransactionIcon(type: 'deposit' | 'withdrawal' | 'transfer'): {
   name: string;
   color: string;
   bgColor: string;
 } {
   switch (type) {
-    case 'income':
+    case 'deposit':
       return {
-        name: 'income',
+        name: 'deposit',
         color: '#10B981', // green
         bgColor: '#10B98120',
       };
@@ -70,8 +70,8 @@ export function getTransactionIcon(type: 'income' | 'withdrawal' | 'transfer'): 
  */
 export function getTransactionLabel(transaction: DisplayTransaction): string {
   switch (transaction.type) {
-    case 'income':
-      return transaction.destination_name || 'Income';
+    case 'deposit':
+      return transaction.destination_name || 'Deposit';
     case 'withdrawal':
       // If destination or category is "Fee", display as "Fee"
       if (transaction.destination_name === 'Fee' || transaction.category_name === 'Fee') {
@@ -92,7 +92,7 @@ export function getTransactionLabel(transaction: DisplayTransaction): string {
  */
 export function getTransactionSecondaryLabel(transaction: DisplayTransaction): string {
   switch (transaction.type) {
-    case 'income':
+    case 'deposit':
       return transaction.description || 'No comment';
     case 'withdrawal':
       return transaction.source_name || 'Unknown Account';
@@ -196,7 +196,7 @@ export function formatTransactionForDisplay(transaction: DisplayTransaction): {
   amount_eur?: string;
   date: string;
   time: string;
-  type: 'income' | 'withdrawal' | 'transfer';
+  type: 'deposit' | 'withdrawal' | 'transfer';
   icon: ReturnType<typeof getTransactionIcon>;
 } {
   return {

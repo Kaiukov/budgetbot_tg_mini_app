@@ -124,9 +124,9 @@ export function buildWithdrawalDescription(
 }
 
 /**
- * Build description string for income transactions
+ * Build description string for deposit transactions
  */
-export function buildIncomeDescription(
+export function buildDepositDescription(
   category: string,
   account: string,
   amount: string | number,
@@ -134,7 +134,7 @@ export function buildIncomeDescription(
   comment?: string,
   amount_eur?: string | number
 ): string {
-  let baseDesc = `${category} income to ${account} ${amount} ${currency}`;
+  let baseDesc = `${category} deposit to ${account} ${amount} ${currency}`;
 
   if (comment) {
     baseDesc += ` Comment: ${comment}`;

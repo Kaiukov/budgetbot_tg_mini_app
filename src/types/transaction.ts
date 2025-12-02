@@ -91,7 +91,7 @@ export interface FireflyTransactionResponse {
  */
 export interface DisplayTransaction {
   id: string;
-  type: 'income' | 'withdrawal' | 'transfer';
+  type: 'deposit' | 'withdrawal' | 'transfer';
   date: string;
 
   // Primary amount info

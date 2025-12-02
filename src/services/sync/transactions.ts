@@ -8,7 +8,7 @@
 import { apiClient } from './apiClient';
 import {
   type WithdrawalTransactionData,
-  type IncomeTransactionData,
+  type DepositTransactionData,
   type TransferTransactionData,
   type FireflyCreateTransactionRequest,
   type FireflyTransactionPayload,
@@ -22,6 +22,7 @@ import {
   formatAmount,
   cleanCategoryName,
   buildWithdrawalDescription,
+  buildDepositDescription,
   buildTransferDescription,
   buildTransactionNotes,
   validateAmount,
@@ -75,7 +76,7 @@ function buildTransactionRequest(payload: FireflyTransactionPayload): FireflyCre
  * Coordinates transaction creation with optional verification
  */
 export async function addTransaction(
-  body: WithdrawalTransactionData | IncomeTransactionData | TransferTransactionData,
+  body: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData,
   transactionType: TransactionType | string,
   enableVerification: boolean = true
 ): Promise<TransactionResult> {
@@ -135,8 +136,8 @@ export async function addTransaction(
       case TransactionType.WITHDRAWAL:
         result = await handleWithdrawalTransaction(body as WithdrawalTransactionData);
         break;
-      case TransactionType.INCOME:
-        result = await handleIncomeTransaction(body as IncomeTransactionData);
+      case TransactionType.DEPOSIT:
+        result = await handleDepositTransaction(body as DepositTransactionData);
         break;
       case TransactionType.TRANSFER:
         result = await handleTransferTransaction(body as TransferTransactionData);
@@ -340,9 +341,9 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
 }
 
 /**
- * Handle income transactions (EUR and non-EUR)
+ * Handle deposit transactions (EUR and non-EUR)
  */
-async function handleIncomeTransaction(body: IncomeTransactionData): Promise<TransactionResult> {
+async function handleDepositTransaction(body: DepositTransactionData): Promise<TransactionResult> {
   try {
     // Validate amount
     if (!validateAmount(body.amount)) {
@@ -353,25 +354,25 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
-    const externalId = generateExternalId(TransactionType.INCOME, body.user_name);
+    const externalId = generateExternalId(TransactionType.DEPOSIT, body.user_name);
 
     // Determine currencies
     const accountCurrency = body.account_currency || 'EUR';
     const transactionCurrency = body.currency || accountCurrency;
 
     if (transactionCurrency === 'EUR') {
-      // EUR income transaction
+      // EUR deposit transaction
       const cleanCategory = cleanCategoryName(body.category_name);
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
+        description: buildDepositDescription(cleanCategory, body.account_name, body.amount, body.currency, body.comment),
         currency_code: accountCurrency,
         category_name: cleanCategory,
         destination_name: body.account_name,
         notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency}`,
+          `Deposit ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency}`,
           body.comment,
           body.user_name
         ),
@@ -381,7 +382,7 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending EUR income transaction for user ${body.user_name}`, transactionData);
+      logTransactionOperation('info', `Sending EUR deposit transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -397,7 +398,7 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
       return [true, response || {}];
     } else {
-      // Non-EUR income - convert to EUR
+      // Non-EUR deposit - convert to EUR
       const amount_eur = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
 
       if (amount_eur === null) {
@@ -410,14 +411,14 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR) Comment: ${body.comment || ''}`,
+        description: buildDepositDescription(cleanCategory, body.account_name, body.amount, body.currency, body.comment, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
         destination_name: body.account_name,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
         notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
+          `Deposit ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
           body.comment,
           body.user_name
         ),
@@ -427,7 +428,7 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
 
       const transactionData = buildTransactionRequest(payload);
 
-      logTransactionOperation('info', `Sending non-EUR income transaction for user ${body.user_name}`, transactionData);
+      logTransactionOperation('info', `Sending non-EUR deposit transaction for user ${body.user_name}`, transactionData);
 
       const response = await apiClient.request<Record<string, unknown>>(
         '/api/v1/transactions',
@@ -457,7 +458,7 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
           ? err.message
           : err;
 
-    logTransactionOperation('error', `Error handling income transaction: ${safeStringify(errorPayload)}`);
+    logTransactionOperation('error', `Error handling deposit transaction: ${safeStringify(errorPayload)}`);
     return [false, { error: errorPayload }];
   }
 }

@@ -157,9 +157,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-xs font-medium text-white text-center">Withdrawal</span>
           </div>
 
-          {/* Income Card */}
+          {/* Deposit Card */}
           <div
-            onClick={() => onNavigate('income-accounts')}
+            onClick={() => onNavigate('deposit-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)'
@@ -173,7 +173,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             >
               <TrendingUp size={20} style={{ color: '#10B981' }} />
             </div>
-            <span className="text-xs font-medium text-white text-center">Income</span>
+            <span className="text-xs font-medium text-white text-center">Deposit</span>
           </div>
 
           {/* Transfer Card */}

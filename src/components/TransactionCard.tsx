@@ -24,7 +24,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
   // Select appropriate icon component
   let IconComponent: React.FC<any>;
   switch (displayData.type) {
-    case 'income':
+    case 'deposit':
       IconComponent = TrendingUp;
       break;
     case 'withdrawal':
@@ -93,7 +93,7 @@ const TransactionCard: React.FC<TransactionCardProps> = ({ transaction, onClick 
           className="text-sm font-semibold"
           style={{
             color:
-              displayData.type === 'income'
+              displayData.type === 'deposit'
                 ? '#10B981'
                 : displayData.type === 'withdrawal'
                   ? '#EF4444'

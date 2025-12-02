@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft } from 'lucide-react';
-import { addTransaction, type IncomeTransactionData } from '../services/sync/index';
+import { addTransaction, type DepositTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
-interface IncomeConfirmScreenProps {
+interface DepositConfirmScreenProps {
   account_name: string;
   amount: string;
   budget_name: string;
@@ -20,7 +20,7 @@ interface IncomeConfirmScreenProps {
   onSuccess: () => void;
 }
 
-const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
+const DepositConfirmScreen: React.FC<DepositConfirmScreenProps> = ({
   account_name,
   amount,
   budget_name,
@@ -48,7 +48,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
     setSubmitMessage(null);
 
     try {
-      console.log('💰 Starting income transaction submission:', {
+      console.log('💰 Starting deposit transaction submission:', {
         account_name,
         amount,
         budget_name,
@@ -57,8 +57,8 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
 
       const amountValue = parseFloat(amount);
 
-      // Build income transaction payload
-      const transactionPayload: IncomeTransactionData = {
+      // Build deposit transaction payload
+      const transactionPayload: DepositTransactionData = {
         account_name: transactionData.account_name,
         account_id: transactionData.account_id,
         account_currency: transactionData.account_currency || 'EUR',
@@ -76,27 +76,27 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
         ...(budget_name && { budget_name })
       };
 
-      console.log('📝 Income transaction payload built:', transactionPayload);
+      console.log('📝 Deposit transaction payload built:', transactionPayload);
 
-      // Submit to Firefly as income
-      const [success, response] = await addTransaction(transactionPayload, 'income', true);
+      // Submit to Firefly as deposit
+      const [success, response] = await addTransaction(transactionPayload, 'deposit', true);
 
       if (success) {
-        console.log('✅ Income transaction submitted successfully:', response);
+        console.log('✅ Deposit transaction submitted successfully:', response);
 
         // Proactively refresh transaction cache
         await refreshHomeTransactionCache();
 
         // Show Telegram alert for success
-        telegramService.showAlert('✅ Income saved successfully!', () => {
+        telegramService.showAlert('✅ Deposit saved successfully!', () => {
           onSuccess();
           onConfirm();
         });
       } else {
-        console.error('❌ Income transaction submission failed:', response);
+        console.error('❌ Deposit transaction submission failed:', response);
         const errorMessage = typeof response === 'object' && response !== null && 'error' in response
           ? (response as { error: string }).error
-          : 'Failed to save income transaction';
+          : 'Failed to save deposit transaction';
 
         // Show Telegram alert for error
         telegramService.showAlert(`❌ Error: ${errorMessage}`);
@@ -107,7 +107,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
         });
       }
     } catch (error) {
-      console.error('💥 Income transaction submission error:', error);
+      console.error('💥 Deposit transaction submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
       // Show Telegram alert for error
@@ -139,7 +139,7 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
             <div className="text-3xl font-bold text-green-500 mb-1">
               +{getCurrencySymbol(transactionData.account_currency)}{amount}
             </div>
-            <p className="text-xs text-gray-400">Income</p>
+            <p className="text-xs text-gray-400">Deposit</p>
           </div>
 
           <div className="space-y-0">
@@ -210,4 +210,4 @@ const IncomeConfirmScreen: React.FC<IncomeConfirmScreenProps> = ({
   );
 };
 
-export default IncomeConfirmScreen;
+export default DepositConfirmScreen;

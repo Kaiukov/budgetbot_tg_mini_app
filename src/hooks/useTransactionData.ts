@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { extractBudgetName } from '../services/sync/utils';
 
-export type TransactionType = 'withdrawal' | 'income' | 'transfer';
+export type TransactionType = 'withdrawal' | 'deposit' | 'transfer';
 
 export interface TransactionData {
   // User identification
@@ -51,7 +51,7 @@ const initialTransactionData: TransactionData = {
 /**
  * Generic transaction data hook
  * Replaces useExpenseData with type-aware version
- * Supports withdrawal, income, and transfer transaction types
+ * Supports withdrawal, deposit, and transfer transaction types
  */
 export const useTransactionData = (type: TransactionType = 'withdrawal') => {
   const [transactionData, setTransactionData] = useState<TransactionData>(initialTransactionData);

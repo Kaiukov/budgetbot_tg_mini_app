@@ -4,7 +4,7 @@
 
 export enum TransactionType {
   WITHDRAWAL = 'withdrawal',
-  INCOME = 'income',
+  DEPOSIT = 'deposit',
   TRANSFER = 'transfer',
 }
 
@@ -39,9 +39,9 @@ export interface WithdrawalTransactionData extends BaseTransactionData {
 }
 
 /**
- * Income-specific transaction data
+ * Deposit-specific transaction data
  */
-export interface IncomeTransactionData extends BaseTransactionData {
+export interface DepositTransactionData extends BaseTransactionData {
   category_id?: string | number;
   category_name: string;
   budget_name?: string;

@@ -148,7 +148,7 @@ export const budgetMachine = createMachine(
                 target: 'withdrawalFlow',
                 actions: 'resetTransaction',
               },
-              NAVIGATE_INCOME_ACCOUNTS: 'incomeFlow',
+              NAVIGATE_DEPOSIT_ACCOUNTS: 'depositFlow',
               NAVIGATE_TRANSFER_SOURCE: 'transferFlow',
               NAVIGATE_TRANSACTIONS: 'transactions',
               NAVIGATE_DEBUG: 'debug',
@@ -255,7 +255,7 @@ export const budgetMachine = createMachine(
             },
           },
 
-          incomeFlow: {
+          depositFlow: {
             initial: 'accounts',
             on: {
               NAVIGATE_HOME: '#budget.ready.home',
@@ -282,7 +282,7 @@ export const budgetMachine = createMachine(
               category: {
                 entry: 'setCategoriesLoading',
                 invoke: {
-                  id: 'fetchIncomeCategoriesOnNavigate',
+                  id: 'fetchDepositCategoriesOnNavigate',
                   src: categoriesFetchActor,
                   input: ({ context }) => {
                     const maybeUser = context.user.user_name;

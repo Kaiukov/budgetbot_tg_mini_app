@@ -217,7 +217,7 @@ export type InitEvent =
 export type NavigationEvent =
   | { type: 'NAVIGATE_HOME' }
   | { type: 'NAVIGATE_WITHDRAWAL_ACCOUNTS' }
-  | { type: 'NAVIGATE_INCOME_ACCOUNTS' }
+  | { type: 'NAVIGATE_DEPOSIT_ACCOUNTS' }
   | { type: 'NAVIGATE_AMOUNT' }
   | { type: 'NAVIGATE_CATEGORY' }
   | { type: 'NAVIGATE_COMMENT' }
