@@ -6,7 +6,7 @@
 import { fromPromise } from 'xstate';
 import type { BudgetUser } from './types';
 import telegramService from '../services/telegram';
-import { syncService, type AccountUsage, type CategoryUsage } from '../services/sync';
+import { syncService, type AccountUsage, type CategoryUsage, type SourceSuggestion } from '../services/sync';
 import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
@@ -194,6 +194,42 @@ export const categoriesFetchActor = fromPromise<
     } catch (error) {
       clearTimeout(timer);
       console.error('❌ Error in categories fetch:', error);
+      reject(error);
+    }
+  });
+});
+
+// ============================================================================
+// Deposit Source Name Fetch Actor
+// ============================================================================
+
+export const depositSourceNameFetchActor = fromPromise<
+  SourceSuggestion[],
+  { user_name?: string; category_id: number; timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || 30000; // 30s timeout
+
+  return new Promise<SourceSuggestion[]>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Fetch source names timeout after 30 seconds'));
+    }, timeout);
+
+    try {
+      debugLog('🔄 Fetching source names for user:', input?.user_name, 'category_id:', input?.category_id);
+      syncService.getSourceNameUsage(input?.user_name, input?.category_id)
+        .then((response) => {
+          clearTimeout(timer);
+          debugLog('✅ Source names fetched:', response.get_source_name_usage.length);
+          resolve(response.get_source_name_usage);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          console.error('❌ Failed to fetch source names:', error);
+          reject(error);
+        });
+    } catch (error) {
+      clearTimeout(timer);
+      console.error('❌ Error in source names fetch:', error);
       reject(error);
     }
   });
