@@ -14,7 +14,6 @@ import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
 import DestinationNameScreen from './components/DestinationNameScreen';
 import ConfirmScreen from './components/ConfirmScreen';
-import SourceNameScreen from './components/SourceNameScreen';
 import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
