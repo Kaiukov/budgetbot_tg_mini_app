@@ -6,6 +6,7 @@ import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 import { refreshHomeTransactionCache } from './utils/cache';
 import { useBudgetMachineContext } from './context/BudgetMachineContext';
+import { validationGuards } from './machines/actions';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -708,6 +709,7 @@ const BudgetMiniApp = () => {
         <AmountScreen
           account={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
+          canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
           transactionData={{
             user_name: machineContext.context.user.user_name,
             account_name: machineContext.context.transaction.account,
@@ -856,6 +858,7 @@ const BudgetMiniApp = () => {
         <AmountScreen
           account={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
+          canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
           transactionData={{
             user_name: machineContext.context.user.user_name,
             account_name: machineContext.context.transaction.account,

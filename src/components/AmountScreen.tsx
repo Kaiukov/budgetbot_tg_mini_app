@@ -4,6 +4,7 @@ import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { gradients, cardStyles, layouts } from '../theme/dark';
+import { needsConversion, normalizeCurrency } from '../utils/currency';
 
 interface AmountScreenProps {
   account: string;
@@ -13,6 +14,7 @@ interface AmountScreenProps {
   isLoadingConversion?: boolean;
   errors?: Record<string, string>;
   isAvailable?: boolean;
+  canProceed?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
   onConversionAmountChange?: (amount: number | null) => void;
@@ -34,10 +36,12 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   onConversionAmountChange,
   onIsLoadingConversionChange,
   onClearError,
+  canProceed,
   onNext
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(propConversionAmount ?? null);
   const [isLoadingConversion, setIsLoadingConversion] = useState(propIsLoadingConversion ?? false);
+  const [conversionError, setConversionError] = useState(false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -45,8 +49,9 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     return () => telegramService.hideBackButton();
   }, [onBack]);
 
-  // Get currency code, default to empty string if not available
-  const currencyCode = transactionData.account_currency?.toUpperCase() || '';
+  // Get normalized currency code (shared with validation guards)
+  const currencyCode = normalizeCurrency(transactionData.account_currency);
+  const conversionRequired = needsConversion(currencyCode);
 
   // Fetch EUR conversion when amount or currency changes
   useEffect(() => {
@@ -55,14 +60,19 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       // 1. We have an amount
       // 2. We have a currency code
       // 3. Currency is NOT EUR (no conversion needed for same currency)
-      if (!amount || !currencyCode || currencyCode === 'EUR') {
-        if (currencyCode === 'EUR') {
+      if (!amount || !currencyCode || !conversionRequired) {
+        if (!conversionRequired) {
           console.log('💶 EUR account - no conversion needed');
         }
         setConversionAmount(null);
         onConversionAmountChange?.(null as any);
         return;
       }
+
+      // Reset state so stale conversions can't enable Next while a new lookup is running
+      setConversionAmount(null);
+      onConversionAmountChange?.(null as any);
+      setConversionError(false);
 
       setIsLoadingConversion(true);
       onIsLoadingConversionChange?.(true);
@@ -79,6 +89,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
         console.error('❌ Failed to fetch conversion:', error);
         setConversionAmount(null);
         onConversionAmountChange?.(null as any);
+        setConversionError(true);
       } finally {
         setIsLoadingConversion(false);
         onIsLoadingConversionChange?.(false);
@@ -115,13 +126,16 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
     }
   };
 
+  const isValidAmount = amount && parseFloat(amount) > 0;
+  const hasConversionResult = !conversionRequired || (conversionAmount !== null && conversionAmount !== 0);
+  const derivedNextEnabled = Boolean(isValidAmount && hasConversionResult && (!conversionRequired || !isLoadingConversion));
+  const isNextEnabled = canProceed ?? derivedNextEnabled;
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && amount && parseFloat(amount) > 0) {
+    if (e.key === 'Enter' && isNextEnabled) {
       onNext();
     }
   };
-
-  const isValidAmount = amount && parseFloat(amount) > 0;
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -169,7 +183,7 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
           </div>
 
           {/* Show EUR conversion for non-EUR currencies */}
-          {currencyCode && currencyCode !== 'EUR' && (
+          {currencyCode && conversionRequired && (
             <div className="mt-3 pt-3 border-t border-gray-700 text-center">
               {isLoadingConversion ? (
                 <p className="text-xs text-gray-500">Converting...</p>
@@ -177,14 +191,18 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
                 <p className="text-sm text-gray-400">
                   {conversionAmount.toFixed(2)} EUR
                 </p>
-              ) : null}
+              ) : conversionError ? (
+                <p className="text-xs text-red-300">Conversion unavailable, please retry</p>
+              ) : (
+                <p className="text-xs text-gray-500">Waiting for conversion…</p>
+              )}
             </div>
           )}
         </div>
 
         <button
           onClick={onNext}
-          disabled={!isValidAmount}
+          disabled={!isNextEnabled}
           className="w-full mt-4 bg-blue-500 text-white py-3 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-600 transition active:scale-98"
         >
           Next

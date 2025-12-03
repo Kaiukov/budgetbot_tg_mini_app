@@ -13,6 +13,7 @@ import type {
 } from './types';
 import { initialTransactionForm as transactionFormDefault, initialTransferForm as transferFormDefault } from './types';
 import { extractBudgetName } from '../services/sync/utils';
+import { needsConversion, normalizeCurrency } from '../utils/currency';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -472,7 +473,20 @@ export const validationGuards = {
   },
 
   canProceedFromAmountPage: (form: WithdrawalForm | DepositForm): boolean => {
-    return validateAmountPage(form) === null;
+    // First validate basic amount requirements
+    if (validateAmountPage(form) !== null) return false;
+
+    // For non-EUR currencies, require currency conversion to be complete
+    const currencyCode = normalizeCurrency(form?.account_currency);
+    if (needsConversion(currencyCode)) {
+      // Check that conversion is done (not loading) and has a result
+      // conversionAmount stores the actual conversion result from the API
+      const hasConversion = form?.conversionAmount !== null && form?.conversionAmount !== undefined && form?.conversionAmount !== 0;
+      const isStillLoading = form?.isLoadingConversion === true;
+      if (!hasConversion || isStillLoading) return false;
+    }
+
+    return true;
   },
 
   canProceedFromCategoryPage: (form: WithdrawalForm | DepositForm): boolean => {
