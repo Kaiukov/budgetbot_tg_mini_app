@@ -179,6 +179,7 @@ export const budgetMachine = createMachine(
                 on: {
                   UPDATE_CATEGORY: {
                     target: 'notes',
+                    actions: 'updateCategory',
                     guard: ({ context }) => validationGuards.canProceedFromCategoryPage(context.transaction as any),
                   },
                   NAVIGATE_BACK: 'amount',
@@ -306,6 +307,7 @@ export const budgetMachine = createMachine(
                 on: {
                   UPDATE_CATEGORY: {
                     target: 'notes',
+                    actions: 'updateCategory',
                     guard: ({ context }) => validationGuards.canProceedFromCategoryPage(context.transaction as any),
                   },
                   NAVIGATE_BACK: 'amount',
