@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Loader, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, Check, Loader, ArrowLeft, ArrowRight, Calendar } from 'lucide-react';
 import { addTransaction, type TransferTransactionData } from '../services/sync/index';
 import telegramService from '../services/telegram';
 import { getCurrencySymbol } from '../utils/currencies';
@@ -24,6 +24,17 @@ interface TransferConfirmScreenProps {
   onSuccess: () => void;
 }
 
+/**
+ * Convert ISO date to YYYY-MM-DD format for date input
+ */
+const getDateInputValue = (isoDate?: string): string => {
+  if (!isoDate) {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+  return isoDate.split('T')[0];
+};
+
 const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   sourceAccount,
   destAccount,
@@ -34,7 +45,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   exitFee,
   entryFee,
   comment,
-  user_name,
+  userName,
   isAvailable,
   onBack,
   onCancel,
@@ -43,6 +54,7 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue());
 
   // Show Telegram back button
   useEffect(() => {
@@ -61,6 +73,11 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
     setSubmitMessage(null);
 
     try {
+      // Convert date input to ISO string
+      const effectiveDateIso = dateInput
+        ? new Date(`${dateInput}T00:00:00`).toISOString()
+        : new Date().toISOString();
+
       console.log('💸 Starting transfer transaction submission:', {
         sourceAccount,
         destAccount,
@@ -68,13 +85,14 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
         entryAmount,
         exitFee,
         entryFee,
-        comment
+        comment,
+        date: effectiveDateIso
       });
 
       // Build transfer transaction payload
       const transactionPayload: TransferTransactionData = {
-        user_name: user_name || 'unknown',
-        date: new Date().toISOString(),
+        user_name: userName || 'unknown',
+        date: effectiveDateIso,
         exit_account: sourceAccount,
         entry_account: destAccount,
         exit_amount: parseFloat(exitAmount),
@@ -190,9 +208,20 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
               <span className="text-xs text-gray-400">Comment:</span>
               <span className="text-xs font-medium text-white text-right max-w-[60%]">{comment || 'No comment'}</span>
             </div>
-            <div className="flex justify-between py-2.5">
-              <span className="text-xs text-gray-400">Date:</span>
-              <span className="text-xs font-medium text-white">{new Date().toLocaleDateString('en-US')}</span>
+
+            {/* Date - Editable */}
+            <div className="py-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Calendar size={14} className="text-purple-400 flex-shrink-0" />
+                <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Date</span>
+              </div>
+              <input
+                type="date"
+                aria-label="Transfer date"
+                value={dateInput}
+                onChange={(e) => setDateInput(e.target.value)}
+                className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-full max-w-[140px]"
+              />
             </div>
           </div>
         </div>
