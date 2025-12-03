@@ -89,21 +89,21 @@ export async function addTransaction(
       // Build normalized payload with consistent field ordering across all transaction types
       const normalized: Record<string, any> = {
         transactionType,
-        user_name: (body as any).user_name || (body as any).username || 'unknown',
-        account_name: (body as any).account_name || (body as any).account || '',
+        user_name: (body as any).user_name || 'unknown',
+        account_name: (body as any).account_name || '',
         account_id: (body as any).account_id ?? '',
-        account_currency: (body as any).account_currency || (body as any).currency || '',
+        account_currency: (body as any).account_currency || '',
         amount: (body as any).amount ?? '',
         amount_eur: (body as any).amount_eur ?? '',
         category_id: (body as any).category_id ?? '',
-        category_name: (body as any).category_name || (body as any).category || '',
+        category_name: (body as any).category_name || '',
       };
 
       // Add transaction-type-specific fields in consistent position (after category_name)
       if (normalizedType === 'withdrawal') {
         // Withdrawals use destination fields
         normalized.destination_id = (body as any).destination_id ?? '';
-        normalized.destination_name = (body as any).destination_name || (body as any).comment || '';
+        normalized.destination_name = (body as any).destination_name || '';
         normalized.budget_name = (body as any).budget_name ?? '';
       } else if (normalizedType === 'deposit') {
         // Deposits use source fields (not destination)
@@ -252,25 +252,26 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
     if (transactionCurrency === 'EUR') {
       // EUR withdrawal transaction
       const cleanCategory = cleanCategoryName(body.category_name);
-      const accountName = body.account_name || body.account || 'Unknown Account';
+      const accountName = body.account_name || 'Unknown Account';
+      const destinationName = body.destination_name || 'Withdrawal';
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency),
+        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, transactionCurrency),
         currency_code: transactionCurrency,
         category_name: cleanCategory,
         source_name: accountName,
-        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
+        destination_name: destinationName,
         notes: providedNotes || buildTransactionNotes(
           `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency}`,
-          (body as any).destination_name || (body as any).comment,
+          destinationName,
           body.user_name
         ),
         tags: [body.user_name],
         external_id: externalId,
         reconciled: false,
-        budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
+        budget_name: body.budget_name,
       };
 
       const transactionData = buildTransactionRequest(payload);
@@ -300,27 +301,28 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
       }
 
       const cleanCategory = cleanCategoryName(body.category_name);
-      const accountName = body.account_name || body.account || 'Unknown Account';
+      const accountName = body.account_name || 'Unknown Account';
+      const destinationName = body.destination_name || 'Withdrawal';
       const payload: FireflyTransactionPayload = {
         type: 'withdrawal',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency, amount_eur),
+        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, transactionCurrency, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
         source_name: accountName,
-        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
+        destination_name: destinationName,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
         notes: providedNotes || buildTransactionNotes(
           `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
-          (body as any).destination_name || (body as any).comment,
+          destinationName,
           body.user_name
         ),
         tags: [body.user_name],
         external_id: externalId,
         reconciled: false,
-        budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
+        budget_name: body.budget_name,
       };
 
       const transactionData = buildTransactionRequest(payload);
@@ -379,22 +381,25 @@ async function handleDepositTransaction(body: DepositTransactionData): Promise<T
     // Determine currencies
     const accountCurrency = body.account_currency || 'EUR';
     const transactionCurrency = body.currency || accountCurrency;
+    const providedNotes = typeof body.notes === 'string' ? body.notes.trim() : '';
 
     if (transactionCurrency === 'EUR') {
       // EUR deposit transaction
       const cleanCategory = cleanCategoryName(body.category_name);
+      const sourceName = body.source_name || 'External Source';
+      const accountName = body.account_name || 'Unknown Account';
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildDepositDescription(cleanCategory, body.source_name || body.account_name, body.amount, body.currency, body.comment),
+        description: buildDepositDescription(cleanCategory, sourceName, body.amount, transactionCurrency, providedNotes),
         currency_code: accountCurrency,
         category_name: cleanCategory,
-        source_name: body.source_name || 'External Source',
-        destination_name: body.account_name,
-        notes: buildTransactionNotes(
-          `Deposit ${cleanCategory} from ${body.source_name || 'external source'} to ${body.account_name} ${body.amount} ${body.currency}`,
-          body.comment,
+        source_name: sourceName,
+        destination_name: accountName,
+        notes: providedNotes || buildTransactionNotes(
+          `Deposit ${cleanCategory} from ${sourceName} to ${accountName} ${body.amount} ${body.currency}`,
+          providedNotes,
           body.user_name
         ),
         tags: [body.user_name],
@@ -428,20 +433,22 @@ async function handleDepositTransaction(body: DepositTransactionData): Promise<T
       }
 
       const cleanCategory = cleanCategoryName(body.category_name);
+      const sourceName = body.source_name || 'External Source';
+      const accountName = body.account_name || 'Unknown Account';
       const payload: FireflyTransactionPayload = {
         type: 'deposit',
         date: dateIso,
         amount: formatAmount(body.amount),
-        description: buildDepositDescription(cleanCategory, body.source_name || body.account_name, body.amount, body.currency, body.comment, amount_eur),
+        description: buildDepositDescription(cleanCategory, sourceName, body.amount, transactionCurrency, providedNotes, amount_eur),
         currency_code: accountCurrency,
         category_name: cleanCategory,
-        source_name: body.source_name || 'External Source',
-        destination_name: body.account_name,
+        source_name: sourceName,
+        destination_name: accountName,
         foreign_currency_code: 'EUR',
         foreign_amount: formatAmount(amount_eur),
-        notes: buildTransactionNotes(
-          `Deposit ${cleanCategory} from ${body.source_name || 'external source'} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
-          body.comment,
+        notes: providedNotes || buildTransactionNotes(
+          `Deposit ${cleanCategory} from ${sourceName} to ${accountName} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
+          providedNotes,
           body.user_name
         ),
         tags: [body.user_name],
