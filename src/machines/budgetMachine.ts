@@ -151,6 +151,9 @@ export const budgetMachine = createMachine(
                   SET_VALIDATION_ERROR: {
                     actions: 'setWithdrawalValidationError',
                   },
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
+                  },
                 },
               },
               category: {
@@ -206,6 +209,9 @@ export const budgetMachine = createMachine(
                   SET_VALIDATION_ERROR: {
                     actions: 'setWithdrawalValidationError',
                   },
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
+                  },
                 },
               },
               confirm: {
@@ -224,6 +230,9 @@ export const budgetMachine = createMachine(
                     actions: 'setSubmitMessage',
                   },
                   NAVIGATE_BACK: 'notes',
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
+                  },
                 },
               },
             },
@@ -268,6 +277,9 @@ export const budgetMachine = createMachine(
                   NAVIGATE_BACK: 'accounts',
                   SET_VALIDATION_ERROR: {
                     actions: 'setDepositValidationError',
+                  },
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
                   },
                 },
               },
@@ -346,6 +358,9 @@ export const budgetMachine = createMachine(
                   SET_VALIDATION_ERROR: {
                     actions: 'setDepositValidationError',
                   },
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
+                  },
                 },
               },
               confirm: {
@@ -364,6 +379,9 @@ export const budgetMachine = createMachine(
                     actions: 'setSubmitMessage',
                   },
                   NAVIGATE_BACK: 'notes',
+                  CLEAR_VALIDATION_ERROR: {
+                    actions: 'clearTransactionValidationError',
+                  },
                 },
               },
             },
@@ -416,6 +434,9 @@ export const budgetMachine = createMachine(
                   NAVIGATE_BACK: 'destAccounts',
                   SET_TRANSFER_VALIDATION_ERROR: {
                     actions: 'setTransferValidationError',
+                  },
+                  CLEAR_TRANSFER_VALIDATION_ERROR: {
+                    actions: 'clearTransferValidationError',
                   },
                 },
               },

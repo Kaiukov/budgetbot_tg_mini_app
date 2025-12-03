@@ -58,6 +58,7 @@ interface ConfirmScreenProps {
   transactionData: TransactionData;
   isSubmitting?: boolean;
   submitMessage?: { type: 'success' | 'error'; text: string } | null;
+  errors?: Record<string, string>;
   isAvailable?: boolean;
   onBack: () => void;
   onCancel: () => void;
@@ -67,6 +68,7 @@ interface ConfirmScreenProps {
   onSubmitMessageChange?: (message: { type: 'success' | 'error'; text: string } | null) => void;
   onDateChange?: (isoDate: string) => void;
   onNotesChange?: (notes: string) => void;
+  onClearError?: () => void;
 }
 
 const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
@@ -77,6 +79,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   transactionData,
   isSubmitting: propIsSubmitting,
   submitMessage: propSubmitMessage,
+  errors = {},
   isAvailable,
   onBack,
   onCancel,
@@ -85,7 +88,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
   onIsSubmittingChange,
   onSubmitMessageChange,
   onDateChange,
-  onNotesChange
+  onNotesChange,
+  onClearError
 }) => {
   const toLocalDateInput = (value: Date) => {
     const tzOffsetMs = value.getTimezoneOffset() * 60000;
@@ -159,12 +163,20 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
     setDateInput(value);
     const isoValue = value ? new Date(`${value}T00:00:00`).toISOString() : '';
     onDateChange?.(isoValue);
+    // Clear validation error when user sets a date
+    if (value && onClearError) {
+      onClearError();
+    }
   };
 
   const handleNotesChange = (value: string) => {
     if (!notesTouched) setNotesTouched(true);
     setNotesInput(value);
     onNotesChange?.(value);
+    // Clear validation error when user types notes (notes can be empty, so any input clears error)
+    if (onClearError) {
+      onClearError();
+    }
   };
 
   const handleConfirmTransaction = async () => {
@@ -335,6 +347,13 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = ({
       </div>
 
       <div className={layouts.content}>
+        {/* Validation Error */}
+        {errors.validation && (
+          <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors.validation}</p>
+          </div>
+        )}
+
         {/* Amount Card - Prominent Display */}
         <div className={`mb-4 p-3 rounded-lg ${amountBgClass} shadow-lg`}>
           <p className={`text-xs ${amountLabelColorClass} uppercase tracking-wider font-semibold mb-1`}>Amount</p>

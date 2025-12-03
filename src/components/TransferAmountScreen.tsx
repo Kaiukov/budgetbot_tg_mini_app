@@ -11,11 +11,13 @@ interface TransferAmountScreenProps {
   destCurrency: string;
   exitAmount: string;
   entryAmount: string;
+  errors?: Record<string, string>;
   isAvailable?: boolean;
   onBack: () => void;
   onExitAmountChange: (value: string) => void;
   onEntryAmountChange: (value: string) => void;
   onNext: () => void;
+  onClearError?: () => void;
 }
 
 const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
@@ -25,11 +27,13 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   destCurrency,
   exitAmount,
   entryAmount,
+  errors = {},
   isAvailable,
   onBack,
   onExitAmountChange,
   onEntryAmountChange,
-  onNext
+  onNext,
+  onClearError
 }) => {
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
   const [suggestedAmount, setSuggestedAmount] = useState<string | null>(null);
@@ -96,6 +100,11 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
         value = '0' + value;
       }
       onExitAmountChange(value);
+
+      // Clear validation error when user types a valid exit amount
+      if (value && parseFloat(value) > 0 && onClearError) {
+        onClearError();
+      }
     }
   };
 
@@ -117,6 +126,11 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
         value = '0' + value;
       }
       onEntryAmountChange(value);
+
+      // Clear validation error when user types a valid entry amount
+      if (value && parseFloat(value) > 0 && onClearError) {
+        onClearError();
+      }
     }
   };
 
@@ -150,6 +164,13 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
       </div>
 
       <div className={layouts.contentWide}>
+        {/* Validation Error */}
+        {errors.validation && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors.validation}</p>
+          </div>
+        )}
+
         {/* Exit Amount (From Account) */}
         <div className={`${cardStyles.container} mb-2`}>
           <p className="text-xs text-gray-400 mb-2">From: {sourceAccount}</p>

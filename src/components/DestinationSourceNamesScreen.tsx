@@ -23,10 +23,12 @@ interface DestinationSourceNamesScreenProps {
   suggestions?: any[];
   isLoadingSuggestions?: boolean;
   suggestionsError?: string | null;
+  errors?: Record<string, string>;
   isAvailable?: boolean;
   onSuggestionsChange?: (suggestions: any[]) => void;
   onLoadingSuggestionsChange?: (isLoading: boolean) => void;
   onSuggestionsErrorChange?: (error: string | null) => void;
+  onClearError?: () => void;
 }
 
 const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> = ({
@@ -37,12 +39,14 @@ const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> 
   suggestions: propSuggestions,
   isLoadingSuggestions: propIsLoadingSuggestions,
   suggestionsError: propSuggestionsError,
+  errors = {},
   isAvailable,
   onBack,
   onNameChange,
   onSuggestionsChange,
   onLoadingSuggestionsChange,
   onSuggestionsErrorChange,
+  onClearError,
   onNext
 }) => {
   const { user_name } = useTelegramUser();
@@ -196,6 +200,13 @@ const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> 
       </div>
 
       <div className={layouts.content}>
+        {/* Validation Error */}
+        {errors.validation && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors.validation}</p>
+          </div>
+        )}
+
         <div>
           <label className="text-xs text-gray-400 mb-2 block">
             {headerText} name
@@ -203,7 +214,14 @@ const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> 
           <input
             type="text"
             value={name}
-            onChange={e => onNameChange(0, e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              onNameChange(0, value);
+              // Clear validation error when user types a non-empty name
+              if (value.trim() && onClearError) {
+                onClearError();
+              }
+            }}
             placeholder={inputPlaceholder}
             className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg text-sm border border-gray-700 focus:border-blue-500 focus:outline-none mb-3"
           />

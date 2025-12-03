@@ -11,11 +11,13 @@ interface AmountScreenProps {
   transactionData: TransactionData;
   conversionAmount?: number | null;
   isLoadingConversion?: boolean;
+  errors?: Record<string, string>;
   isAvailable?: boolean;
   onBack: () => void;
   onAmountChange: (value: string) => void;
   onConversionAmountChange?: (amount: number | null) => void;
   onIsLoadingConversionChange?: (isLoading: boolean) => void;
+  onClearError?: () => void;
   onNext: () => void;
 }
 
@@ -25,11 +27,13 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
   transactionData,
   conversionAmount: propConversionAmount,
   isLoadingConversion: propIsLoadingConversion,
+  errors = {},
   isAvailable,
   onBack,
   onAmountChange,
   onConversionAmountChange,
   onIsLoadingConversionChange,
+  onClearError,
   onNext
 }) => {
   const [conversionAmount, setConversionAmount] = useState<number | null>(propConversionAmount ?? null);
@@ -103,6 +107,11 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
         value = '0' + value;
       }
       onAmountChange(value);
+
+      // Clear validation error when user types a valid amount
+      if (value && parseFloat(value) > 0 && onClearError) {
+        onClearError();
+      }
     }
   };
 
@@ -126,6 +135,13 @@ const AmountScreen: React.FC<AmountScreenProps> = ({
       </div>
 
       <div className={layouts.contentWide}>
+        {/* Validation Error */}
+        {errors.validation && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors.validation}</p>
+          </div>
+        )}
+
         <div className={`${cardStyles.container} mb-3`}>
           <p className="text-xs text-gray-400 mb-2">Account: {account}</p>
           <div className="text-center overflow-x-auto">

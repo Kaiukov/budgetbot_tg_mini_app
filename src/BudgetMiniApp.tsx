@@ -724,11 +724,13 @@ const BudgetMiniApp = () => {
           } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onAmountChange={handleWithdrawalAmountChange}
           onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount_eur: amount })}
           onIsLoadingConversionChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_CONVERSION', isLoading })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_CATEGORY' })}
         />
       )}
@@ -751,7 +753,7 @@ const BudgetMiniApp = () => {
           transactionType="withdrawal"
           name={
             (machineContext.context.transaction as any).destination_name ||
-            machineContext.context.transaction.comment ||
+            (machineContext.context.transaction as any).comment ||
             ''
           }
           category_name={machineContext.context.transaction.category}
@@ -759,12 +761,14 @@ const BudgetMiniApp = () => {
           suggestions={(machineContext.context.transaction as any).suggestions || []}
           isLoadingSuggestions={(machineContext.context.transaction as any).isLoadingSuggestions || false}
           suggestionsError={(machineContext.context.transaction as any).suggestionsError || null}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onNameChange={handleWithdrawalDestinationChange}
           onSuggestionsChange={(suggestions) => machineContext.send({ type: 'SET_SUGGESTIONS', suggestions })}
           onLoadingSuggestionsChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_SUGGESTIONS', isLoading })}
           onSuggestionsErrorChange={(error) => machineContext.send({ type: 'SET_SUGGESTIONS_ERROR', error })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_CONFIRM' })}
         />
       )}
@@ -777,7 +781,7 @@ const BudgetMiniApp = () => {
           budget_name={(machineContext.context.transaction as any).budget_name || ''}
           destination_name={
             (machineContext.context.transaction as any).destination_name ||
-            machineContext.context.transaction.comment ||
+            (machineContext.context.transaction as any).comment ||
             ''
           }
           transactionData={{
@@ -801,14 +805,13 @@ const BudgetMiniApp = () => {
             budget_name: (machineContext.context.transaction as any).budget_name || '',
             destination_id: (machineContext.context.transaction as any).destination_id || 0,
             destination_name:
-              (machineContext.context.transaction as any).destination_name ||
-              machineContext.context.transaction.comment ||
-              '',
+              (machineContext.context.transaction as any).destination_name || '',
             notes: withdrawalNotes,
             date: ''
           } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onCancel={() => {
@@ -822,7 +825,9 @@ const BudgetMiniApp = () => {
           }}
           onIsSubmittingChange={(isSubmitting) => machineContext.send({ type: 'SET_IS_SUBMITTING', isSubmitting })}
           onSubmitMessageChange={(message) => machineContext.send({ type: 'SET_SUBMIT_MESSAGE', message })}
+          onDateChange={(isoDate) => machineContext.send({ type: 'UPDATE_DATE', date: isoDate })}
           onNotesChange={setWithdrawalNotes}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
         />
       )}
 
@@ -867,11 +872,13 @@ const BudgetMiniApp = () => {
           } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onAmountChange={handleDepositAmountChange}
           onConversionAmountChange={(amount) => machineContext.send({ type: 'SET_CONVERSION_AMOUNT', amount_eur: amount })}
           onIsLoadingConversionChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_CONVERSION', isLoading })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_CATEGORY' })}
         />
       )}
@@ -898,12 +905,14 @@ const BudgetMiniApp = () => {
           suggestions={(machineContext.context.transaction as any).suggestions || []}
           isLoadingSuggestions={(machineContext.context.transaction as any).isLoadingSuggestions || false}
           suggestionsError={(machineContext.context.transaction as any).suggestionsError || null}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onNameChange={handleDepositSourceChange}
           onSuggestionsChange={(suggestions) => machineContext.send({ type: 'SET_SUGGESTIONS', suggestions })}
           onLoadingSuggestionsChange={(isLoading) => machineContext.send({ type: 'SET_IS_LOADING_SUGGESTIONS', isLoading })}
           onSuggestionsErrorChange={(error) => machineContext.send({ type: 'SET_SUGGESTIONS_ERROR', error })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_CONFIRM' })}
         />
       )}
@@ -942,6 +951,7 @@ const BudgetMiniApp = () => {
           } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
+          errors={(machineContext.context.transaction as any).errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onCancel={() => {
@@ -955,7 +965,9 @@ const BudgetMiniApp = () => {
           }}
           onIsSubmittingChange={(isSubmitting) => machineContext.send({ type: 'SET_IS_SUBMITTING', isSubmitting })}
           onSubmitMessageChange={(message) => machineContext.send({ type: 'SET_SUBMIT_MESSAGE', message })}
+          onDateChange={(isoDate) => machineContext.send({ type: 'UPDATE_DATE', date: isoDate })}
           onNotesChange={(notes) => machineContext.send({ type: 'UPDATE_NOTES', notes })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_VALIDATION_ERROR' })}
         />
       )}
 
@@ -1032,6 +1044,7 @@ const BudgetMiniApp = () => {
           destCurrency={transferDestCurrency}
           exitAmount={transferExitAmount}
           entryAmount={transferEntryAmount}
+          errors={(machineContext.context.transfer as any).errors}
           isAvailable={isAvailable}
           onBack={() => {
             // Clear amounts when going back to destination account selection
@@ -1043,6 +1056,7 @@ const BudgetMiniApp = () => {
           }}
           onExitAmountChange={setTransferExitAmount}
           onEntryAmountChange={setTransferEntryAmount}
+          onClearError={() => machineContext.send({ type: 'CLEAR_TRANSFER_VALIDATION_ERROR' })}
           onNext={() => setCurrentScreen('transfer-fees')}
         />
       )}
@@ -1094,7 +1108,7 @@ const BudgetMiniApp = () => {
           exitFee={transferExitFee}
           entryFee={transferEntryFee}
           comment={transferComment}
-          user_name={user_name}
+          userName={user_name}
           isAvailable={isAvailable}
           onBack={() => setCurrentScreen('transfer-comment')}
           onCancel={() => {
@@ -1135,7 +1149,7 @@ const BudgetMiniApp = () => {
 
       {currentScreen === 'debug' && (
         <DebugScreen
-          user_name={user_name}
+          userName={user_name}
           isAvailable={isAvailable}
           serviceStatuses={serviceStatuses}
           telegramStatus={telegramStatus || undefined}

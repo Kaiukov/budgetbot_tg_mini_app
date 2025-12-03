@@ -33,14 +33,14 @@ export function useBudgetMachine() {
     updateAmount: (amount: string) => {
       send({ type: 'UPDATE_AMOUNT', amount });
     },
-    updateAmountForeign: (amount_foreign: string) => {
-      send({ type: 'UPDATE_AMOUNT_EUR', amount_foreign });
+    updateAmountEur: (amount_eur: string) => {
+      send({ type: 'UPDATE_AMOUNT_EUR', amount_foreign: amount_eur });
     },
     updateCategory: (category: string) => {
       send({ type: 'UPDATE_CATEGORY', category });
     },
-    updateComment: (comment: string) => {
-      send({ type: 'UPDATE_NOTES', notes: comment });
+    updateNotes: (notes: string) => {
+      send({ type: 'UPDATE_NOTES', notes });
     },
     submitTransaction: () => {
       send({ type: 'SUBMIT_TRANSACTION' });
@@ -78,8 +78,8 @@ export function useBudgetMachine() {
     updateTransferEntryFee: (fee: string) => {
       send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee });
     },
-    updateTransferComment: (comment: string) => {
-      send({ type: 'UPDATE_TRANSFER_NOTES', comment });
+    updateTransferNotes: (notes: string) => {
+      send({ type: 'UPDATE_TRANSFER_NOTES', comment: notes });
     },
     submitTransfer: () => {
       send({ type: 'SUBMIT_TRANSFER' });
