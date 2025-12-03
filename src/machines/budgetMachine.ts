@@ -180,7 +180,7 @@ export const budgetMachine = createMachine(
                   UPDATE_CATEGORY: {
                     target: 'notes',
                     actions: 'updateCategory',
-                    guard: ({ context }) => validationGuards.canProceedFromCategoryPage(context.transaction as any),
+                    guard: ({ event }: any) => event.category_id && event.category,
                   },
                   NAVIGATE_BACK: 'amount',
                   SET_VALIDATION_ERROR: {
@@ -308,7 +308,7 @@ export const budgetMachine = createMachine(
                   UPDATE_CATEGORY: {
                     target: 'notes',
                     actions: 'updateCategory',
-                    guard: ({ context }) => validationGuards.canProceedFromCategoryPage(context.transaction as any),
+                    guard: ({ event }: any) => event.category_id && event.category,
                   },
                   NAVIGATE_BACK: 'amount',
                   SET_VALIDATION_ERROR: {
