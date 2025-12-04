@@ -12,6 +12,7 @@ interface AccountsScreenProps {
   accountsError: string | null;
   title?: string;
   isAvailable?: boolean;
+  excludeAccountId?: string;
   onBack: () => void;
   onSelectAccount: (accountName: string, accountId?: string, currency?: string, user_name?: string) => void;
   onRetry: () => void;
@@ -23,10 +24,15 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
   accountsError,
   title = 'Select Account',
   isAvailable,
+  excludeAccountId,
   onBack,
   onSelectAccount,
   onRetry
 }) => {
+  // Filter out excluded account
+  const filteredAccounts = excludeAccountId
+    ? accounts.filter(acc => acc.account_id !== excludeAccountId)
+    : accounts;
   // Show Telegram back button
   useEffect(() => {
     telegramService.showBackButton(onBack);
@@ -66,9 +72,9 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
         )}
 
         {/* Accounts List */}
-        {!accountsLoading && !accountsError && accounts.length > 0 && (
+        {!accountsLoading && !accountsError && filteredAccounts.length > 0 && (
           <div className={layouts.listContainer}>
-            {accounts.map((account) => {
+            {filteredAccounts.map((account) => {
               const color = getAccountColor(account.account_currency, account.account_name);
               const Icon = getAccountIcon(account.account_currency, account.account_name);
 
@@ -98,7 +104,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
         )}
 
         {/* Empty State */}
-        {!accountsLoading && !accountsError && accounts.length === 0 && (
+        {!accountsLoading && !accountsError && filteredAccounts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8">
             <CreditCard size={48} className="text-gray-600 mb-3" />
             <p className="text-gray-400 text-sm">No accounts found</p>

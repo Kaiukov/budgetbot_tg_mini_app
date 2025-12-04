@@ -1018,9 +1018,8 @@ const BudgetMiniApp = () => {
 
       {transferScreen === 'transfer-dest-accounts' && (
         <AccountsScreen
-          accounts={machineContext.context.data.accounts.filter(
-            acc => acc.account_id !== (machineContext.context.transfer as any).source?.id
-          )}
+          accounts={machineContext.context.data.accounts}
+          excludeAccountId={(machineContext.context.transfer as any).source?.id}
           accountsLoading={machineContext.context.ui.accounts.loading}
           accountsError={machineContext.context.ui.accounts.error}
           isAvailable={isAvailable}
