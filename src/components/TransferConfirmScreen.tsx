@@ -11,10 +11,10 @@ interface TransferConfirmScreenProps {
   destAccount: string;
   sourceCurrency: string;
   destCurrency: string;
-  exitAmount: string;
-  entryAmount: string;
-  exitFee: string;
-  entryFee: string;
+  sourceAmount: string;
+  destAmount: string;
+  sourceFee: string;
+  destFee: string;
   comment: string;
   userName: string;
   isAvailable?: boolean;
@@ -40,10 +40,10 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
   destAccount,
   sourceCurrency,
   destCurrency,
-  exitAmount,
-  entryAmount,
-  exitFee,
-  entryFee,
+  sourceAmount,
+  destAmount,
+  sourceFee,
+  destFee,
   comment,
   userName,
   isAvailable,
@@ -81,10 +81,10 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
       console.log('💸 Starting transfer transaction submission:', {
         sourceAccount,
         destAccount,
-        exitAmount,
-        entryAmount,
-        exitFee,
-        entryFee,
+        sourceAmount,
+        destAmount,
+        sourceFee,
+        destFee,
         comment,
         date: effectiveDateIso
       });
@@ -95,12 +95,12 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
         date: effectiveDateIso,
         exit_account: sourceAccount,
         entry_account: destAccount,
-        exit_amount: parseFloat(exitAmount),
-        entry_amount: parseFloat(entryAmount),
+        exit_amount: parseFloat(sourceAmount),
+        entry_amount: parseFloat(destAmount),
         exit_currency: sourceCurrencyCode,
         entry_currency: destCurrencyCode,
-        exit_fee: exitFee ? parseFloat(exitFee) : 0,
-        entry_fee: entryFee ? parseFloat(entryFee) : 0,
+        exit_fee: sourceFee ? parseFloat(sourceFee) : 0,
+        entry_fee: destFee ? parseFloat(destFee) : 0,
         description: comment || ''
       };
 
@@ -167,13 +167,13 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
             {/* Transfer amount display with arrow */}
             {isSameCurrency ? (
               <div className="text-3xl font-bold text-blue-500 mb-1">
-                {getCurrencySymbol(sourceCurrencyCode)}{exitAmount}
+                {getCurrencySymbol(sourceCurrencyCode)}{sourceAmount}
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2 text-3xl font-bold text-blue-500 mb-1">
-                <span>{getCurrencySymbol(sourceCurrencyCode)}{exitAmount}</span>
+                <span>{getCurrencySymbol(sourceCurrencyCode)}{sourceAmount}</span>
                 <ArrowRight size={24} className="flex-shrink-0" />
-                <span>{getCurrencySymbol(destCurrencyCode)}{entryAmount}</span>
+                <span>{getCurrencySymbol(destCurrencyCode)}{destAmount}</span>
               </div>
             )}
             <p className="text-xs text-gray-400">Transfer</p>
@@ -190,15 +190,15 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
             </div>
 
             {/* Show fees if they're greater than 0 */}
-            {((exitFee && parseFloat(exitFee) > 0) || (entryFee && parseFloat(entryFee) > 0)) && (
+            {((sourceFee && parseFloat(sourceFee) > 0) || (destFee && parseFloat(destFee) > 0)) && (
               <div className="flex justify-between py-2.5 border-b border-gray-700">
                 <span className="text-xs text-gray-400">Fees:</span>
                 <div className="text-xs font-medium text-white text-right">
-                  {exitFee && parseFloat(exitFee) > 0 && (
-                    <div>Exit: {getCurrencySymbol(sourceCurrencyCode)}{exitFee}</div>
+                  {sourceFee && parseFloat(sourceFee) > 0 && (
+                    <div>Exit: {getCurrencySymbol(sourceCurrencyCode)}{sourceFee}</div>
                   )}
-                  {entryFee && parseFloat(entryFee) > 0 && (
-                    <div>Entry: {getCurrencySymbol(destCurrencyCode)}{entryFee}</div>
+                  {destFee && parseFloat(destFee) > 0 && (
+                    <div>Entry: {getCurrencySymbol(destCurrencyCode)}{destFee}</div>
                   )}
                 </div>
               </div>

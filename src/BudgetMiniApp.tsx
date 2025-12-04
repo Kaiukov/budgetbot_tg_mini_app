@@ -85,28 +85,28 @@ const BudgetMiniApp = () => {
   const [telegramStatus, setTelegramStatus] = useState<ServiceStatus | null>(null);
 
   // Accounts state
-  const [accounts, setAccounts] = useState<AccountUsage[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [_accounts, setAccounts] = useState<AccountUsage[]>([]);
+  const [_accountsLoading, setAccountsLoading] = useState(false);
+  const [_accountsError, setAccountsError] = useState<string | null>(null);
 
   // Categories state
   const [categories, setCategories] = useState<CategoryUsage[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [_categoriesLoading, setCategoriesLoading] = useState(false);
+  const [_categoriesError, setCategoriesError] = useState<string | null>(null);
   const lastCategoriesKeyRef = useRef<string | null>(null);
 
-  // Transfer-specific state
-  const [transferSourceAccount, setTransferSourceAccount] = useState('');
+  // Transfer-specific state (legacy - values read from machine context, setters used for clearing)
+  const [_transferSourceAccount, setTransferSourceAccount] = useState('');
   const [_transferSourceAccountId, setTransferSourceAccountId] = useState('');
-  const [transferSourceCurrency, setTransferSourceCurrency] = useState('');
-  const [transferDestAccount, setTransferDestAccount] = useState('');
+  const [_transferSourceCurrency, setTransferSourceCurrency] = useState('');
+  const [_transferDestAccount, setTransferDestAccount] = useState('');
   const [_transferDestAccountId, setTransferDestAccountId] = useState('');
-  const [transferDestCurrency, setTransferDestCurrency] = useState('');
-  const [transferExitAmount, setTransferExitAmount] = useState('');
-  const [transferEntryAmount, setTransferEntryAmount] = useState('');
-  const [transferExitFee, setTransferExitFee] = useState('');
-  const [transferEntryFee, setTransferEntryFee] = useState('');
-  const [transferComment, setTransferComment] = useState('');
+  const [_transferDestCurrency, setTransferDestCurrency] = useState('');
+  const [_transferExitAmount, setTransferExitAmount] = useState('');
+  const [_transferEntryAmount, setTransferEntryAmount] = useState('');
+  const [_transferExitFee, setTransferExitFee] = useState('');
+  const [_transferEntryFee, setTransferEntryFee] = useState('');
+  const [_transferComment, setTransferComment] = useState('');
   const [withdrawalNotes, setWithdrawalNotes] = useState('');
 
   // Transaction view/edit state
@@ -132,17 +132,17 @@ const BudgetMiniApp = () => {
     }
   }, [withdrawalScreen]);
 
-  // Get transaction data hook (supports expense and deposit - for deposit/transfer flows only)
+  // Get transaction data hook (legacy - resetTransactionData still used for clearing)
   const {
-    transactionData,
-    setUserName,
-    updateAccountWithDetails,
-    updateAmount,
-    updateAmountEUR,
-    updateCategory,
-    updateDestination,
-    updateSource,
-    updateNotes,
+    transactionData: _transactionData,
+    setUserName: _setUserName,
+    updateAccountWithDetails: _updateAccountWithDetails,
+    updateAmount: _updateAmount,
+    updateAmountEUR: _updateAmountEUR,
+    updateCategory: _updateCategory,
+    updateDestination: _updateDestination,
+    updateSource: _updateSource,
+    updateNotes: _updateNotes,
     resetTransactionData
   } = useTransactionData(transactionType) as any;
 
@@ -505,38 +505,6 @@ const BudgetMiniApp = () => {
 
     // For other screens, use currentScreen state
     setCurrentScreen(screen);
-  };
-
-  const handleSelectAccount = (accountName: string) => {
-    // Clear previous transaction data before starting new one
-    resetTransactionData();
-
-    // Find the selected account from accounts list to get full details
-    const selectedAccount = accounts.find(acc => acc.account_name === accountName);
-
-    if (selectedAccount) {
-      // Store user name
-      setUserName(selectedAccount.user_name);
-
-      // Store account details
-      updateAccountWithDetails(
-        selectedAccount.account_name,
-        parseInt(selectedAccount.account_id),
-        selectedAccount.account_currency
-      );
-    }
-
-    setCurrentScreen('amount');
-  };
-
-  const handleAmountChange = (value: string) => {
-    updateAmount(value);
-  };
-
-  const handleConfirmTransaction = () => {
-    resetTransactionData();
-    setTransactionType('withdrawal'); // Reset to default
-    setCurrentScreen('home');
   };
 
   // Transaction handlers

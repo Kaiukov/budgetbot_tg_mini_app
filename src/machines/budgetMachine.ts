@@ -413,25 +413,35 @@ export const budgetMachine = createMachine(
                     target: 'amount',
                     actions: 'setTransferDest',
                   },
-                  NAVIGATE_BACK: 'sourceAccounts',
+                  NAVIGATE_BACK: {
+                    target: 'sourceAccounts',
+                    actions: 'clearTransferAmountsAndFees', // Clear amounts and fees when going back to source
+                  },
                   SET_TRANSFER_VALIDATION_ERROR: {
                     actions: 'setTransferValidationError',
                   },
                 },
               },
               amount: {
+                entry: 'trackDestinationChange', // Track destination before amount entry for smart clearing
                 on: {
-                  UPDATE_TRANSFER_EXIT_AMOUNT: {
-                    actions: 'updateTransferExitAmount',
+                  UPDATE_TRANSFER_SOURCE_AMOUNT: {
+                    actions: 'updateTransferSourceAmount',
                   },
-                  UPDATE_TRANSFER_ENTRY_AMOUNT: {
-                    actions: 'updateTransferEntryAmount',
+                  UPDATE_TRANSFER_DEST_AMOUNT: {
+                    actions: 'updateTransferDestAmount',
+                  },
+                  UPDATE_TRANSFER_EXCHANGE_RATE: {
+                    actions: 'updateTransferExchangeRate',
                   },
                   NAVIGATE_TRANSFER_FEES: {
                     target: 'fees',
                     guard: ({ context }) => validationGuards.canProceedFromTransferAmountPage(context.transfer as any),
                   },
-                  NAVIGATE_BACK: 'destAccounts',
+                  NAVIGATE_BACK: {
+                    target: 'destAccounts',
+                    actions: 'smartClearOnAmountBack', // Smart clear amounts if destination changed
+                  },
                   SET_TRANSFER_VALIDATION_ERROR: {
                     actions: 'setTransferValidationError',
                   },
@@ -441,15 +451,19 @@ export const budgetMachine = createMachine(
                 },
               },
               fees: {
+                entry: 'trackDestinationChange', // Track destination before fee entry for smart clearing
                 on: {
-                  UPDATE_TRANSFER_EXIT_FEE: {
-                    actions: 'updateTransferExitFee',
+                  UPDATE_TRANSFER_SOURCE_FEE: {
+                    actions: 'updateTransferSourceFee',
                   },
-                  UPDATE_TRANSFER_ENTRY_FEE: {
-                    actions: 'updateTransferEntryFee',
+                  UPDATE_TRANSFER_DEST_FEE: {
+                    actions: 'updateTransferDestFee',
                   },
                   NAVIGATE_TRANSFER_COMMENT: 'notes',
-                  NAVIGATE_BACK: 'amount',
+                  NAVIGATE_BACK: {
+                    target: 'amount',
+                    actions: 'smartClearOnFeeBack', // Smart clear fees if destination changed
+                  },
                 },
               },
               notes: {

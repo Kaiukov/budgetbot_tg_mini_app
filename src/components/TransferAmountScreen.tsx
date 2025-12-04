@@ -29,7 +29,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   destCurrency,
   sourceAmount,
   destAmount,
-  exchangeRate,
+  // exchangeRate prop is used indirectly via onExchangeRateChange callback
   errors = {},
   isAvailable,
   onBack,

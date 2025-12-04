@@ -204,6 +204,76 @@ export const actions = {
     }),
   }),
 
+  // Smart Clearing Actions (Phase 5: State clearing on navigation)
+  trackDestinationChange: assign({
+    transfer: ({ context }) => ({
+      ...context.transfer,
+      prevDestinationAccountId: context.transfer.destination_account_id,
+    }),
+  }),
+
+  clearTransferAmounts: assign({
+    transfer: ({ context }) => ({
+      ...context.transfer,
+      source_amount: '',
+      destination_amount: '',
+      exchange_rate: null,
+    }),
+  }),
+
+  clearTransferFees: assign({
+    transfer: ({ context }) => ({
+      ...context.transfer,
+      source_fee: '0',
+      destination_fee: '0',
+    }),
+  }),
+
+  clearTransferAmountsAndFees: assign({
+    transfer: ({ context }) => ({
+      ...context.transfer,
+      source_amount: '',
+      destination_amount: '',
+      exchange_rate: null,
+      source_fee: '0',
+      destination_fee: '0',
+    }),
+  }),
+
+  smartClearOnAmountBack: assign({
+    transfer: ({ context }) => {
+      // If destination changed, clear amounts (they're invalid for new currency)
+      const destChanged = context.transfer.destination_account_id !== context.transfer.prevDestinationAccountId;
+      if (destChanged) {
+        return {
+          ...context.transfer,
+          source_amount: '',
+          destination_amount: '',
+          exchange_rate: null,
+          prevDestinationAccountId: context.transfer.destination_account_id,
+        };
+      }
+      // If destination unchanged, keep amounts (they're still valid)
+      return context.transfer;
+    },
+  }),
+
+  smartClearOnFeeBack: assign({
+    transfer: ({ context }) => {
+      // If destination changed, clear destination fee only (source currency unchanged)
+      const destChanged = context.transfer.destination_account_id !== context.transfer.prevDestinationAccountId;
+      if (destChanged) {
+        return {
+          ...context.transfer,
+          destination_fee: '0',
+          prevDestinationAccountId: context.transfer.destination_account_id,
+        };
+      }
+      // If destination unchanged, keep all fees
+      return context.transfer;
+    },
+  }),
+
   // Data Management
   setAccounts: assign({
     data: ({ context }, params: { accounts: any[] }) => ({

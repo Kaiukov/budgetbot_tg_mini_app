@@ -273,6 +273,9 @@ export interface TransferForm {
   isLoadingConversion?: boolean;
   isSubmitting?: boolean;
   errors?: Record<string, string>; // Page-level validation errors
+
+  // Smart clearing state (internal tracking)
+  prevDestinationAccountId?: string; // Track previous destination for smart clearing on back navigation
 }
 
 export const initialTransferForm: TransferForm = {
