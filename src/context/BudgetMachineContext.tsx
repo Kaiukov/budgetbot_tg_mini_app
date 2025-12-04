@@ -4,45 +4,13 @@
  */
 
 import React, { createContext, ReactNode, useEffect, useRef } from 'react';
-import { useBudgetMachine } from '../hooks/useBudgetMachine';
+import { useMachine } from '@xstate/react';
+import { budgetMachine } from '../machines/budgetMachine';
 import type { BudgetMachineContext as BudgetContext } from '../machines/types';
 
 export interface BudgetMachineContextType {
   state: any;
   context: BudgetContext;
-  navigateTo: (screen: string) => void;
-  goHome: () => void;
-  goBack: () => void;
-  updateAccount: (account: string, account_id: string, account_currency: string, user_name: string) => void;
-  updateAmount: (amount: string) => void;
-  updateAmountEur: (amount_eur: string) => void;
-  updateCategory: (category: string) => void;
-  updateNotes: (notes: string) => void;
-  submitTransaction: () => void;
-  resetTransaction: () => void;
-  setTransferSource: (account: string, account_id: string, account_currency: string) => void;
-  setTransferDest: (account: string, account_id: string, account_currency: string) => void;
-  updateTransferExitAmount: (amount: string) => void;
-  updateTransferEntryAmount: (amount: string) => void;
-  updateTransferExitFee: (fee: string) => void;
-  updateTransferEntryFee: (fee: string) => void;
-  updateTransferNotes: (notes: string) => void;
-  submitTransfer: () => void;
-  resetTransfer: () => void;
-  fetchAccounts: () => void;
-  fetchCategories: () => void;
-  fetchTransactions: () => void;
-  fetchAccountsSuccess: (accounts: any[]) => void;
-  fetchCategoriesSuccess: (categories: any[]) => void;
-  fetchTransactionsSuccess: (transactions: any[]) => void;
-  fetchAccountsError: (error: string) => void;
-  fetchCategoriesError: (error: string) => void;
-  fetchTransactionsError: (error: string) => void;
-  selectTransaction: (id: string, rawData?: any, editing?: any) => void;
-  clearSelectedTransaction: () => void;
-  editTransaction: () => void;
-  deleteTransaction: () => void;
-  setServiceStatus: (service: keyof BudgetContext['ui']['services'], status: any) => void;
   send: (event: any) => void;
 }
 
@@ -56,39 +24,6 @@ const defaultContextValue: BudgetMachineContextType = {
     ui: { accounts: { loading: false, error: null }, categories: { loading: false, error: null }, transactions: { loading: false, error: null }, services: { telegram: { name: 'Telegram', status: 'checking', message: '' }, sync: { name: 'Sync', status: 'checking', message: '' }, firefly: { name: 'Firefly', status: 'checking', message: '' } } },
     selectedTransaction: { id: null, rawData: null, editing: null },
   },
-  navigateTo: () => {},
-  goHome: () => {},
-  goBack: () => {},
-  updateAccount: () => {},
-  updateAmount: () => {},
-  updateAmountEur: () => {},
-  updateCategory: () => {},
-  updateNotes: () => {},
-  submitTransaction: () => {},
-  resetTransaction: () => {},
-  setTransferSource: () => {},
-  setTransferDest: () => {},
-  updateTransferExitAmount: () => {},
-  updateTransferEntryAmount: () => {},
-  updateTransferExitFee: () => {},
-  updateTransferEntryFee: () => {},
-  updateTransferNotes: () => {},
-  submitTransfer: () => {},
-  resetTransfer: () => {},
-  fetchAccounts: () => {},
-  fetchCategories: () => {},
-  fetchTransactions: () => {},
-  fetchAccountsSuccess: () => {},
-  fetchCategoriesSuccess: () => {},
-  fetchTransactionsSuccess: () => {},
-  fetchAccountsError: () => {},
-  fetchCategoriesError: () => {},
-  fetchTransactionsError: () => {},
-  selectTransaction: () => {},
-  clearSelectedTransaction: () => {},
-  editTransaction: () => {},
-  deleteTransaction: () => {},
-  setServiceStatus: () => {},
   send: () => {},
 };
 
@@ -131,46 +66,46 @@ function safeJsonStringify(obj: any): string {
 }
 
 export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ children }) => {
-  const machine = useBudgetMachine();
+  const [state, send] = useMachine(budgetMachine);
   const previousStateRef = useRef<any>(null);
 
   // Add event logging (dev only) - log only state values to avoid emoji serialization issues
   useEffect(() => {
     const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV;
-    if (isDev && machine.state !== previousStateRef.current) {
+    if (isDev && state !== previousStateRef.current) {
       const prevState = previousStateRef.current?.value || 'initial';
-      const currentState = machine.state.value;
+      const currentState = state.value;
       console.log(`🔄 State transition: ${String(prevState)} → ${String(currentState)}`);
-      previousStateRef.current = machine.state;
+      previousStateRef.current = state;
     }
-  }, [machine.state]);
+  }, [state]);
 
   // Add state persistence
   useEffect(() => {
     try {
       const machineState = {
-        state: machine.state.value,
+        state: state.value,
         context: {
           // Only persist safe data, skip sensitive info
-          user: machine.context.user,
+          user: state.context.user,
           // Don't persist form data during entry
-          transaction: machine.context.transaction.amount
-            ? machine.context.transaction
+          transaction: state.context.transaction.amount
+            ? state.context.transaction
             : { account: '', amount: '', category: '', notes: '', account_id: '', account_currency: '', user_id: undefined, user_name: '', amount_eur: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },
-          transfer: machine.context.transfer,
-          data: machine.context.data,
-          ui: machine.context.ui,
-          selectedTransaction: machine.context.selectedTransaction,
+          transfer: state.context.transfer,
+          data: state.context.data,
+          ui: state.context.ui,
+          selectedTransaction: state.context.selectedTransaction,
         },
       };
       localStorage.setItem(MACHINE_STATE_KEY, safeJsonStringify(machineState));
     } catch (error) {
       console.warn('Failed to persist machine state:', error);
     }
-  }, [machine.state, machine.context]);
+  }, [state]);
 
   return (
-    <budgetMachineContext.Provider value={machine}>
+    <budgetMachineContext.Provider value={{ state, context: state.context, send }}>
       {children}
     </budgetMachineContext.Provider>
   );
