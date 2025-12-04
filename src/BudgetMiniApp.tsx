@@ -60,6 +60,22 @@ const getDepositScreenFromMachineState = (machineState: any): string | null => {
   return null;
 };
 
+// Helper to determine transfer screen from machine state
+const getTransferScreenFromMachineState = (machineState: any): string | null => {
+  if (!machineState?.matches) return null;
+
+  if (machineState.matches({ ready: 'transferFlow' })) {
+    if (machineState.matches({ ready: { transferFlow: 'sourceAccounts' } })) return 'transfer-source-accounts';
+    if (machineState.matches({ ready: { transferFlow: 'destAccounts' } })) return 'transfer-dest-accounts';
+    if (machineState.matches({ ready: { transferFlow: 'amount' } })) return 'transfer-amount';
+    if (machineState.matches({ ready: { transferFlow: 'fees' } })) return 'transfer-fees';
+    if (machineState.matches({ ready: { transferFlow: 'notes' } })) return 'transfer-comment';
+    if (machineState.matches({ ready: { transferFlow: 'confirm' } })) return 'transfer-confirm';
+  }
+
+  return null;
+};
+
 const BudgetMiniApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [transactionType, setTransactionType] = useState<TransactionType>('withdrawal');
@@ -107,6 +123,7 @@ const BudgetMiniApp = () => {
   // Determine current withdrawal screen from machine state
   const withdrawalScreen = getWithdrawalScreenFromMachineState(machineContext.state);
   const depositScreen = getDepositScreenFromMachineState(machineContext.state);
+  const transferScreen = getTransferScreenFromMachineState(machineContext.state);
 
   // Reset notes when a fresh withdrawal flow starts
   useEffect(() => {
@@ -975,178 +992,123 @@ const BudgetMiniApp = () => {
       )}
 
 
-      {/* Transfer Flow */}
-      {currentScreen === 'transfer-source-accounts' && (
+      {/* Transfer Flow - Machine-driven */}
+      {transferScreen === 'transfer-source-accounts' && (
         <AccountsScreen
-          title="Select Account - Exit"
-          accounts={accounts}
-          accountsLoading={accountsLoading}
-          accountsError={accountsError}
+          accounts={machineContext.context.data.accounts}
+          accountsLoading={machineContext.context.ui.accounts.loading}
+          accountsError={machineContext.context.ui.accounts.error}
           isAvailable={isAvailable}
-          onBack={() => {
-            // Reset transfer state
-            setTransferSourceAccount('');
-            setTransferSourceAccountId('');
-            setTransferSourceCurrency('');
-            setTransferDestAccount('');
-            setTransferDestAccountId('');
-            setTransferDestCurrency('');
-            setTransferExitAmount('');
-            setTransferEntryAmount('');
-            setTransferExitFee('');
-            setTransferEntryFee('');
-            setTransferComment('');
-            setCurrentScreen('home');
-          }}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
           onSelectAccount={(accountName) => {
-            const selectedAccount = accounts.find(acc => acc.account_name === accountName);
+            const selectedAccount = machineContext.context.data.accounts.find(acc => acc.account_name === accountName);
             if (selectedAccount) {
-              setTransferSourceAccount(selectedAccount.account_name);
-              setTransferSourceAccountId(selectedAccount.account_id);
-              setTransferSourceCurrency(selectedAccount.account_currency);
+              machineContext.send({
+                type: 'SET_TRANSFER_SOURCE',
+                account: selectedAccount.account_name,
+                account_id: selectedAccount.account_id,
+                account_currency: selectedAccount.account_currency,
+                user_name: machineContext.context.user.user_name
+              });
             }
-            setCurrentScreen('transfer-dest-accounts');
           }}
           onRetry={fetchAccounts}
         />
       )}
 
-      {currentScreen === 'transfer-dest-accounts' && (
+      {transferScreen === 'transfer-dest-accounts' && (
         <AccountsScreen
-          title="Select Account - Entry"
-          accounts={accounts.filter(acc => acc.account_name !== transferSourceAccount)}
-          accountsLoading={accountsLoading}
-          accountsError={accountsError}
+          accounts={machineContext.context.data.accounts.filter(
+            acc => acc.account_id !== (machineContext.context.transfer as any).source?.id
+          )}
+          accountsLoading={machineContext.context.ui.accounts.loading}
+          accountsError={machineContext.context.ui.accounts.error}
           isAvailable={isAvailable}
-          onBack={() => {
-            // Clear amounts when going back to source account selection
-            setTransferExitAmount('');
-            setTransferEntryAmount('');
-            setTransferExitFee('');
-            setTransferEntryFee('');
-            setCurrentScreen('transfer-source-accounts');
-          }}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onSelectAccount={(accountName) => {
-            const selectedAccount = accounts.find(acc => acc.account_name === accountName);
+            const selectedAccount = machineContext.context.data.accounts.find(acc => acc.account_name === accountName);
             if (selectedAccount) {
-              setTransferDestAccount(selectedAccount.account_name);
-              setTransferDestAccountId(selectedAccount.account_id);
-              setTransferDestCurrency(selectedAccount.account_currency);
+              machineContext.send({
+                type: 'SET_TRANSFER_DEST',
+                account: selectedAccount.account_name,
+                account_id: selectedAccount.account_id,
+                account_currency: selectedAccount.account_currency,
+                user_name: machineContext.context.user.user_name
+              });
             }
-            setCurrentScreen('transfer-amount');
           }}
           onRetry={fetchAccounts}
         />
       )}
 
-      {currentScreen === 'transfer-amount' && (
+      {transferScreen === 'transfer-amount' && (
         <TransferAmountScreen
-          sourceAccount={transferSourceAccount}
-          destAccount={transferDestAccount}
-          sourceCurrency={transferSourceCurrency}
-          destCurrency={transferDestCurrency}
-          exitAmount={transferExitAmount}
-          entryAmount={transferEntryAmount}
+          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
+          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
+          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
+          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
+          exitAmount={(machineContext.context.transfer as any).exitAmount || ''}
+          entryAmount={(machineContext.context.transfer as any).entryAmount || ''}
           errors={(machineContext.context.transfer as any).errors}
           isAvailable={isAvailable}
-          onBack={() => {
-            // Clear amounts when going back to destination account selection
-            setTransferExitAmount('');
-            setTransferEntryAmount('');
-            setTransferExitFee('');
-            setTransferEntryFee('');
-            setCurrentScreen('transfer-dest-accounts');
-          }}
-          onExitAmountChange={setTransferExitAmount}
-          onEntryAmountChange={setTransferEntryAmount}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onExitAmountChange={(amount) => machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_AMOUNT', amount })}
+          onEntryAmountChange={(amount) => machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_AMOUNT', amount })}
           onClearError={() => machineContext.send({ type: 'CLEAR_TRANSFER_VALIDATION_ERROR' })}
-          onNext={() => setCurrentScreen('transfer-fees')}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_FEES' })}
         />
       )}
 
-      {currentScreen === 'transfer-fees' && (
+      {transferScreen === 'transfer-fees' && (
         <TransferFeeScreen
-          sourceAccount={transferSourceAccount}
-          destAccount={transferDestAccount}
-          sourceCurrency={transferSourceCurrency}
-          destCurrency={transferDestCurrency}
-          exitFee={transferExitFee}
-          entryFee={transferEntryFee}
+          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
+          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
+          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
+          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
+          exitFee={(machineContext.context.transfer as any).exitFee || ''}
+          entryFee={(machineContext.context.transfer as any).entryFee || ''}
           isAvailable={isAvailable}
-          onBack={() => {
-            // Preserve fees when going back to amount screen
-            setCurrentScreen('transfer-amount');
-          }}
-          onExitFeeChange={setTransferExitFee}
-          onEntryFeeChange={setTransferEntryFee}
-          onNext={() => setCurrentScreen('transfer-comment')}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onExitFeeChange={(fee) => machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_FEE', fee })}
+          onEntryFeeChange={(fee) => machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' })}
           onSkip={() => {
-            setTransferExitFee('0');
-            setTransferEntryFee('0');
-            setCurrentScreen('transfer-comment');
+            machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_FEE', fee: '0' });
+            machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee: '0' });
+            machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' });
           }}
         />
       )}
 
-      {currentScreen === 'transfer-comment' && (
+      {transferScreen === 'transfer-comment' && (
         <DestinationSourceNamesScreen
           transactionType="withdrawal"
-          name={transferComment}
+          name={(machineContext.context.transfer as any).notes || ''}
           category_name="Transfer"
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen('transfer-fees')}
-          onNameChange={(_, dest) => setTransferComment(dest)}
-          onNext={() => setCurrentScreen('transfer-confirm')}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onNameChange={(_, dest) => machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes: dest })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' })}
         />
       )}
 
-      {currentScreen === 'transfer-confirm' && (
+      {transferScreen === 'transfer-confirm' && (
         <TransferConfirmScreen
-          sourceAccount={transferSourceAccount}
-          destAccount={transferDestAccount}
-          sourceCurrency={transferSourceCurrency}
-          destCurrency={transferDestCurrency}
-          exitAmount={transferExitAmount}
-          entryAmount={transferEntryAmount}
-          exitFee={transferExitFee}
-          entryFee={transferEntryFee}
-          comment={transferComment}
-          userName={user_name}
+          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
+          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
+          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
+          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
+          exitAmount={(machineContext.context.transfer as any).exitAmount || ''}
+          entryAmount={(machineContext.context.transfer as any).entryAmount || ''}
+          exitFee={(machineContext.context.transfer as any).exitFee || ''}
+          entryFee={(machineContext.context.transfer as any).entryFee || ''}
+          comment={(machineContext.context.transfer as any).notes || ''}
+          userName={machineContext.context.user.user_name}
           isAvailable={isAvailable}
-          onBack={() => setCurrentScreen('transfer-comment')}
-          onCancel={() => {
-            // Reset all transfer state
-            setTransferSourceAccount('');
-            setTransferSourceAccountId('');
-            setTransferSourceCurrency('');
-            setTransferDestAccount('');
-            setTransferDestAccountId('');
-            setTransferDestCurrency('');
-            setTransferExitAmount('');
-            setTransferEntryAmount('');
-            setTransferExitFee('');
-            setTransferEntryFee('');
-            setTransferComment('');
-            setCurrentScreen('home');
-          }}
-          onConfirm={() => {
-            // Reset all transfer state
-            setTransferSourceAccount('');
-            setTransferSourceAccountId('');
-            setTransferSourceCurrency('');
-            setTransferDestAccount('');
-            setTransferDestAccountId('');
-            setTransferDestCurrency('');
-            setTransferExitAmount('');
-            setTransferEntryAmount('');
-            setTransferExitFee('0');
-            setTransferEntryFee('0');
-            setTransferComment('');
-            setCurrentScreen('home');
-          }}
-          onSuccess={() => {
-            // Success handled by onConfirm
-          }}
+          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
+          onCancel={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onConfirm={() => machineContext.send({ type: 'SUBMIT_TRANSFER' })}
+          onSuccess={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
         />
       )}
 
