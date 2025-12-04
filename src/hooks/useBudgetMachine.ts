@@ -50,20 +50,22 @@ export function useBudgetMachine() {
     },
 
     // Transfer Form
-    setTransferSource: (account: string, account_id: string, account_currency: string) => {
+    setTransferSource: (account: string, account_id: string, account_currency: string, user_name: string = '') => {
       send({
         type: 'SET_TRANSFER_SOURCE',
         account,
-        account_id,
-        account_currency,
+        id: account_id,
+        currency: account_currency,
+        user_name,
       });
     },
-    setTransferDest: (account: string, account_id: string, account_currency: string) => {
+    setTransferDest: (account: string, account_id: string, account_currency: string, user_name: string = '') => {
       send({
         type: 'SET_TRANSFER_DEST',
         account,
-        account_id,
-        account_currency,
+        id: account_id,
+        currency: account_currency,
+        user_name,
       });
     },
     updateTransferExitAmount: (amount: string) => {
@@ -79,7 +81,7 @@ export function useBudgetMachine() {
       send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee });
     },
     updateTransferNotes: (notes: string) => {
-      send({ type: 'UPDATE_TRANSFER_NOTES', comment: notes });
+      send({ type: 'UPDATE_TRANSFER_NOTES', notes });
     },
     submitTransfer: () => {
       send({ type: 'SUBMIT_TRANSFER' });
