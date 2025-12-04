@@ -8,12 +8,12 @@ interface TransferFeeScreenProps {
   destAccount: string;
   sourceCurrency: string;
   destCurrency: string;
-  exitFee: string;
-  entryFee: string;
+  sourceFee: string;
+  destFee: string;
   isAvailable?: boolean;
   onBack: () => void;
-  onExitFeeChange: (value: string) => void;
-  onEntryFeeChange: (value: string) => void;
+  onSourceFeeChange: (value: string) => void;
+  onDestFeeChange: (value: string) => void;
   onNext: () => void;
   onSkip: () => void;
 }
@@ -23,12 +23,12 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   destAccount,
   sourceCurrency,
   destCurrency,
-  exitFee,
-  entryFee,
+  sourceFee,
+  destFee,
   isAvailable,
   onBack,
-  onExitFeeChange,
-  onEntryFeeChange,
+  onSourceFeeChange,
+  onDestFeeChange,
   onNext,
   onSkip
 }) => {
@@ -41,7 +41,7 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
 
-  const handleExitFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSourceFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
     // Replace comma with dot for decimal separator
@@ -58,11 +58,11 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       if (value.startsWith('.')) {
         value = '0' + value;
       }
-      onExitFeeChange(value);
+      onSourceFeeChange(value);
     }
   };
 
-  const handleEntryFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDestFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
     // Replace comma with dot for decimal separator
@@ -79,7 +79,7 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       if (value.startsWith('.')) {
         value = '0' + value;
       }
-      onEntryFeeChange(value);
+      onDestFeeChange(value);
     }
   };
 
@@ -90,8 +90,8 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   };
 
   const handleSkipFees = () => {
-    onExitFeeChange('0');
-    onEntryFeeChange('0');
+    onSourceFeeChange('0');
+    onDestFeeChange('0');
     onSkip();
   };
 
@@ -107,29 +107,29 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       </div>
 
       <div className={layouts.contentWide}>
-        {/* Exit Fee (From Account) */}
+        {/* Source Fee (From Account) */}
         <div className={`${cardStyles.container} mb-2`}>
-          <p className="text-xs text-gray-400 mb-2">Exit Fee from: {sourceAccount}</p>
+          <p className="text-xs text-gray-400 mb-2">Fee from: {sourceAccount}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
               <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={exitFee}
-                onChange={handleExitFeeChange}
+                value={sourceFee}
+                onChange={handleSourceFeeChange}
                 onKeyDown={handleKeyDown}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  exitFee ? 'text-right' : 'text-center'
+                  sourceFee ? 'text-right' : 'text-center'
                 }`}
                 style={{
-                  width: exitFee ? `${Math.min(exitFee.length * 0.65, 12)}em` : '2em',
+                  width: sourceFee ? `${Math.min(sourceFee.length * 0.65, 12)}em` : '2em',
                   maxWidth: '100%'
                 }}
                 autoFocus
               />
-              {exitFee && (
+              {sourceFee && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {sourceCurrencyCode}
                 </span>
@@ -143,28 +143,28 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
           <div className="text-gray-500 text-sm">↓</div>
         </div>
 
-        {/* Entry Fee (To Account) */}
+        {/* Destination Fee (To Account) */}
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <p className="text-xs text-gray-400 mb-2">Entry Fee to: {destAccount}</p>
+          <p className="text-xs text-gray-400 mb-2">Fee to: {destAccount}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
               <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={entryFee}
-                onChange={handleEntryFeeChange}
+                value={destFee}
+                onChange={handleDestFeeChange}
                 onKeyDown={handleKeyDown}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  entryFee ? 'text-right' : 'text-center'
+                  destFee ? 'text-right' : 'text-center'
                 }`}
                 style={{
-                  width: entryFee ? `${Math.min(entryFee.length * 0.65, 12)}em` : '2em',
+                  width: destFee ? `${Math.min(destFee.length * 0.65, 12)}em` : '2em',
                   maxWidth: '100%'
                 }}
               />
-              {entryFee && (
+              {destFee && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {destCurrencyCode}
                 </span>

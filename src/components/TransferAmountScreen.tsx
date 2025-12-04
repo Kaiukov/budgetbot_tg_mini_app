@@ -9,13 +9,15 @@ interface TransferAmountScreenProps {
   destAccount: string;
   sourceCurrency: string;
   destCurrency: string;
-  exitAmount: string;
-  entryAmount: string;
+  sourceAmount: string;
+  destAmount: string;
+  exchangeRate: number | null;
   errors?: Record<string, string>;
   isAvailable?: boolean;
   onBack: () => void;
-  onExitAmountChange: (value: string) => void;
-  onEntryAmountChange: (value: string) => void;
+  onSourceAmountChange: (value: string) => void;
+  onDestAmountChange: (value: string) => void;
+  onExchangeRateChange: (rate: number) => void;
   onNext: () => void;
   onClearError?: () => void;
 }
@@ -25,13 +27,15 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   destAccount,
   sourceCurrency,
   destCurrency,
-  exitAmount,
-  entryAmount,
+  sourceAmount,
+  destAmount,
+  exchangeRate,
   errors = {},
   isAvailable,
   onBack,
-  onExitAmountChange,
-  onEntryAmountChange,
+  onSourceAmountChange,
+  onDestAmountChange,
+  onExchangeRateChange,
   onNext,
   onClearError
 }) => {
@@ -51,14 +55,14 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   // Calculate suggested conversion amount for different currencies
   useEffect(() => {
     const fetchConversion = async () => {
-      if (isSameCurrency || !exitAmount) {
+      if (isSameCurrency || !sourceAmount) {
         setSuggestedAmount(null);
         return;
       }
 
       setIsLoadingConversion(true);
       try {
-        const numAmount = parseFloat(exitAmount);
+        const numAmount = parseFloat(sourceAmount);
         if (numAmount > 0) {
           const converted = await syncService.getExchangeRate(
             sourceCurrencyCode,
@@ -67,6 +71,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
           );
           if (converted !== null) {
             setSuggestedAmount(converted.toFixed(2));
+            onExchangeRateChange(converted);
           }
         }
       } catch (error) {
@@ -80,9 +85,9 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
     // Debounce the conversion fetch
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [exitAmount, sourceCurrencyCode, destCurrencyCode, isSameCurrency]);
+  }, [sourceAmount, sourceCurrencyCode, destCurrencyCode, isSameCurrency, onExchangeRateChange]);
 
-  const handleExitAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSourceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
     // Replace comma with dot for decimal separator
@@ -99,16 +104,16 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
       if (value.startsWith('.')) {
         value = '0' + value;
       }
-      onExitAmountChange(value);
+      onSourceAmountChange(value);
 
-      // Clear validation error when user types a valid exit amount
+      // Clear validation error when user types a valid source amount
       if (value && parseFloat(value) > 0 && onClearError) {
         onClearError();
       }
     }
   };
 
-  const handleEntryAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDestAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
 
     // Replace comma with dot for decimal separator
@@ -125,9 +130,9 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
       if (value.startsWith('.')) {
         value = '0' + value;
       }
-      onEntryAmountChange(value);
+      onDestAmountChange(value);
 
-      // Clear validation error when user types a valid entry amount
+      // Clear validation error when user types a valid destination amount
       if (value && parseFloat(value) > 0 && onClearError) {
         onClearError();
       }
@@ -136,7 +141,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
 
   const handleUseSuggestedAmount = () => {
     if (suggestedAmount) {
-      onEntryAmountChange(suggestedAmount);
+      onDestAmountChange(suggestedAmount);
     }
   };
 
@@ -147,9 +152,9 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
   };
 
   const isValidAmounts = () => {
-    const exitValid = exitAmount && parseFloat(exitAmount) > 0;
-    const entryValid = entryAmount && parseFloat(entryAmount) > 0;
-    return exitValid && entryValid;
+    const sourceValid = sourceAmount && parseFloat(sourceAmount) > 0;
+    const destValid = destAmount && parseFloat(destAmount) > 0;
+    return sourceValid && destValid;
   };
 
   return (
@@ -171,7 +176,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
           </div>
         )}
 
-        {/* Exit Amount (From Account) */}
+        {/* Source Amount (From Account) */}
         <div className={`${cardStyles.container} mb-2`}>
           <p className="text-xs text-gray-400 mb-2">From: {sourceAccount}</p>
           <div className="text-center overflow-x-auto">
@@ -180,17 +185,17 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={exitAmount}
-                onChange={handleExitAmountChange}
+                value={sourceAmount}
+                onChange={handleSourceAmountChange}
                 onKeyDown={handleKeyDown}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  exitAmount ? 'text-right' : 'text-center'
+                  sourceAmount ? 'text-right' : 'text-center'
                 }`}
-                style={{ width: exitAmount ? `${Math.min(exitAmount.length * 0.65, 12)}em` : '2em', maxWidth: '100%' }}
+                style={{ width: sourceAmount ? `${Math.min(sourceAmount.length * 0.65, 12)}em` : '2em', maxWidth: '100%' }}
                 autoFocus
               />
-              {exitAmount && (
+              {sourceAmount && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {sourceCurrencyCode}
                 </span>
@@ -206,7 +211,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
           </div>
         </div>
 
-        {/* Entry Amount (To Account) */}
+        {/* Destination Amount (To Account) */}
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
           <p className="text-xs text-gray-400 mb-2">To: {destAccount}</p>
           <div className="text-center overflow-x-auto">
@@ -215,16 +220,16 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={entryAmount}
-                onChange={handleEntryAmountChange}
+                value={destAmount}
+                onChange={handleDestAmountChange}
                 onKeyDown={handleKeyDown}
                 placeholder={suggestedAmount || '0'}
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  entryAmount ? 'text-right' : 'text-center'
+                  destAmount ? 'text-right' : 'text-center'
                 }`}
-                style={{ width: entryAmount ? `${Math.min(entryAmount.length * 0.65, 12)}em` : suggestedAmount ? `${Math.min(suggestedAmount.length * 0.65 + 1, 12)}em` : '2em', maxWidth: '100%' }}
+                style={{ width: destAmount ? `${Math.min(destAmount.length * 0.65, 12)}em` : suggestedAmount ? `${Math.min(suggestedAmount.length * 0.65 + 1, 12)}em` : '2em', maxWidth: '100%' }}
               />
-              {entryAmount && (
+              {destAmount && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {destCurrencyCode}
                 </span>
@@ -233,7 +238,7 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
           </div>
 
           {/* Show suggested amount button for different currencies */}
-          {!isSameCurrency && suggestedAmount && suggestedAmount !== entryAmount && (
+          {!isSameCurrency && suggestedAmount && suggestedAmount !== destAmount && (
             <div className="mt-3 pt-3 border-t border-gray-700 text-center">
               <button
                 onClick={handleUseSuggestedAmount}
@@ -245,10 +250,10 @@ const TransferAmountScreen: React.FC<TransferAmountScreenProps> = ({
           )}
 
           {/* Show exchange rate info */}
-          {!isSameCurrency && exitAmount && entryAmount && (
+          {!isSameCurrency && sourceAmount && destAmount && (
             <div className="mt-3 pt-3 border-t border-gray-700 text-center">
               <p className="text-xs text-gray-500">
-                Rate: 1 {sourceCurrencyCode} ≈ {(parseFloat(entryAmount) / parseFloat(exitAmount)).toFixed(4)} {destCurrencyCode}
+                Rate: 1 {sourceCurrencyCode} ≈ {(parseFloat(destAmount) / parseFloat(sourceAmount)).toFixed(4)} {destCurrencyCode}
               </p>
             </div>
           )}

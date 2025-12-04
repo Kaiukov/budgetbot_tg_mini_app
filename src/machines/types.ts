@@ -239,35 +239,34 @@ export const initialTransactionForm: TransactionForm = {
 // Transfer Flow Types
 // ============================================================================
 
-export interface TransferAccount {
-  account: string;
-  id: string;
-  currency: string;
-}
-
 /**
- * Transfer Form - Ordered per API spec
- * Fields: source account, destination account, amount, fees (if multi-currency), notes, date
+ * Transfer Form - Standardized per API spec with snake_case naming
+ * Follows same naming pattern as WithdrawalForm and DepositForm
+ * Fields: source account, destination account, amounts, fees, notes, date
  */
 export interface TransferForm {
   // Page 1: Source Account
-  source: TransferAccount;
-  source_user_name: string;
+  user_name: string;
+  source_account_name: string;
+  source_account_id: string;
+  source_account_currency: string;
 
   // Page 2: Destination Account
-  destination: TransferAccount;
-  dest_user_name: string;
+  destination_account_name: string;
+  destination_account_id: string;
+  destination_account_currency: string;
 
-  // Page 3: Amount
-  exitAmount: string;
-  entryAmount: string;
+  // Page 3: Amounts
+  source_amount: string;
+  destination_amount: string;
+  exchange_rate: number | null;
 
   // Page 4: Fees (if multi-currency)
-  exitFee: string;
-  entryFee: string;
+  source_fee: string;
+  destination_fee: string;
 
   // Page 5: Confirmation
-  notes: string; // Can be empty
+  notes: string; // Auto-generated, can be edited
   date: string; // ISO format, editable
 
   // UI State (non-payload)
@@ -278,20 +277,24 @@ export interface TransferForm {
 
 export const initialTransferForm: TransferForm = {
   // Page 1: Source Account
-  source: { account: '', id: '', currency: '' },
-  source_user_name: '',
+  user_name: '',
+  source_account_name: '',
+  source_account_id: '',
+  source_account_currency: '',
 
   // Page 2: Destination Account
-  destination: { account: '', id: '', currency: '' },
-  dest_user_name: '',
+  destination_account_name: '',
+  destination_account_id: '',
+  destination_account_currency: '',
 
-  // Page 3: Amount
-  exitAmount: '',
-  entryAmount: '',
+  // Page 3: Amounts
+  source_amount: '',
+  destination_amount: '',
+  exchange_rate: null,
 
   // Page 4: Fees
-  exitFee: '',
-  entryFee: '',
+  source_fee: '0',
+  destination_fee: '0',
 
   // Page 5: Confirmation
   notes: '',
@@ -460,14 +463,15 @@ export type TransactionEvent =
   | { type: 'SET_IS_SUBMITTING'; isSubmitting: boolean }
   | { type: 'SET_SUBMIT_MESSAGE'; message: { type: 'success' | 'error'; text: string } | null };
 
-// Transfer Events
+// Transfer Events - Standardized naming per API spec
 export type TransferEvent =
-  | { type: 'SET_TRANSFER_SOURCE'; account: string; id: string; currency: string; user_name: string }
-  | { type: 'SET_TRANSFER_DEST'; account: string; id: string; currency: string; user_name: string }
-  | { type: 'UPDATE_TRANSFER_EXIT_AMOUNT'; amount: string }
-  | { type: 'UPDATE_TRANSFER_ENTRY_AMOUNT'; amount: string }
-  | { type: 'UPDATE_TRANSFER_EXIT_FEE'; fee: string }
-  | { type: 'UPDATE_TRANSFER_ENTRY_FEE'; fee: string }
+  | { type: 'SET_TRANSFER_SOURCE'; user_name: string; source_account_name: string; source_account_id: string; source_account_currency: string }
+  | { type: 'SET_TRANSFER_DEST'; destination_account_name: string; destination_account_id: string; destination_account_currency: string }
+  | { type: 'UPDATE_TRANSFER_SOURCE_AMOUNT'; source_amount: string }
+  | { type: 'UPDATE_TRANSFER_DEST_AMOUNT'; destination_amount: string }
+  | { type: 'UPDATE_TRANSFER_EXCHANGE_RATE'; exchange_rate: number }
+  | { type: 'UPDATE_TRANSFER_SOURCE_FEE'; source_fee: string }
+  | { type: 'UPDATE_TRANSFER_DEST_FEE'; destination_fee: string }
   | { type: 'UPDATE_TRANSFER_NOTES'; notes: string }
   | { type: 'UPDATE_TRANSFER_DATE'; date: string }
   | { type: 'RESET_TRANSFER' }
@@ -552,10 +556,11 @@ export const isTransferEvent = (event: BudgetMachineEvent): event is TransferEve
   return [
     'SET_TRANSFER_SOURCE',
     'SET_TRANSFER_DEST',
-    'UPDATE_TRANSFER_EXIT_AMOUNT',
-    'UPDATE_TRANSFER_ENTRY_AMOUNT',
-    'UPDATE_TRANSFER_EXIT_FEE',
-    'UPDATE_TRANSFER_ENTRY_FEE',
+    'UPDATE_TRANSFER_SOURCE_AMOUNT',
+    'UPDATE_TRANSFER_DEST_AMOUNT',
+    'UPDATE_TRANSFER_EXCHANGE_RATE',
+    'UPDATE_TRANSFER_SOURCE_FEE',
+    'UPDATE_TRANSFER_DEST_FEE',
     'UPDATE_TRANSFER_NOTES',
     'UPDATE_TRANSFER_DATE',
     'RESET_TRANSFER',

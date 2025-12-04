@@ -496,6 +496,13 @@ const BudgetMiniApp = () => {
       return;
     }
 
+    if (screen === 'transfer-source-accounts') {
+      machineContext.send({ type: 'NAVIGATE_TRANSFER_SOURCE' });
+      // Ensure accounts list is fresh for machine-driven flow
+      void fetchAccounts();
+      return;
+    }
+
     // For other screens, use currentScreen state
     setCurrentScreen(screen);
   };
@@ -1005,10 +1012,10 @@ const BudgetMiniApp = () => {
             if (selectedAccount) {
               machineContext.send({
                 type: 'SET_TRANSFER_SOURCE',
-                account: selectedAccount.account_name,
-                account_id: selectedAccount.account_id,
-                account_currency: selectedAccount.account_currency,
-                user_name: machineContext.context.user.user_name
+                user_name: machineContext.context.user.user_name,
+                source_account_name: selectedAccount.account_name,
+                source_account_id: selectedAccount.account_id,
+                source_account_currency: selectedAccount.account_currency
               });
             }
           }}
@@ -1019,7 +1026,7 @@ const BudgetMiniApp = () => {
       {transferScreen === 'transfer-dest-accounts' && (
         <AccountsScreen
           accounts={machineContext.context.data.accounts}
-          excludeAccountId={(machineContext.context.transfer as any).source?.id}
+          excludeAccountId={machineContext.context.transfer.source_account_id}
           accountsLoading={machineContext.context.ui.accounts.loading}
           accountsError={machineContext.context.ui.accounts.error}
           isAvailable={isAvailable}
@@ -1029,10 +1036,9 @@ const BudgetMiniApp = () => {
             if (selectedAccount) {
               machineContext.send({
                 type: 'SET_TRANSFER_DEST',
-                account: selectedAccount.account_name,
-                account_id: selectedAccount.account_id,
-                account_currency: selectedAccount.account_currency,
-                user_name: machineContext.context.user.user_name
+                destination_account_name: selectedAccount.account_name,
+                destination_account_id: selectedAccount.account_id,
+                destination_account_currency: selectedAccount.account_currency
               });
             }
           }}
@@ -1042,17 +1048,19 @@ const BudgetMiniApp = () => {
 
       {transferScreen === 'transfer-amount' && (
         <TransferAmountScreen
-          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
-          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
-          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
-          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
-          exitAmount={(machineContext.context.transfer as any).exitAmount || ''}
-          entryAmount={(machineContext.context.transfer as any).entryAmount || ''}
-          errors={(machineContext.context.transfer as any).errors}
+          sourceAccount={machineContext.context.transfer.source_account_name}
+          destAccount={machineContext.context.transfer.destination_account_name}
+          sourceCurrency={machineContext.context.transfer.source_account_currency}
+          destCurrency={machineContext.context.transfer.destination_account_currency}
+          sourceAmount={machineContext.context.transfer.source_amount}
+          destAmount={machineContext.context.transfer.destination_amount}
+          exchangeRate={machineContext.context.transfer.exchange_rate}
+          errors={machineContext.context.transfer.errors}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
-          onExitAmountChange={(amount) => machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_AMOUNT', amount })}
-          onEntryAmountChange={(amount) => machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_AMOUNT', amount })}
+          onSourceAmountChange={(source_amount) => machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_AMOUNT', source_amount })}
+          onDestAmountChange={(destination_amount) => machineContext.send({ type: 'UPDATE_TRANSFER_DEST_AMOUNT', destination_amount })}
+          onExchangeRateChange={(exchange_rate) => machineContext.send({ type: 'UPDATE_TRANSFER_EXCHANGE_RATE', exchange_rate })}
           onClearError={() => machineContext.send({ type: 'CLEAR_TRANSFER_VALIDATION_ERROR' })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_FEES' })}
         />
@@ -1060,20 +1068,20 @@ const BudgetMiniApp = () => {
 
       {transferScreen === 'transfer-fees' && (
         <TransferFeeScreen
-          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
-          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
-          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
-          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
-          exitFee={(machineContext.context.transfer as any).exitFee || ''}
-          entryFee={(machineContext.context.transfer as any).entryFee || ''}
+          sourceAccount={machineContext.context.transfer.source_account_name}
+          destAccount={machineContext.context.transfer.destination_account_name}
+          sourceCurrency={machineContext.context.transfer.source_account_currency}
+          destCurrency={machineContext.context.transfer.destination_account_currency}
+          sourceFee={machineContext.context.transfer.source_fee}
+          destFee={machineContext.context.transfer.destination_fee}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
-          onExitFeeChange={(fee) => machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_FEE', fee })}
-          onEntryFeeChange={(fee) => machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee })}
+          onSourceFeeChange={(source_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee })}
+          onDestFeeChange={(destination_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee })}
           onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' })}
           onSkip={() => {
-            machineContext.send({ type: 'UPDATE_TRANSFER_EXIT_FEE', fee: '0' });
-            machineContext.send({ type: 'UPDATE_TRANSFER_ENTRY_FEE', fee: '0' });
+            machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee: '0' });
+            machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee: '0' });
             machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' });
           }}
         />
@@ -1082,7 +1090,7 @@ const BudgetMiniApp = () => {
       {transferScreen === 'transfer-comment' && (
         <DestinationSourceNamesScreen
           transactionType="withdrawal"
-          name={(machineContext.context.transfer as any).notes || ''}
+          name={machineContext.context.transfer.notes}
           category_name="Transfer"
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
@@ -1093,15 +1101,15 @@ const BudgetMiniApp = () => {
 
       {transferScreen === 'transfer-confirm' && (
         <TransferConfirmScreen
-          sourceAccount={(machineContext.context.transfer as any).source?.account || ''}
-          destAccount={(machineContext.context.transfer as any).destination?.account || ''}
-          sourceCurrency={(machineContext.context.transfer as any).source?.currency || ''}
-          destCurrency={(machineContext.context.transfer as any).destination?.currency || ''}
-          exitAmount={(machineContext.context.transfer as any).exitAmount || ''}
-          entryAmount={(machineContext.context.transfer as any).entryAmount || ''}
-          exitFee={(machineContext.context.transfer as any).exitFee || ''}
-          entryFee={(machineContext.context.transfer as any).entryFee || ''}
-          comment={(machineContext.context.transfer as any).notes || ''}
+          sourceAccount={machineContext.context.transfer.source_account_name}
+          destAccount={machineContext.context.transfer.destination_account_name}
+          sourceCurrency={machineContext.context.transfer.source_account_currency}
+          destCurrency={machineContext.context.transfer.destination_account_currency}
+          sourceAmount={machineContext.context.transfer.source_amount}
+          destAmount={machineContext.context.transfer.destination_amount}
+          sourceFee={machineContext.context.transfer.source_fee}
+          destFee={machineContext.context.transfer.destination_fee}
+          comment={machineContext.context.transfer.notes}
           userName={machineContext.context.user.user_name}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}

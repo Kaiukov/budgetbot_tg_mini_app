@@ -399,7 +399,6 @@ export const budgetMachine = createMachine(
                 on: {
                   SET_TRANSFER_SOURCE: {
                     target: 'destAccounts',
-                    guard: ({ context }) => validationGuards.canProceedFromTransferSourcePage(context.transfer as any),
                     actions: 'setTransferSource',
                   },
                   NAVIGATE_BACK: '#budget.ready.home',
@@ -412,7 +411,6 @@ export const budgetMachine = createMachine(
                 on: {
                   SET_TRANSFER_DEST: {
                     target: 'amount',
-                    guard: ({ context }) => validationGuards.canProceedFromTransferDestPage(context.transfer as any),
                     actions: 'setTransferDest',
                   },
                   NAVIGATE_BACK: 'sourceAccounts',

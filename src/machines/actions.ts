@@ -117,63 +117,65 @@ export const actions = {
     }),
   }),
 
-  // Transfer Form
+  // Transfer Form - Standardized field naming
   setTransferSource: assign({
-    transfer: ({ context }, params: { account: string; id: string; currency: string; user_name?: string }) => ({
+    transfer: ({ context }, params: { user_name: string; source_account_name: string; source_account_id: string; source_account_currency: string }) => ({
       ...context.transfer,
-      source: {
-        account: params.account,
-        id: params.id,
-        currency: params.currency,
-      },
-      source_user_name: params.user_name ?? context.transfer.source_user_name,
+      user_name: params.user_name,
+      source_account_name: params.source_account_name,
+      source_account_id: params.source_account_id,
+      source_account_currency: params.source_account_currency,
     }),
   }),
 
   setTransferDest: assign({
-    transfer: ({ context }, params: { account: string; id: string; currency: string; user_name?: string }) => ({
+    transfer: ({ context }, params: { destination_account_name: string; destination_account_id: string; destination_account_currency: string }) => ({
       ...context.transfer,
-      destination: {
-        account: params.account,
-        id: params.id,
-        currency: params.currency,
-      },
-      dest_user_name: params.user_name ?? context.transfer.dest_user_name,
+      destination_account_name: params.destination_account_name,
+      destination_account_id: params.destination_account_id,
+      destination_account_currency: params.destination_account_currency,
     }),
   }),
 
-  updateTransferExitAmount: assign({
-    transfer: ({ context }, params: { amount: string }) => ({
+  updateTransferSourceAmount: assign({
+    transfer: ({ context }, params: { source_amount: string }) => ({
       ...context.transfer,
-      exitAmount: params.amount,
+      source_amount: params.source_amount,
     }),
   }),
 
-  updateTransferEntryAmount: assign({
-    transfer: ({ context }, params: { amount: string }) => ({
+  updateTransferDestAmount: assign({
+    transfer: ({ context }, params: { destination_amount: string }) => ({
       ...context.transfer,
-      entryAmount: params.amount,
+      destination_amount: params.destination_amount,
     }),
   }),
 
-  updateTransferExitFee: assign({
-    transfer: ({ context }, params: { fee: string }) => ({
+  updateTransferExchangeRate: assign({
+    transfer: ({ context }, params: { exchange_rate: number }) => ({
       ...context.transfer,
-      exitFee: params.fee,
+      exchange_rate: params.exchange_rate,
     }),
   }),
 
-  updateTransferEntryFee: assign({
-    transfer: ({ context }, params: { fee: string }) => ({
+  updateTransferSourceFee: assign({
+    transfer: ({ context }, params: { source_fee: string }) => ({
       ...context.transfer,
-      entryFee: params.fee,
+      source_fee: params.source_fee || '0',
     }),
   }),
 
-  updateTransferComment: assign({
-    transfer: ({ context }, params: { comment: string }) => ({
+  updateTransferDestFee: assign({
+    transfer: ({ context }, params: { destination_fee: string }) => ({
       ...context.transfer,
-      comment: params.comment,
+      destination_fee: params.destination_fee || '0',
+    }),
+  }),
+
+  updateTransferNotes: assign({
+    transfer: ({ context }, params: { notes: string }) => ({
+      ...context.transfer,
+      notes: params.notes,
     }),
   }),
 
@@ -330,10 +332,10 @@ export const guards = {
 
   hasValidTransfer: (context: BudgetMachineContext) => {
     return (
-      context.transfer.source.account !== '' &&
-      context.transfer.destination.account !== '' &&
-      context.transfer.exitAmount !== '' &&
-      context.transfer.entryAmount !== ''
+      context.transfer.source_account_id !== '' &&
+      context.transfer.destination_account_id !== '' &&
+      context.transfer.source_amount !== '' &&
+      context.transfer.destination_amount !== ''
     );
   },
 
@@ -425,36 +427,53 @@ export const validateConfirmationPage = (form: WithdrawalForm | DepositForm | Tr
 
 /**
  * Validates transfer source page
- * Required fields: source account, source_user_name
+ * Required fields: user_name, source_account_id, source_account_name, source_account_currency
  */
 export const validateTransferSourcePage = (form: TransferForm): string | null => {
-  if (!form.source.account?.trim()) return 'Source account is required';
-  if (!form.source_user_name?.trim()) return 'User name is required';
+  if (!form.user_name?.trim()) return 'User name is required';
+  if (!form.source_account_id?.trim()) return 'Source account ID is required';
+  if (!form.source_account_name?.trim()) return 'Source account name is required';
+  if (!form.source_account_currency?.trim()) return 'Source account currency is required';
   return null;
 };
 
 /**
  * Validates transfer destination page
- * Required fields: destination account, dest_user_name
+ * Required fields: destination_account_id, destination_account_name, destination_account_currency
+ * Also validates that source and destination accounts are different
  */
 export const validateTransferDestPage = (form: TransferForm): string | null => {
-  if (!form.destination.account?.trim()) return 'Destination account is required';
-  if (!form.dest_user_name?.trim()) return 'User name is required';
+  if (!form.destination_account_id?.trim()) return 'Destination account ID is required';
+  if (!form.destination_account_name?.trim()) return 'Destination account name is required';
+  if (!form.destination_account_currency?.trim()) return 'Destination account currency is required';
+
+  // Validate that source and destination are different
+  if (form.source_account_id === form.destination_account_id) {
+    return 'Source and destination accounts must be different';
+  }
+
   return null;
 };
 
 /**
  * Validates transfer amount page
- * Required fields: exitAmount, entryAmount
+ * Required fields: source_amount, destination_amount, exchange_rate (if multi-currency)
  */
 export const validateTransferAmountPage = (form: TransferForm): string | null => {
-  if (!form.exitAmount?.trim()) return 'Exit amount is required';
-  const exitNum = parseFloat(form.exitAmount);
-  if (isNaN(exitNum) || exitNum <= 0) return 'Exit amount must be greater than 0';
+  if (!form.source_amount?.trim()) return 'Source amount is required';
+  const sourceNum = parseFloat(form.source_amount);
+  if (isNaN(sourceNum) || sourceNum <= 0) return 'Source amount must be greater than 0';
 
-  if (!form.entryAmount?.trim()) return 'Entry amount is required';
-  const entryNum = parseFloat(form.entryAmount);
-  if (isNaN(entryNum) || entryNum <= 0) return 'Entry amount must be greater than 0';
+  if (!form.destination_amount?.trim()) return 'Destination amount is required';
+  const destNum = parseFloat(form.destination_amount);
+  if (isNaN(destNum) || destNum <= 0) return 'Destination amount must be greater than 0';
+
+  // If currencies differ, exchange rate must be present and not zero
+  if (form.source_account_currency !== form.destination_account_currency) {
+    if (form.exchange_rate === null || form.exchange_rate === undefined || form.exchange_rate === 0) {
+      return 'Exchange rate is required for multi-currency transfers';
+    }
+  }
 
   return null;
 };
