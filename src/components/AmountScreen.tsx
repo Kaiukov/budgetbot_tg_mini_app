@@ -355,12 +355,27 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
     const value = sanitizeNumberInput(e.target.value);
     if (value === null) return;
     onDestAmountChange?.(value);
+    // Derive an exchange rate on-the-fly when both amounts are present (helps unblock validation)
+    if (!isSameCurrency && onExchangeRateChangeRef.current) {
+      const src = parseFloat(sourceAmount || '');
+      const dst = parseFloat(value);
+      if (src > 0 && dst > 0) {
+        onExchangeRateChangeRef.current(dst / src);
+      }
+    }
     if (value && parseFloat(value) > 0 && onClearError) onClearError();
   };
 
   const handleUseSuggestedAmount = () => {
     if (suggestedAmount && onDestAmountChange) {
       onDestAmountChange(suggestedAmount);
+      if (!isSameCurrency && onExchangeRateChangeRef.current) {
+        const src = parseFloat(sourceAmount || '');
+        const dst = parseFloat(suggestedAmount);
+        if (src > 0 && dst > 0) {
+          onExchangeRateChangeRef.current(dst / src);
+        }
+      }
     }
   };
 

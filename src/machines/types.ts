@@ -248,12 +248,12 @@ export interface TransferForm {
   // Page 1: Source Account
   user_name: string;
   source_account_name: string;
-  source_account_id: string;
+  source_account_id: string | number;
   source_account_currency: string;
 
   // Page 2: Destination Account
   destination_account_name: string;
-  destination_account_id: string;
+  destination_account_id: string | number;
   destination_account_currency: string;
 
   // Page 3: Amounts
@@ -450,7 +450,7 @@ export type TransactionEvent =
   | { type: 'UPDATE_DATE'; date: string }
   | { type: 'RESET_TRANSACTION' }
   | { type: 'SET_USER_DATA'; user_id: number; user_name: string }
-  | { type: 'SELECT_TRANSACTION'; id: string }
+  | { type: 'SELECT_TRANSACTION'; id: string; rawData?: TransactionData; editing?: DisplayTransaction }
   | { type: 'CLEAR_SELECTED_TRANSACTION' }
   // Validation events
   | { type: 'VALIDATE_PAGE'; page: string }
@@ -467,8 +467,8 @@ export type TransactionEvent =
 
 // Transfer Events - Standardized naming per API spec
 export type TransferEvent =
-  | { type: 'SET_TRANSFER_SOURCE'; user_name: string; source_account_name: string; source_account_id: string; source_account_currency: string }
-  | { type: 'SET_TRANSFER_DEST'; destination_account_name: string; destination_account_id: string; destination_account_currency: string }
+  | { type: 'SET_TRANSFER_SOURCE'; user_name: string; source_account_name: string; source_account_id: string | number; source_account_currency: string }
+  | { type: 'SET_TRANSFER_DEST'; destination_account_name: string; destination_account_id: string | number; destination_account_currency: string }
   | { type: 'UPDATE_TRANSFER_SOURCE_AMOUNT'; source_amount: string }
   | { type: 'UPDATE_TRANSFER_DEST_AMOUNT'; destination_amount: string }
   | { type: 'UPDATE_TRANSFER_EXCHANGE_RATE'; exchange_rate: number }

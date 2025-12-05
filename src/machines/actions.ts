@@ -84,6 +84,32 @@ export const actions = {
     }),
   }),
 
+  resetDestinationInput: assign({
+    transaction: ({ context }) => ({
+      ...context.transaction,
+      destination_name: '',
+      destination_id: 0,
+      comment: '',
+      notes: '',
+      suggestions: [],
+      suggestionsError: null,
+      isLoadingSuggestions: false,
+    }),
+  }),
+
+  resetSourceInput: assign({
+    transaction: ({ context }) => ({
+      ...context.transaction,
+      source_name: '',
+      source_id: 0,
+      comment: '',
+      notes: '',
+      suggestions: [],
+      suggestionsError: null,
+      isLoadingSuggestions: false,
+    }),
+  }),
+
   resetTransaction: assign({
     transaction: () => ({ ...transactionFormDefault }),
   }),
@@ -132,7 +158,7 @@ export const actions = {
     transfer: ({ context, event }: any) => {
       const destChanged =
         !!context.transfer.destination_account_id &&
-        context.transfer.destination_account_id !== event.destination_account_id;
+        String(context.transfer.destination_account_id) !== String(event.destination_account_id);
 
       return {
         ...context.transfer,
@@ -261,7 +287,7 @@ export const actions = {
   smartClearOnAmountBack: assign({
     transfer: ({ context }) => {
       // If destination changed, clear amounts (they're invalid for new currency)
-      const destChanged = context.transfer.destination_account_id !== context.transfer.prevDestinationAccountId;
+      const destChanged = String(context.transfer.destination_account_id) !== String(context.transfer.prevDestinationAccountId);
       if (destChanged) {
         return {
           ...context.transfer,
@@ -279,7 +305,7 @@ export const actions = {
   smartClearOnFeeBack: assign({
     transfer: ({ context }) => {
       // If destination changed, clear destination fee only (source currency unchanged)
-      const destChanged = context.transfer.destination_account_id !== context.transfer.prevDestinationAccountId;
+      const destChanged = String(context.transfer.destination_account_id) !== String(context.transfer.prevDestinationAccountId);
       if (destChanged) {
         return {
           ...context.transfer,
@@ -519,7 +545,7 @@ export const validateConfirmationPage = (form: WithdrawalForm | DepositForm | Tr
  */
 export const validateTransferSourcePage = (form: TransferForm): string | null => {
   if (!form.user_name?.trim()) return 'User name is required';
-  if (!form.source_account_id?.trim()) return 'Source account ID is required';
+  if (!String(form.source_account_id || '').trim()) return 'Source account ID is required';
   if (!form.source_account_name?.trim()) return 'Source account name is required';
   if (!form.source_account_currency?.trim()) return 'Source account currency is required';
   return null;
@@ -531,12 +557,12 @@ export const validateTransferSourcePage = (form: TransferForm): string | null =>
  * Also validates that source and destination accounts are different
  */
 export const validateTransferDestPage = (form: TransferForm): string | null => {
-  if (!form.destination_account_id?.trim()) return 'Destination account ID is required';
+  if (!String(form.destination_account_id || '').trim()) return 'Destination account ID is required';
   if (!form.destination_account_name?.trim()) return 'Destination account name is required';
   if (!form.destination_account_currency?.trim()) return 'Destination account currency is required';
 
   // Validate that source and destination are different
-  if (form.source_account_id === form.destination_account_id) {
+  if (String(form.source_account_id) === String(form.destination_account_id)) {
     return 'Source and destination accounts must be different';
   }
 

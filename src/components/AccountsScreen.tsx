@@ -12,9 +12,9 @@ interface AccountsScreenProps {
   accountsError: string | null;
   title?: string;
   isAvailable?: boolean;
-  excludeAccountId?: string;
+  excludeAccountId?: string | number;
   onBack: () => void;
-  onSelectAccount: (accountName: string, accountId?: string, currency?: string, user_name?: string) => void;
+  onSelectAccount: (accountName: string, accountId?: string | number, currency?: string, user_name?: string) => void;
   onRetry: () => void;
 }
 
@@ -31,7 +31,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
 }) => {
   // Filter out excluded account
   const filteredAccounts = excludeAccountId
-    ? accounts.filter(acc => acc.account_id !== excludeAccountId)
+    ? accounts.filter(acc => String(acc.account_id) !== String(excludeAccountId))
     : accounts;
   // Show Telegram back button
   useEffect(() => {

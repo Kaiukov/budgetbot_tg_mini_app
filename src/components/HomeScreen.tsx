@@ -239,9 +239,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
                 key={transaction.id}
                 transaction={transaction}
                 onClick={() => {
-                  onNavigate('transaction-detail');
                   // Store selected transaction ID in sessionStorage for navigation
                   sessionStorage.setItem('selectedTransactionId', transaction.id);
+                  onNavigate('transaction-detail');
                 }}
               />
             ))}

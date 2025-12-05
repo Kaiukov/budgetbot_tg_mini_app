@@ -206,7 +206,10 @@ export const budgetMachine = createMachine(
                     target: 'confirm',
                     guard: ({ context }) => validationGuards.canProceedFromDestinationPage(context.transaction as any),
                   },
-                  NAVIGATE_BACK: 'category',
+                  NAVIGATE_BACK: {
+                    target: 'category',
+                    actions: 'resetDestinationInput',
+                  },
                   SET_VALIDATION_ERROR: {
                     actions: 'setWithdrawalValidationError',
                   },
@@ -356,7 +359,10 @@ export const budgetMachine = createMachine(
                     target: 'confirm',
                     guard: ({ context }) => validationGuards.canProceedFromSourcePage(context.transaction as any),
                   },
-                  NAVIGATE_BACK: 'category',
+                  NAVIGATE_BACK: {
+                    target: 'category',
+                    actions: 'resetSourceInput',
+                  },
                   SET_VALIDATION_ERROR: {
                     actions: 'setDepositValidationError',
                   },
