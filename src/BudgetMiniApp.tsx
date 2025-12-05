@@ -15,7 +15,6 @@ import AmountScreen from './components/AmountScreen';
 import CategoryScreen from './components/CategoryScreen';
 import DestinationSourceNamesScreen from './components/DestinationSourceNamesScreen';
 import ConfirmScreen from './components/ConfirmScreen';
-import TransferAmountScreen from './components/TransferAmountScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
 import TransferConfirmScreen from './components/TransferConfirmScreen';
 import DebugScreen from './components/DebugScreen';
@@ -1012,7 +1011,8 @@ const BudgetMiniApp = () => {
       )}
 
       {transferScreen === 'transfer-amount' && (
-        <TransferAmountScreen
+        <AmountScreen
+          mode="transfer"
           sourceAccount={machineContext.context.transfer.source_account_name}
           destAccount={machineContext.context.transfer.destination_account_name}
           sourceCurrency={machineContext.context.transfer.source_account_currency}
