@@ -432,7 +432,6 @@ export type NavigationEvent =
   | { type: 'NAVIGATE_TRANSFER_DEST' }
   | { type: 'NAVIGATE_TRANSFER_AMOUNT' }
   | { type: 'NAVIGATE_TRANSFER_FEES' }
-  | { type: 'NAVIGATE_TRANSFER_COMMENT' }
   | { type: 'NAVIGATE_TRANSFER_CONFIRM' }
   | { type: 'NAVIGATE_TRANSACTIONS' }
   | { type: 'NAVIGATE_TRANSACTION_DETAIL' }

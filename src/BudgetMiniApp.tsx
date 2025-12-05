@@ -69,7 +69,6 @@ const getTransferScreenFromMachineState = (machineState: any): string | null => 
     if (machineState.matches({ ready: { transferFlow: 'destAccounts' } })) return 'transfer-dest-accounts';
     if (machineState.matches({ ready: { transferFlow: 'amount' } })) return 'transfer-amount';
     if (machineState.matches({ ready: { transferFlow: 'fees' } })) return 'transfer-fees';
-    if (machineState.matches({ ready: { transferFlow: 'notes' } })) return 'transfer-comment';
     if (machineState.matches({ ready: { transferFlow: 'confirm' } })) return 'transfer-confirm';
   }
 
@@ -638,10 +637,8 @@ const BudgetMiniApp = () => {
         };
       case 'transfer-fees':
         return () => setCurrentScreen('transfer-amount');
-      case 'transfer-comment':
-        return () => setCurrentScreen('transfer-fees');
       case 'transfer-confirm':
-        return () => setCurrentScreen('transfer-comment');
+        return () => setCurrentScreen('transfer-fees');
       case 'debug':
         return () => setCurrentScreen('home');
       case 'transactions':
@@ -1046,24 +1043,12 @@ const BudgetMiniApp = () => {
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onSourceFeeChange={(source_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee })}
           onDestFeeChange={(destination_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee })}
-          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' })}
+          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' })}
           onSkip={() => {
             machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee: '0' });
             machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee: '0' });
-            machineContext.send({ type: 'NAVIGATE_TRANSFER_COMMENT' });
+            machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' });
           }}
-        />
-      )}
-
-      {transferScreen === 'transfer-comment' && (
-        <DestinationSourceNamesScreen
-          transactionType="withdrawal"
-          name={machineContext.context.transfer.notes}
-          category_name="Transfer"
-          isAvailable={isAvailable}
-          onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
-          onNameChange={(_, dest) => machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes: dest })}
-          onNext={() => machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' })}
         />
       )}
 

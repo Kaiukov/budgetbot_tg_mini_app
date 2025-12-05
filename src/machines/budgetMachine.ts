@@ -459,23 +459,11 @@ export const budgetMachine = createMachine(
                   UPDATE_TRANSFER_DEST_FEE: {
                     actions: 'updateTransferDestFee',
                   },
-                  NAVIGATE_TRANSFER_COMMENT: 'notes',
+                  NAVIGATE_TRANSFER_CONFIRM: 'confirm',
                   NAVIGATE_BACK: {
                     target: 'amount',
                     actions: 'smartClearOnFeeBack', // Smart clear fees if destination changed
                   },
-                },
-              },
-              notes: {
-                on: {
-                  UPDATE_TRANSFER_NOTES: {
-                    actions: 'updateTransferComment',
-                  },
-                  UPDATE_TRANSFER_DATE: {
-                    actions: 'updateTransferDate',
-                  },
-                  NAVIGATE_TRANSFER_CONFIRM: 'confirm',
-                  NAVIGATE_BACK: 'fees',
                 },
               },
               confirm: {
@@ -484,7 +472,7 @@ export const budgetMachine = createMachine(
                     target: '#budget.ready.home',
                     actions: 'resetTransfer',
                   },
-                  NAVIGATE_BACK: 'notes',
+                  NAVIGATE_BACK: 'fees',
                 },
               },
             },
