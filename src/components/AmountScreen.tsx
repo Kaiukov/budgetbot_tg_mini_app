@@ -264,18 +264,18 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
     setSuggestedAmount(null);
   }, [destAccount, destCurrencyCode]);
 
-  // Same-currency: auto-copy amount and set exchange rate to 1
+  // Same-currency: auto-copy amount and set exchange rate to 1 (only when changed)
   useEffect(() => {
-    if (isSameCurrency) {
-      onExchangeRateChange?.(1);
-      if (onDestAmountChange) {
-        onDestAmountChange(sourceAmount || '');
-      }
-    } else {
-      onExchangeRateChange?.(null);
+    const desiredRate = isSameCurrency ? 1 : null;
+    if (onExchangeRateChange && desiredRate !== exchangeRate) {
+      onExchangeRateChange(desiredRate);
+    }
+
+    if (isSameCurrency && onDestAmountChange && destAmount !== sourceAmount) {
+      onDestAmountChange(sourceAmount || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSameCurrency, sourceAmount, sourceCurrencyCode, destCurrencyCode]);
+  }, [isSameCurrency, sourceAmount, destAmount, exchangeRate, sourceCurrencyCode, destCurrencyCode]);
 
   // Fetch conversion for cross-currency transfers
   useEffect(() => {
@@ -301,10 +301,12 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
         const converted = await syncService.getExchangeRate(sourceCurrencyCode, destCurrencyCode, numAmount);
         if (converted !== null) {
           const rate = converted / numAmount;
-          onExchangeRateChange?.(rate);
+          if (onExchangeRateChange && rate !== exchangeRate) {
+            onExchangeRateChange(rate);
+          }
           const asString = converted.toFixed(2);
           setSuggestedAmount(asString);
-          if (!destManuallyEdited && onDestAmountChange) {
+          if (!destManuallyEdited && onDestAmountChange && destAmount !== asString) {
             onDestAmountChange(asString);
           }
         } else {
@@ -324,7 +326,7 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
 
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [destCurrencyCode, destManuallyEdited, isSameCurrency, onDestAmountChange, onExchangeRateChange, sourceAmount, sourceCurrencyCode]);
+  }, [destCurrencyCode, destManuallyEdited, destAmount, exchangeRate, isSameCurrency, onDestAmountChange, onExchangeRateChange, sourceAmount, sourceCurrencyCode]);
 
   const handleSourceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = sanitizeNumberInput(e.target.value);
