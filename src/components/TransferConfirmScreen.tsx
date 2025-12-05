@@ -117,8 +117,9 @@ const TransferConfirmScreen: React.FC<TransferConfirmScreenProps> = ({
 
         // Show Telegram alert for success
         telegramService.showAlert('✅ Transfer saved successfully!', () => {
-          onSuccess();
+          // Reset transfer state before navigating home to avoid stale amounts
           onConfirm();
+          onSuccess();
         });
       } else {
         console.error('❌ Transfer submission failed:', response);

@@ -129,12 +129,30 @@ export const actions = {
   }),
 
   setTransferDest: assign({
-    transfer: ({ context, event }: any) => ({
-      ...context.transfer,
-      destination_account_name: event.destination_account_name,
-      destination_account_id: event.destination_account_id,
-      destination_account_currency: event.destination_account_currency,
-    }),
+    transfer: ({ context, event }: any) => {
+      const destChanged =
+        !!context.transfer.destination_account_id &&
+        context.transfer.destination_account_id !== event.destination_account_id;
+
+      return {
+        ...context.transfer,
+        destination_account_name: event.destination_account_name,
+        destination_account_id: event.destination_account_id,
+        destination_account_currency: event.destination_account_currency,
+        // If user picked a different destination, amounts/exchange + fees become invalid
+        ...(destChanged
+          ? {
+              source_amount: '',
+              destination_amount: '',
+              exchange_rate: null,
+              source_fee: '0',
+              destination_fee: '0',
+            }
+          : {}),
+        // Keep smart-clearing baseline in sync with latest selection
+        prevDestinationAccountId: event.destination_account_id,
+      };
+    },
   }),
 
   updateTransferSourceAmount: assign({
