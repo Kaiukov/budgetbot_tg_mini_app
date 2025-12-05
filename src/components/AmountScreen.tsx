@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
@@ -247,7 +247,16 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
   const [isLoadingConversion, setIsLoadingConversion] = useState(false);
   const [suggestedAmount, setSuggestedAmount] = useState<string | null>(null);
   const [conversionError, setConversionError] = useState(false);
-  const [destManuallyEdited, setDestManuallyEdited] = useState(false);
+
+  // Refs for callbacks to prevent render loops from unstable references
+  const onDestAmountChangeRef = useRef(onDestAmountChange);
+  const onExchangeRateChangeRef = useRef(onExchangeRateChange);
+
+  // Keep refs in sync with latest callback values
+  useEffect(() => {
+    onDestAmountChangeRef.current = onDestAmountChange;
+    onExchangeRateChangeRef.current = onExchangeRateChange;
+  });
 
   useEffect(() => {
     telegramService.showBackButton(onBack);
@@ -258,23 +267,21 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
   const isSameCurrency = sourceCurrencyCode === destCurrencyCode;
 
-  // Reset manual edit flag & suggestions when destination account changes
+  // Reset suggestions when destination account changes
   useEffect(() => {
-    setDestManuallyEdited(false);
     setSuggestedAmount(null);
   }, [destAccount, destCurrencyCode]);
 
   // Same-currency: auto-copy amount and set exchange rate to 1 (only when changed)
   useEffect(() => {
     const desiredRate = isSameCurrency ? 1 : null;
-    if (onExchangeRateChange && desiredRate !== exchangeRate) {
-      onExchangeRateChange(desiredRate);
+    if (onExchangeRateChangeRef.current && desiredRate !== exchangeRate) {
+      onExchangeRateChangeRef.current(desiredRate);
     }
 
-    if (isSameCurrency && onDestAmountChange && destAmount !== sourceAmount) {
-      onDestAmountChange(sourceAmount || '');
+    if (isSameCurrency && onDestAmountChangeRef.current && String(destAmount || '') !== String(sourceAmount || '')) {
+      onDestAmountChangeRef.current(sourceAmount || '');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSameCurrency, sourceAmount, destAmount, exchangeRate, sourceCurrencyCode, destCurrencyCode]);
 
   // Fetch conversion for cross-currency transfers
@@ -290,7 +297,9 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
     if (!sourceAmount || isNaN(numAmount) || numAmount <= 0) {
       setSuggestedAmount(null);
       setConversionError(false);
-      onExchangeRateChange?.(null);
+      if (onExchangeRateChangeRef.current && exchangeRate !== null) {
+        onExchangeRateChangeRef.current(null);
+      }
       return;
     }
 
@@ -301,22 +310,26 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
         const converted = await syncService.getExchangeRate(sourceCurrencyCode, destCurrencyCode, numAmount);
         if (converted !== null) {
           const rate = converted / numAmount;
-          if (onExchangeRateChange && rate !== exchangeRate) {
-            onExchangeRateChange(rate);
+          // Use tolerance for floating point comparison to prevent loops
+          const rateChanged = !exchangeRate || Math.abs(rate - exchangeRate) > 0.0001;
+          if (onExchangeRateChangeRef.current && rateChanged) {
+            onExchangeRateChangeRef.current(rate);
           }
           const asString = converted.toFixed(2);
+          // Only set suggestion - user must click "Use suggested" to accept
           setSuggestedAmount(asString);
-          if (!destManuallyEdited && onDestAmountChange && destAmount !== asString) {
-            onDestAmountChange(asString);
-          }
         } else {
-          onExchangeRateChange?.(null);
+          if (onExchangeRateChangeRef.current && exchangeRate !== null) {
+            onExchangeRateChangeRef.current(null);
+          }
           setSuggestedAmount(null);
           setConversionError(true);
         }
       } catch (error) {
         console.error('Failed to fetch conversion:', error);
-        onExchangeRateChange?.(null);
+        if (onExchangeRateChangeRef.current && exchangeRate !== null) {
+          onExchangeRateChangeRef.current(null);
+        }
         setSuggestedAmount(null);
         setConversionError(true);
       } finally {
@@ -326,7 +339,7 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
 
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [destCurrencyCode, destManuallyEdited, destAmount, exchangeRate, isSameCurrency, onDestAmountChange, onExchangeRateChange, sourceAmount, sourceCurrencyCode]);
+  }, [destCurrencyCode, exchangeRate, isSameCurrency, sourceAmount, sourceCurrencyCode]);
 
   const handleSourceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = sanitizeNumberInput(e.target.value);
@@ -336,14 +349,11 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
       onDestAmountChange(value);
     }
     if (value && parseFloat(value) > 0 && onClearError) onClearError();
-    // If user edits source again, allow auto-fill to override dest unless user re-edits dest later
-    setDestManuallyEdited(false);
   };
 
   const handleDestAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = sanitizeNumberInput(e.target.value);
     if (value === null) return;
-    setDestManuallyEdited(true);
     onDestAmountChange?.(value);
     if (value && parseFloat(value) > 0 && onClearError) onClearError();
   };
@@ -351,7 +361,6 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
   const handleUseSuggestedAmount = () => {
     if (suggestedAmount && onDestAmountChange) {
       onDestAmountChange(suggestedAmount);
-      setDestManuallyEdited(true);
     }
   };
 
