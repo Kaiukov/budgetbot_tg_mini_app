@@ -14,7 +14,7 @@ import {
   categoriesFetchActor,
   depositSourceNameFetchActor,
 } from './actors';
-import { validationGuards } from './actions';
+import { validationGuards, actions as transferActions } from './actions';
 
 export const budgetMachine = createMachine(
   {
@@ -566,6 +566,9 @@ export const budgetMachine = createMachine(
   },
   {
     actions: {
+      // Spread transfer actions from actions.ts (snake_case field names)
+      ...(transferActions as any),
+
       setUser: assign(({ context, event }: any) => ({
         user: event.user || context.user,
       })),
@@ -646,75 +649,12 @@ export const budgetMachine = createMachine(
         },
       }),
 
-      setTransferSource: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          source: {
-            account: event.account,
-            id: event.account_id,
-            currency: event.account_currency,
-          },
-          source_user_name: event.user_name || context.transfer.source_user_name,
-        },
-      })),
-
-      setTransferDest: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          destination: {
-            account: event.account,
-            id: event.account_id,
-            currency: event.account_currency,
-          },
-          dest_user_name: event.user_name || context.transfer.dest_user_name,
-        },
-      })),
-
-      updateTransferExitAmount: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          exitAmount: event.amount,
-        },
-      })),
-
-      updateTransferEntryAmount: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          entryAmount: event.amount,
-        },
-      })),
-
-      updateTransferExitFee: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          exitFee: event.fee,
-        },
-      })),
-
-      updateTransferEntryFee: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          entryFee: event.fee,
-        },
-      })),
-
-      updateTransferComment: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          notes: event.notes,
-        },
-      })),
+      // NOTE: Transfer actions (setTransferSource, setTransferDest, updateTransferSourceAmount, etc.)
+      // are now imported from ./actions via transferActions spread above
 
       updateTransactionDate: assign(({ context, event }: any) => ({
         transaction: {
           ...context.transaction,
-          date: event.date,
-        },
-      })),
-
-      updateTransferDate: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
           date: event.date,
         },
       })),
@@ -732,17 +672,6 @@ export const budgetMachine = createMachine(
           errors: event.error ? { validation: event.error } : {},
         },
       })),
-
-      setTransferValidationError: assign(({ context, event }: any) => ({
-        transfer: {
-          ...context.transfer,
-          errors: event.error ? { validation: event.error } : {},
-        },
-      })),
-
-      resetTransfer: assign({
-        transfer: initialContext.transfer,
-      }),
 
       setAccounts: assign(({ context, event }: any) => ({
         data: {

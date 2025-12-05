@@ -117,72 +117,72 @@ export const actions = {
     }),
   }),
 
-  // Transfer Form - Standardized field naming
+  // Transfer Form - Standardized field naming (use event directly, not params)
   setTransferSource: assign({
-    transfer: ({ context }, params: { user_name: string; source_account_name: string; source_account_id: string; source_account_currency: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      user_name: params.user_name,
-      source_account_name: params.source_account_name,
-      source_account_id: params.source_account_id,
-      source_account_currency: params.source_account_currency,
+      user_name: event.user_name,
+      source_account_name: event.source_account_name,
+      source_account_id: event.source_account_id,
+      source_account_currency: event.source_account_currency,
     }),
   }),
 
   setTransferDest: assign({
-    transfer: ({ context }, params: { destination_account_name: string; destination_account_id: string; destination_account_currency: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      destination_account_name: params.destination_account_name,
-      destination_account_id: params.destination_account_id,
-      destination_account_currency: params.destination_account_currency,
+      destination_account_name: event.destination_account_name,
+      destination_account_id: event.destination_account_id,
+      destination_account_currency: event.destination_account_currency,
     }),
   }),
 
   updateTransferSourceAmount: assign({
-    transfer: ({ context }, params: { source_amount: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      source_amount: params.source_amount,
+      source_amount: event.source_amount,
     }),
   }),
 
   updateTransferDestAmount: assign({
-    transfer: ({ context }, params: { destination_amount: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      destination_amount: params.destination_amount,
+      destination_amount: event.destination_amount,
     }),
   }),
 
   updateTransferExchangeRate: assign({
-    transfer: ({ context }, params: { exchange_rate: number }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      exchange_rate: params.exchange_rate,
+      exchange_rate: event.exchange_rate,
     }),
   }),
 
   updateTransferSourceFee: assign({
-    transfer: ({ context }, params: { source_fee: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      source_fee: params.source_fee || '0',
+      source_fee: event.source_fee || '0',
     }),
   }),
 
   updateTransferDestFee: assign({
-    transfer: ({ context }, params: { destination_fee: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      destination_fee: params.destination_fee || '0',
+      destination_fee: event.destination_fee || '0',
     }),
   }),
 
   updateTransferNotes: assign({
-    transfer: ({ context }, params: { notes: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      notes: params.notes,
+      notes: event.notes,
     }),
   }),
 
   updateTransferDate: assign({
-    transfer: ({ context }, params: { date: string }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      date: params.date,
+      date: event.date,
     }),
   }),
 
@@ -191,9 +191,9 @@ export const actions = {
   }),
 
   setTransferValidationError: assign({
-    transfer: ({ context }, params: { error: string | null }) => ({
+    transfer: ({ context, event }: any) => ({
       ...context.transfer,
-      errors: params.error ? { validation: params.error } : {},
+      errors: event.error ? { validation: event.error } : {},
     }),
   }),
 
