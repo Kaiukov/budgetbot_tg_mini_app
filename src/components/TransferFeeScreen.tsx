@@ -78,6 +78,16 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
     }
   };
 
+  const handleSelectAll: React.FocusEventHandler<HTMLInputElement> = (e) => {
+    // Defer select to avoid clobbering during click focus sequence
+    requestAnimationFrame(() => e.target.select());
+  };
+
+  const preventMouseUpDeselection: React.MouseEventHandler<HTMLInputElement> = (e) => {
+    // Prevent mouse up from clearing the programmatic selection on first click
+    e.preventDefault();
+  };
+
   const hasError = Boolean(errors?.validation);
 
   return (
@@ -110,6 +120,8 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
                 value={sourceFee}
                 onChange={handleSourceFeeChange}
                 onKeyDown={handleKeyDown}
+                onFocus={handleSelectAll}
+                onMouseUp={preventMouseUpDeselection}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
                   sourceFee ? 'text-right' : 'text-center'
@@ -146,6 +158,8 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
                 value={destFee}
                 onChange={handleDestFeeChange}
                 onKeyDown={handleKeyDown}
+                onFocus={handleSelectAll}
+                onMouseUp={preventMouseUpDeselection}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
                   destFee ? 'text-right' : 'text-center'
