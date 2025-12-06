@@ -15,7 +15,6 @@ interface TransferFeeScreenProps {
   onSourceFeeChange: (value: string) => void;
   onDestFeeChange: (value: string) => void;
   onNext: () => void;
-  onSkip: () => void;
 }
 
 const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
@@ -29,8 +28,7 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   onBack,
   onSourceFeeChange,
   onDestFeeChange,
-  onNext,
-  onSkip
+  onNext
 }) => {
   // Show Telegram back button
   useEffect(() => {
@@ -87,12 +85,6 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
     if (e.key === 'Enter') {
       onNext();
     }
-  };
-
-  const handleSkipFees = () => {
-    onSourceFeeChange('0');
-    onDestFeeChange('0');
-    onSkip();
   };
 
   return (
@@ -178,21 +170,12 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
         </p>
 
         {/* Action Buttons */}
-        <div className="space-y-2">
-          <button
-            onClick={handleSkipFees}
-            className="w-full bg-gray-700 text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-600 transition active:scale-98"
-          >
-            Skip Fees (Set to 0)
-          </button>
-
-          <button
-            onClick={onNext}
-            className="w-full bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition active:scale-98"
-          >
-            Next
-          </button>
-        </div>
+        <button
+          onClick={onNext}
+          className="w-full bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition active:scale-98"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

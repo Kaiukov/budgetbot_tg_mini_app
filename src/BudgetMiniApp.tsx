@@ -15,7 +15,6 @@ import CategoryScreen from './components/CategoryScreen';
 import DestinationSourceNamesScreen from './components/DestinationSourceNamesScreen';
 import ConfirmScreen from './components/ConfirmScreen';
 import TransferFeeScreen from './components/TransferFeeScreen';
-import TransferConfirmScreen from './components/TransferConfirmScreen';
 import DebugScreen from './components/DebugScreen';
 import TransactionsListScreen from './components/TransactionsListScreen';
 import TransactionDetailScreen from './components/TransactionDetailScreen';
@@ -907,19 +906,12 @@ const BudgetMiniApp = () => {
             machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes: buildTransferNotes() });
             machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' });
           }}
-          onSkip={() => {
-            const t = machineContext.context.transfer;
-            machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee: '0' });
-            machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee: '0' });
-            const zeroFeeNotes = `transfer from ${t.source_account_name} ${t.source_amount} ${t.source_account_currency} to ${t.destination_account_name} ${t.destination_amount} ${t.destination_account_currency}. source fee 0 ${t.source_account_currency}, destination fee 0 ${t.destination_account_currency}`;
-            machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes: zeroFeeNotes });
-            machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' });
-          }}
         />
       )}
 
       {transferScreen === 'transfer-confirm' && (
-        <TransferConfirmScreen
+        <ConfirmScreen
+          transactionType="transfer"
           sourceAccount={machineContext.context.transfer.source_account_name}
           destAccount={machineContext.context.transfer.destination_account_name}
           sourceCurrency={machineContext.context.transfer.source_account_currency}
@@ -928,13 +920,36 @@ const BudgetMiniApp = () => {
           destAmount={machineContext.context.transfer.destination_amount}
           sourceFee={machineContext.context.transfer.source_fee}
           destFee={machineContext.context.transfer.destination_fee}
-          comment={machineContext.context.transfer.notes}
-          userName={machineContext.context.user.user_name}
+          transactionData={{
+            user_name: machineContext.context.user.user_name,
+            account_name: machineContext.context.transfer.source_account_name,
+            account_id: Number(machineContext.context.transfer.source_account_id) || 0,
+            account_currency: machineContext.context.transfer.source_account_currency,
+            amount: machineContext.context.transfer.source_amount,
+            amount_eur: Number(machineContext.context.transfer.source_amount) || 0,
+            category_id: 0,
+            category_name: '',
+            budget_name: '',
+            destination_id: Number(machineContext.context.transfer.destination_account_id) || 0,
+            destination_name: machineContext.context.transfer.destination_account_name,
+            source_id: Number(machineContext.context.transfer.source_account_id) || 0,
+            source_name: machineContext.context.transfer.source_account_name,
+            notes: machineContext.context.transfer.notes,
+            date: machineContext.context.transfer.date,
+          } as HookTransactionData}
+          isSubmitting={false}
+          submitMessage={null}
+          errors={{}}
           isAvailable={isAvailable}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onCancel={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
           onConfirm={() => machineContext.send({ type: 'SUBMIT_TRANSFER' })}
           onSuccess={() => machineContext.send({ type: 'NAVIGATE_HOME' })}
+          onIsSubmittingChange={() => {}}
+          onSubmitMessageChange={() => {}}
+          onDateChange={(date) => machineContext.send({ type: 'UPDATE_TRANSFER_DATE', date })}
+          onNotesChange={(notes) => machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes })}
+          onClearError={() => {}}
         />
       )}
 

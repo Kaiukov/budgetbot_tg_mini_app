@@ -310,9 +310,8 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
         const converted = await syncService.getExchangeRate(sourceCurrencyCode, destCurrencyCode, numAmount);
         if (converted !== null) {
           const rate = converted / numAmount;
-          // Use tolerance for floating point comparison to prevent loops
-          const rateChanged = !exchangeRate || Math.abs(rate - exchangeRate) > 0.0001;
-          if (onExchangeRateChangeRef.current && rateChanged) {
+          // Always update the rate when fetched to ensure Next button enables
+          if (onExchangeRateChangeRef.current) {
             onExchangeRateChangeRef.current(rate);
           }
           const asString = converted.toFixed(2);
@@ -339,7 +338,7 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
 
     const timer = setTimeout(fetchConversion, 500);
     return () => clearTimeout(timer);
-  }, [destCurrencyCode, exchangeRate, isSameCurrency, sourceAmount, sourceCurrencyCode]);
+  }, [destCurrencyCode, isSameCurrency, sourceAmount, sourceCurrencyCode]);
 
   const handleSourceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = sanitizeNumberInput(e.target.value);
@@ -387,7 +386,12 @@ const TransferAmountVariant: React.FC<AmountScreenProps> = ({
 
   const sourceValid = sourceAmount && parseFloat(sourceAmount) > 0;
   const destValid = destAmount && parseFloat(destAmount) > 0;
-  const rateValid = exchangeRate !== null && exchangeRate !== undefined && exchangeRate !== 0;
+
+  // Rate is valid if: explicitly set OR derivable from manual amount entry OR same currency
+  const hasExplicitRate = exchangeRate !== null && exchangeRate !== undefined && exchangeRate !== 0;
+  const derivableRate = sourceValid && destValid; // If both amounts are present, rate can be derived
+  const rateValid = isSameCurrency || hasExplicitRate || derivableRate;
+
   const derivedNextEnabled = Boolean(sourceValid && destValid && rateValid && !isLoadingConversion);
   const isNextEnabled = canProceed ?? derivedNextEnabled;
 

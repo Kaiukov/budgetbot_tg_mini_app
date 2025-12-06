@@ -582,9 +582,12 @@ export const validateTransferAmountPage = (form: TransferForm): string | null =>
   const destNum = parseFloat(form.destination_amount);
   if (isNaN(destNum) || destNum <= 0) return 'Destination amount must be greater than 0';
 
-  // If currencies differ, exchange rate must be present and not zero
+  // If currencies differ, exchange rate must be either explicitly set OR derivable from both amounts
   if (form.source_account_currency !== form.destination_account_currency) {
-    if (form.exchange_rate === null || form.exchange_rate === undefined || form.exchange_rate === 0) {
+    const hasExplicitRate = form.exchange_rate !== null && form.exchange_rate !== undefined && form.exchange_rate !== 0;
+    const isDerivable = sourceNum > 0 && destNum > 0; // Both amounts present = rate can be calculated
+
+    if (!hasExplicitRate && !isDerivable) {
       return 'Exchange rate is required for multi-currency transfers';
     }
   }

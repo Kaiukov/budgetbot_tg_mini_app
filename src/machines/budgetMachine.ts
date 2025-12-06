@@ -398,7 +398,10 @@ export const budgetMachine = createMachine(
           transferFlow: {
             initial: 'sourceAccounts',
             on: {
-              NAVIGATE_HOME: '#budget.ready.home',
+              NAVIGATE_HOME: {
+                target: '#budget.ready.home',
+                actions: 'resetTransfer',
+              },
             },
             states: {
               sourceAccounts: {
@@ -474,6 +477,12 @@ export const budgetMachine = createMachine(
               },
               confirm: {
                 on: {
+                  UPDATE_TRANSFER_DATE: {
+                    actions: 'updateTransferDate',
+                  },
+                  UPDATE_TRANSFER_NOTES: {
+                    actions: 'updateTransferNotes',
+                  },
                   SUBMIT_TRANSFER: {
                     target: '#budget.ready.home',
                     actions: 'resetTransfer',
