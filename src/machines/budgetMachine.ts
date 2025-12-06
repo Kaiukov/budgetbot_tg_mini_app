@@ -468,7 +468,16 @@ export const budgetMachine = createMachine(
                   UPDATE_TRANSFER_DEST_FEE: {
                     actions: 'updateTransferDestFee',
                   },
-                  NAVIGATE_TRANSFER_CONFIRM: 'confirm',
+                  NAVIGATE_TRANSFER_CONFIRM: {
+                    target: 'confirm',
+                    guard: ({ context }) => validationGuards.canProceedFromTransferFeePage(context.transfer as any),
+                  },
+                  SET_TRANSFER_VALIDATION_ERROR: {
+                    actions: 'setTransferValidationError',
+                  },
+                  CLEAR_TRANSFER_VALIDATION_ERROR: {
+                    actions: 'clearTransferValidationError',
+                  },
                   NAVIGATE_BACK: {
                     target: 'amount',
                     actions: 'smartClearOnFeeBack', // Smart clear fees if destination changed

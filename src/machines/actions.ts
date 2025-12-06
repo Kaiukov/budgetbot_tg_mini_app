@@ -600,6 +600,28 @@ export const validateTransferAmountPage = (form: TransferForm): string | null =>
   return null;
 };
 
+/**
+ * Validates transfer fee page
+ * Fees are optional but must be valid non-negative numbers when provided.
+ * Empty values are treated as zero.
+ */
+export const validateTransferFeePage = (form: TransferForm): string | null => {
+  const parseFee = (value?: string | null) => {
+    const cleaned = (value ?? '').trim();
+    if (cleaned === '') return 0;
+    const num = parseFloat(cleaned);
+    return Number.isNaN(num) ? NaN : num;
+  };
+
+  const sourceFee = parseFee(form.source_fee);
+  if (Number.isNaN(sourceFee) || sourceFee < 0) return 'Source fee must be zero or greater';
+
+  const destFee = parseFee(form.destination_fee);
+  if (Number.isNaN(destFee) || destFee < 0) return 'Destination fee must be zero or greater';
+
+  return null;
+};
+
 // ============================================================================
 // Validation Guards (Used in state transitions)
 // ============================================================================
@@ -656,6 +678,10 @@ export const validationGuards = {
 
   canProceedFromTransferAmountPage: (form: TransferForm): boolean => {
     return validateTransferAmountPage(form) === null;
+  },
+
+  canProceedFromTransferFeePage: (form: TransferForm): boolean => {
+    return validateTransferFeePage(form) === null;
   },
 };
 

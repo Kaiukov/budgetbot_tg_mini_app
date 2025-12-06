@@ -5,7 +5,7 @@ import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 import { refreshHomeTransactionCache } from './utils/cache';
 import { useBudgetMachineContext } from './context/BudgetMachineContext';
-import { validationGuards } from './machines/actions';
+import { validationGuards, validateTransferFeePage } from './machines/actions';
 
 // Components
 import HomeScreen from './components/HomeScreen';
@@ -899,10 +899,18 @@ const BudgetMiniApp = () => {
           sourceFee={machineContext.context.transfer.source_fee}
           destFee={machineContext.context.transfer.destination_fee}
           isAvailable={isAvailable}
+          errors={machineContext.context.transfer.errors}
           onBack={() => machineContext.send({ type: 'NAVIGATE_BACK' })}
           onSourceFeeChange={(source_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_SOURCE_FEE', source_fee })}
           onDestFeeChange={(destination_fee) => machineContext.send({ type: 'UPDATE_TRANSFER_DEST_FEE', destination_fee })}
+          onClearError={() => machineContext.send({ type: 'CLEAR_TRANSFER_VALIDATION_ERROR' })}
           onNext={() => {
+            const error = validateTransferFeePage(machineContext.context.transfer as any);
+            if (error) {
+              machineContext.send({ type: 'SET_TRANSFER_VALIDATION_ERROR', page: 'fees', error });
+              return;
+            }
+            machineContext.send({ type: 'CLEAR_TRANSFER_VALIDATION_ERROR' });
             machineContext.send({ type: 'UPDATE_TRANSFER_NOTES', notes: buildTransferNotes() });
             machineContext.send({ type: 'NAVIGATE_TRANSFER_CONFIRM' });
           }}

@@ -11,11 +11,28 @@ interface TransferFeeScreenProps {
   sourceFee: string;
   destFee: string;
   isAvailable?: boolean;
+  errors?: Record<string, string>;
   onBack: () => void;
   onSourceFeeChange: (value: string) => void;
   onDestFeeChange: (value: string) => void;
+  onClearError?: () => void;
   onNext: () => void;
 }
+
+const sanitizeFeeInput = (raw: string): string | null => {
+  if (raw === '') return '';
+
+  let value = raw.replace(/,/g, '.');
+  if (value.includes('-')) return null;
+  if (!/^\d*\.?\d*$/.test(value)) return null;
+  if (value.startsWith('.')) value = '0' + value;
+
+  const [intRaw, frac] = value.split('.');
+  let intPart = intRaw.replace(/^0+(?=\d)/, ''); // strip leading zeros but keep single zero
+  if (intPart === '') intPart = '0';
+
+  return frac !== undefined ? `${intPart}${frac === '' ? '.' : '.' + frac}` : intPart;
+};
 
 const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   sourceAccount,
@@ -25,9 +42,11 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   sourceFee,
   destFee,
   isAvailable,
+  errors,
   onBack,
   onSourceFeeChange,
   onDestFeeChange,
+  onClearError,
   onNext
 }) => {
   // Show Telegram back button
@@ -40,45 +59,17 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
 
   const handleSourceFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-
-    // Replace comma with dot for decimal separator
-    value = value.replace(/,/g, '.');
-
-    // Reject if it contains minus sign (negative fees not allowed)
-    if (value.includes('-')) {
-      return;
-    }
-
-    // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
-      if (value.startsWith('.')) {
-        value = '0' + value;
-      }
-      onSourceFeeChange(value);
-    }
+    const value = sanitizeFeeInput(e.target.value);
+    if (value === null) return;
+    onSourceFeeChange(value);
+    if (onClearError) onClearError();
   };
 
   const handleDestFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-
-    // Replace comma with dot for decimal separator
-    value = value.replace(/,/g, '.');
-
-    // Reject if it contains minus sign (negative fees not allowed)
-    if (value.includes('-')) {
-      return;
-    }
-
-    // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
-      if (value.startsWith('.')) {
-        value = '0' + value;
-      }
-      onDestFeeChange(value);
-    }
+    const value = sanitizeFeeInput(e.target.value);
+    if (value === null) return;
+    onDestFeeChange(value);
+    if (onClearError) onClearError();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -86,6 +77,8 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       onNext();
     }
   };
+
+  const hasError = Boolean(errors?.validation);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -99,6 +92,12 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       </div>
 
       <div className={layouts.contentWide}>
+        {hasError && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors?.validation}</p>
+          </div>
+        )}
+
         {/* Source Fee (From Account) */}
         <div className={`${cardStyles.container} mb-2`}>
           <p className="text-xs text-gray-400 mb-2">Fee from: {sourceAccount}</p>
