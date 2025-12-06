@@ -197,15 +197,21 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   useEffect(() => {
     if (notesTouched) return;
 
-    if (transactionData.notes && transactionData.notes.trim()) {
-      setNotesInput(transactionData.notes);
-      onNotesChange?.(transactionData.notes);
+    const trimmed = transactionData.notes?.trim() ?? '';
+    if (trimmed) {
+      if (notesInput !== trimmed) {
+        setNotesInput(trimmed);
+      }
+      setNotesTouched(true);
       return;
     }
 
     const suggestion = buildNotesSuggestion();
-    setNotesInput(suggestion);
-    onNotesChange?.(suggestion);
+    if (notesInput !== suggestion) {
+      setNotesInput(suggestion);
+      onNotesChange?.(suggestion);
+    }
+    setNotesTouched(true);
   }, [
     notesTouched,
     transactionData.notes,

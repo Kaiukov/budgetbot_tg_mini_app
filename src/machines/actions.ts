@@ -217,10 +217,15 @@ export const actions = {
   }),
 
   updateTransferNotes: assign({
-    transfer: ({ context, event }: any) => ({
-      ...context.transfer,
-      notes: event.notes,
-    }),
+    transfer: ({ context, event }: any) => {
+      const current = context.transfer?.notes ?? '';
+      const incoming = event.notes ?? '';
+      if (current === incoming) return context.transfer;
+      return {
+        ...context.transfer,
+        notes: incoming,
+      };
+    },
   }),
 
   updateTransferDate: assign({
