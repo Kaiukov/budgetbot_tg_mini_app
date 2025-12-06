@@ -148,7 +148,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
   const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(transactionData.date));
   const [notesInput, setNotesInput] = useState<string>(transactionData.notes || '');
-  const [notesTouched, setNotesTouched] = useState<boolean>(Boolean(transactionData.notes && transactionData.notes.trim()));
+  const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
 
   // Show Telegram back button
   useEffect(() => {
@@ -193,16 +193,15 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     return `${transactionLabel} ${category} ${sourceOrDest} ${account} ${amountRaw} ${currency} (${amountEur.toFixed(2)} EUR)`;
   };
 
-  // Prefill notes when untouched
+  // Prefill / resync notes when user hasn't edited
   useEffect(() => {
-    if (notesTouched) return;
+    if (hasUserEditedNotes) return;
 
     const trimmed = transactionData.notes?.trim() ?? '';
     if (trimmed) {
       if (notesInput !== trimmed) {
         setNotesInput(trimmed);
       }
-      setNotesTouched(true);
       return;
     }
 
@@ -211,9 +210,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
       setNotesInput(suggestion);
       onNotesChange?.(suggestion);
     }
-    setNotesTouched(true);
   }, [
-    notesTouched,
+    hasUserEditedNotes,
     transactionData.notes,
     transactionData.category_name,
     transactionData.account_name,
@@ -228,6 +226,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     destCurrency,
     sourceFee,
     destFee,
+    notesInput,
     onNotesChange
   ]);
 
@@ -242,7 +241,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   };
 
   const handleNotesChange = (value: string) => {
-    if (!notesTouched) setNotesTouched(true);
+    if (!hasUserEditedNotes) setHasUserEditedNotes(true);
     setNotesInput(value);
     onNotesChange?.(value);
     // Clear validation error when user types notes (notes can be empty, so any input clears error)
