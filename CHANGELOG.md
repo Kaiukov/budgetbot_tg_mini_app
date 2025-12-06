@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Destination Input Persistence**: Standardized `UPDATE_NOTES` payloads so destination input text and IDs persist correctly across the withdrawal flow.
 - **Account user_name Field**: Aligned account selection event payload with machine expectations to capture the selected account's `user_name`.
 - **Destination Selection**: Fixed quick destination selection from list not updating the destination field; event property was `comment` but machine expected `notes` in `handleWithdrawalDestinationChange`
+- **Confirm Screen Notes Sync**: Renamed `notesTouched` to `hasUserEditedNotes` for semantic clarity; prevents unintended overwrites of user-edited notes during prefill/resync logic
 
 ### Changed
 - **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
