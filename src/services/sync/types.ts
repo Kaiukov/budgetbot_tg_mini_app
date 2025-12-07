@@ -90,6 +90,70 @@ export interface TransferTransactionData {
 }
 
 /**
+ * Standardized webhook payload types
+ * Used for both DEBUG_API mode and production payload validation
+ */
+
+export interface WithdrawalWebhookPayload {
+  transactionType: 'withdrawal';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  budget_name: string;
+  destination_id: number;
+  destination_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface DepositWebhookPayload {
+  transactionType: 'deposit';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  source_id: number;
+  source_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface TransferWebhookPayload {
+  transactionType: 'transfer';
+  user_name: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate: number | null;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export type UnifiedWebhookPayload =
+  | WithdrawalWebhookPayload
+  | DepositWebhookPayload
+  | TransferWebhookPayload;
+
+/**
  * Individual transaction payload for Firefly III API
  */
 export interface FireflyTransactionPayload {

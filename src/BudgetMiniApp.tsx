@@ -4,6 +4,7 @@ import { syncService } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
 import { refreshHomeTransactionCache } from './utils/cache';
+import { buildTransferNotesFromContext } from './utils/transferNotes';
 import { useBudgetMachineContext } from './context/BudgetMachineContext';
 import { validationGuards, validateTransferFeePage } from './machines/actions';
 
@@ -195,13 +196,7 @@ const BudgetMiniApp = () => {
     }
   };
 
-  const buildTransferNotes = () => {
-    const t = machineContext.context.transfer;
-    const sourceFee = t.source_fee || '0';
-    const destFee = t.destination_fee || '0';
-
-    return `transfer from ${t.source_account_name} ${t.source_amount} ${t.source_account_currency} to ${t.destination_account_name} ${t.destination_amount} ${t.destination_account_currency}. source fee ${sourceFee} ${t.source_account_currency}, destination fee ${destFee} ${t.destination_account_currency}`;
-  };
+  const buildTransferNotes = () => buildTransferNotesFromContext(machineContext.context.transfer);
 
   const fetchCategories = async () => {
     const typeParam = withdrawalScreen ? 'withdrawal' : depositScreen ? 'deposit' : undefined;
@@ -944,7 +939,8 @@ const BudgetMiniApp = () => {
             source_name: machineContext.context.transfer.source_account_name,
             notes: machineContext.context.transfer.notes,
             date: machineContext.context.transfer.date,
-          } as HookTransactionData}
+            exchange_rate: machineContext.context.transfer.exchange_rate,
+          } as HookTransactionData & { exchange_rate: number | null }}
           isSubmitting={false}
           submitMessage={null}
           errors={{}}

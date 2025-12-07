@@ -10,6 +10,7 @@ import {
   type WithdrawalTransactionData,
   type DepositTransactionData,
   type TransferTransactionData,
+  type UnifiedWebhookPayload,
   type FireflyCreateTransactionRequest,
   type FireflyTransactionPayload,
   type TransactionResult,
@@ -76,64 +77,31 @@ function buildTransactionRequest(payload: FireflyTransactionPayload): FireflyCre
  * Coordinates transaction creation with optional verification
  */
 export async function addTransaction(
-  body: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData,
+  body: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData | UnifiedWebhookPayload,
   transactionType: TransactionType | string,
   enableVerification: boolean = true
 ): Promise<TransactionResult> {
-  // Debug mode: short-circuit and send payload to webhook for inspection
+  // Debug mode: send payload directly to webhook for inspection
   if (isDebugApi) {
     try {
-      // Normalize payload to ensure all required fields are present for inspection
-      const normalizedType = (transactionType as string).toLowerCase();
+      logTransactionOperation(
+        'info',
+        `DEBUG_API enabled. Sending payload to webhook: ${DEBUG_WEBHOOK_URL}`
+      );
 
-      // Build normalized payload with consistent field ordering across all transaction types
-      const normalized: Record<string, any> = {
-        transactionType,
-        user_name: (body as any).user_name || 'unknown',
-        account_name: (body as any).account_name || '',
-        account_id: (body as any).account_id ?? '',
-        account_currency: (body as any).account_currency || '',
-        amount: (body as any).amount ?? '',
-        amount_eur: (body as any).amount_eur ?? '',
-        category_id: (body as any).category_id ?? '',
-        category_name: (body as any).category_name || '',
-      };
-
-      // Add transaction-type-specific fields in consistent position (after category_name)
-      if (normalizedType === 'withdrawal') {
-        // Withdrawals use destination fields
-        normalized.destination_id = (body as any).destination_id ?? '';
-        normalized.destination_name = (body as any).destination_name || '';
-        normalized.budget_name = (body as any).budget_name ?? '';
-      } else if (normalizedType === 'deposit') {
-        // Deposits use source fields (not destination)
-        normalized.source_id = (body as any).source_id ?? '';
-        normalized.source_name = (body as any).source_name || '';
-      } else if (normalizedType === 'transfer') {
-        // Transfers use both source and destination
-        normalized.source_id = (body as any).source_id ?? '';
-        normalized.source_name = (body as any).source_name || '';
-        normalized.destination_id = (body as any).destination_id ?? '';
-        normalized.destination_name = (body as any).destination_name || '';
-      }
-
-      // Add remaining fields in consistent order
-      normalized.date = (body as any).date ?? new Date().toISOString();
-      normalized.notes = (body as any).notes ?? '';
-      normalized.timestamp = new Date().toISOString();
-
+      // Send payload as-is (no normalization)
       await fetch(DEBUG_WEBHOOK_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(normalized)
+        body: JSON.stringify(body)
       });
 
       logTransactionOperation(
         'info',
-        `DEBUG_API enabled. Transaction routed to webhook: ${DEBUG_WEBHOOK_URL}`
+        `DEBUG_API payload sent successfully to: ${DEBUG_WEBHOOK_URL}`
       );
 
       // Return early to avoid hitting Firefly

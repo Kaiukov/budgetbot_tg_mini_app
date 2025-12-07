@@ -14,6 +14,7 @@ import type {
 import { initialTransactionForm as transactionFormDefault, initialTransferForm as transferFormDefault } from './types';
 import { extractBudgetName } from '../services/sync/utils';
 import { needsConversion, normalizeCurrency } from '../utils/currency';
+import { buildTransferNotesFromContext } from '../utils/transferNotes';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -203,17 +204,29 @@ export const actions = {
   }),
 
   updateTransferSourceFee: assign({
-    transfer: ({ context, event }: any) => ({
-      ...context.transfer,
-      source_fee: event.source_fee || '0',
-    }),
+    transfer: ({ context, event }: any) => {
+      const nextTransfer: TransferForm = {
+        ...context.transfer,
+        source_fee: event.source_fee || '0',
+      };
+      return {
+        ...nextTransfer,
+        notes: buildTransferNotesFromContext(nextTransfer),
+      };
+    },
   }),
 
   updateTransferDestFee: assign({
-    transfer: ({ context, event }: any) => ({
-      ...context.transfer,
-      destination_fee: event.destination_fee || '0',
-    }),
+    transfer: ({ context, event }: any) => {
+      const nextTransfer: TransferForm = {
+        ...context.transfer,
+        destination_fee: event.destination_fee || '0',
+      };
+      return {
+        ...nextTransfer,
+        notes: buildTransferNotesFromContext(nextTransfer),
+      };
+    },
   }),
 
   updateTransferNotes: assign({

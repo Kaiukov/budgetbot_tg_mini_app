@@ -1,27 +1,17 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Loader, ArrowLeft, Wallet, Tag, MapPin, Calendar, FileText, ArrowRight } from 'lucide-react';
-import { addTransaction, type WithdrawalTransactionData, type DepositTransactionData, type TransferTransactionData } from '../services/sync/index';
+import {
+  addTransaction,
+  type WithdrawalWebhookPayload,
+  type DepositWebhookPayload,
+  type TransferWebhookPayload,
+  type UnifiedWebhookPayload
+} from '../services/sync/index';
 import telegramService from '../services/telegram';
 import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, layouts } from '../theme/dark';
-
-const DEBUG_WEBHOOK_URL = import.meta.env.VITE_DEBUG_WEBHOOK_URL || 'https://n8n.neon-chuckwalla.ts.net/webhook-test/test_me';
-
-const postDebugPayload = async (payload: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData, type: 'withdrawal' | 'deposit' | 'transfer') => {
-  try {
-    await fetch(DEBUG_WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ type: `${type}_confirm_payload`, payload })
-    });
-  } catch (error) {
-    console.warn('Debug webhook post failed (non-blocking):', error);
-  }
-};
 
 const safeStringify = (value: unknown): string => {
   if (value === null || value === undefined) return String(value);
@@ -250,6 +240,20 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     }
   };
 
+  const ensureNotesFormat = (): string => {
+    // Always regenerate notes to ensure correct format
+    const suggestion = buildNotesSuggestion();
+
+    // If user edited notes manually, respect it; otherwise use suggestion
+    // Exception: if notes are empty or just whitespace, always use suggestion
+    const trimmed = notesInput.trim();
+    if (!trimmed || !hasUserEditedNotes) {
+      return suggestion;
+    }
+
+    return trimmed;
+  };
+
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
 
@@ -283,70 +287,78 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         ? new Date(`${dateInput}T00:00:00`).toISOString()
         : new Date().toISOString();
 
-      const amountValue = parseFloat(transactionData.amount);
+      const timestamp = new Date().toISOString();
+      const finalNotes = ensureNotesFormat();
 
-      // Build payload based on transaction type
-      let transactionPayload: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData;
+      // Build standardized webhook payload based on transaction type
+      let webhookPayload: UnifiedWebhookPayload;
 
       if (transactionType === 'withdrawal') {
-        transactionPayload = {
-          // Withdrawal payload
+        webhookPayload = {
+          transactionType: 'withdrawal',
           user_name: transactionData.user_name || 'unknown',
           account_name: transactionData.account_name,
-          account_id: transactionData.account_id,
+          account_id: Number(transactionData.account_id) || 0,
           account_currency: transactionData.account_currency,
-          amount: amountValue,
-          amount_eur: transactionData.amount_eur,
+          amount: parseFloat(transactionData.amount),
+          amount_eur: transactionData.amount_eur || 0,
           category_id: transactionData.category_id,
           category_name: transactionData.category_name,
-          budget_name: transactionData.budget_name,
+          budget_name: transactionData.budget_name || '',
           destination_id: transactionData.destination_id,
           destination_name: transactionData.destination_name || '',
-          notes: notesInput.trim(),
           date: effectiveDateIso,
-        };
+          notes: finalNotes,
+          timestamp
+        } as WithdrawalWebhookPayload;
       } else if (transactionType === 'deposit') {
-        transactionPayload = {
-          // Deposit payload
+        webhookPayload = {
+          transactionType: 'deposit',
           user_name: transactionData.user_name || 'unknown',
           account_name: transactionData.account_name,
-          account_id: transactionData.account_id,
+          account_id: Number(transactionData.account_id) || 0,
           account_currency: transactionData.account_currency,
-          amount: amountValue,
-          amount_eur: transactionData.amount_eur,
+          amount: parseFloat(transactionData.amount),
+          amount_eur: transactionData.amount_eur || 0,
           category_id: transactionData.category_id,
           category_name: transactionData.category_name,
-          source_id: transactionData.source_id,
+          source_id: transactionData.source_id || 0,
           source_name: transactionData.source_name || '',
-          notes: notesInput.trim(),
           date: effectiveDateIso,
-        };
+          notes: finalNotes,
+          timestamp
+        } as DepositWebhookPayload;
       } else {
-        // Transfer payload
-        const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
-        const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
-        transactionPayload = {
+        // Transfer
+        const sourceAccountId = transactionData.source_id || transactionData.account_id || 0;
+        const destAccountId = transactionData.destination_id || 0;
+        const exchangeRate = (transactionData as any).exchange_rate || null;
+
+        webhookPayload = {
+          transactionType: 'transfer',
           user_name: transactionData.user_name || 'unknown',
+          source_account_name: sourceAccount,
+          source_account_id: Number(sourceAccountId) || 0,
+          source_account_currency: sourceCurrency?.toUpperCase() || 'EUR',
+          source_amount: parseFloat(sourceAmount),
+          source_fee: sourceFee ? parseFloat(sourceFee) : 0,
+          destination_account_name: destAccount,
+          destination_account_id: Number(destAccountId) || 0,
+          destination_account_currency: destCurrency?.toUpperCase() || 'EUR',
+          destination_amount: parseFloat(destAmount),
+          destination_fee: destFee ? parseFloat(destFee) : 0,
+          exchange_rate: exchangeRate,
           date: effectiveDateIso,
-          exit_account: sourceAccount,
-          entry_account: destAccount,
-          exit_amount: parseFloat(sourceAmount),
-          entry_amount: parseFloat(destAmount),
-          exit_currency: sourceCurrencyCode,
-          entry_currency: destCurrencyCode,
-          exit_fee: sourceFee ? parseFloat(sourceFee) : 0,
-          entry_fee: destFee ? parseFloat(destFee) : 0,
-          description: notesInput.trim()
-        };
+          notes: finalNotes,
+          timestamp
+        } as TransferWebhookPayload;
       }
 
-      // Fire-and-forget debug webhook (does not block main submission)
-      void postDebugPayload(transactionPayload, transactionType);
+      console.log(`📝 ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} payload built:`, webhookPayload);
 
-      console.log(`📝 ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} payload built:`, transactionPayload);
-
-      // Submit to Firefly
-      const [success, response] = await addTransaction(transactionPayload, transactionType, true);
+      // Submit to Firefly (or debug webhook if VITE_DEBUG_API=true)
+      // The addTransaction function will handle routing based on VITE_DEBUG_API flag
+      const [success, response] = await addTransaction(webhookPayload, transactionType, true);
 
       if (success) {
         console.log(`✅ ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} submitted successfully:`, response);
