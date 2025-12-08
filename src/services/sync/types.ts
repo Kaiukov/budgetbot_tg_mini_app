@@ -45,6 +45,7 @@ export interface BaseTransactionData {
  * Withdrawal-specific transaction data
  */
 export interface WithdrawalTransactionData extends BaseTransactionData {
+  account_currency: string;
   category_id?: string | number;
   category_name: string;
   budget_name?: string;
@@ -60,6 +61,7 @@ export interface WithdrawalTransactionData extends BaseTransactionData {
  * Deposit-specific transaction data
  */
 export interface DepositTransactionData extends BaseTransactionData {
+  account_currency: string;
   category_id?: string | number;
   category_name: string;
   budget_name?: string;
@@ -73,20 +75,24 @@ export interface DepositTransactionData extends BaseTransactionData {
 
 /**
  * Transfer-specific transaction data
+ * Uses exact field names from transfer flow UI
  */
 export interface TransferTransactionData {
   user_name: string;
   date: string | Date;
-  currency?: string;
-  exit_account: string;
-  entry_account: string;
-  exit_amount?: string | number;
-  entry_amount?: string | number;
-  exit_currency?: string;
-  entry_currency?: string;
-  exit_fee?: string | number;
-  entry_fee?: string | number;
-  description?: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate?: number | null;
+  notes: string;
+  timestamp?: string;
 }
 
 /**
@@ -162,8 +168,11 @@ export interface FireflyTransactionPayload {
   amount: string;
   description: string;
   currency_code: string;
+  source_id?: string;
   source_name?: string;
+  destination_id?: string;
   destination_name?: string;
+  category_id?: string;
   category_name?: string;
   budget_name?: string;
   foreign_currency_code?: string;
