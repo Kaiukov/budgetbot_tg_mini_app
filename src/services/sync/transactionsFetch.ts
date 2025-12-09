@@ -149,16 +149,16 @@ export async function fetchTransactionById(id: string | number): Promise<{
 
 /**
  * Transform API transaction data to display-friendly format
- * Handles all three transaction types: income, withdrawal, transfer
+ * Handles all three transaction types: deposit, withdrawal, transfer
  */
 function transformTransactionForDisplay(data: TransactionData): DisplayTransaction {
-  const isIncome = data.type === 'deposit';
+  const isDeposit = data.type === 'deposit';
   const isWithdrawal = data.type === 'withdrawal';
   const isTransfer = data.type === 'transfer';
 
   // Determine transaction type for display
-  let displayType: 'income' | 'withdrawal' | 'transfer' = 'withdrawal';
-  if (isIncome) displayType = 'income';
+  let displayType: 'deposit' | 'withdrawal' | 'transfer' = 'withdrawal';
+  if (isDeposit) displayType = 'deposit';
   else if (isTransfer) displayType = 'transfer';
 
   // Parse amounts
@@ -187,13 +187,13 @@ function transformTransactionForDisplay(data: TransactionData): DisplayTransacti
     currency: data.currency_code,
     currency_symbol: data.currency_symbol,
     amount_eur,
-    foreignCurrency: data.foreign_currency_code,
+    foreign_currency: data.foreign_currency_code,
     foreign_currency_symbol: data.foreign_currency_symbol,
     category_name: isTransfer ? undefined : category_name,
     source_name: isWithdrawal || isTransfer ? source_name : undefined,
-    destination_name: isIncome || isTransfer ? destination_name : undefined,
+    destination_name: isDeposit || isTransfer ? destination_name : undefined,
     description,
-    username: data.tags?.[0] || 'Unknown User',
+    user_name: data.tags?.[0] || 'Unknown User',
     journal_id: data.transaction_journal_id,
   };
 }

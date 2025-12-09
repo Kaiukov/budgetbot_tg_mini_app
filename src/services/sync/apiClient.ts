@@ -96,6 +96,16 @@ export class ApiClient {
     const { default: telegramService } = await import('../telegram');
     const initData = telegramService.getInitData();
 
+    console.log('🔐 Tier 2 Auth:', {
+      hasSyncApiKey: !!this.syncApiKey,
+      hasInitData: !!initData,
+      initDataLength: initData?.length || 0,
+    });
+
+    if (!initData) {
+      console.warn('⚠️ No Telegram initData available - Tier 2 auth will fail. Are you testing in Telegram?');
+    }
+
     return {
       'X-Anonymous-Key': this.syncApiKey,
       'Accept': 'application/json',

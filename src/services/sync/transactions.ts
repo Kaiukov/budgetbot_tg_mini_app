@@ -8,8 +8,9 @@
 import { apiClient } from './apiClient';
 import {
   type WithdrawalTransactionData,
-  type IncomeTransactionData,
+  type DepositTransactionData,
   type TransferTransactionData,
+  type UnifiedWebhookPayload,
   type FireflyCreateTransactionRequest,
   type FireflyTransactionPayload,
   type TransactionResult,
@@ -20,10 +21,6 @@ import {
   removeNullValues,
   parseTransactionDate,
   formatAmount,
-  cleanCategoryName,
-  buildWithdrawalDescription,
-  buildTransferDescription,
-  buildTransactionNotes,
   validateAmount,
   logTransactionOperation,
   OperationTimer,
@@ -75,44 +72,31 @@ function buildTransactionRequest(payload: FireflyTransactionPayload): FireflyCre
  * Coordinates transaction creation with optional verification
  */
 export async function addTransaction(
-  body: WithdrawalTransactionData | IncomeTransactionData | TransferTransactionData,
+  body: WithdrawalTransactionData | DepositTransactionData | TransferTransactionData | UnifiedWebhookPayload,
   transactionType: TransactionType | string,
   enableVerification: boolean = true
 ): Promise<TransactionResult> {
-  // Debug mode: short-circuit and send payload to webhook for inspection
+  // Debug mode: send payload directly to webhook for inspection
   if (isDebugApi) {
     try {
-      // Normalize payload to ensure all required fields are present for inspection
-      const normalized = {
-        transactionType,
-        user_name: (body as any).user_name || (body as any).username || 'unknown',
-        account_name: (body as any).account_name || (body as any).account || '',
-        account_id: (body as any).account_id ?? '',
-        account_currency: (body as any).account_currency || (body as any).currency || '',
-        amount: (body as any).amount ?? '',
-        amount_eur: (body as any).amount_eur ?? '',
-        category_id: (body as any).category_id ?? '',
-        category_name: (body as any).category_name || (body as any).category || '',
-        destination_id: (body as any).destination_id ?? '',
-        destination_name: (body as any).destination_name || (body as any).comment || '',
-        date: (body as any).date ?? new Date().toISOString(),
-        notes: (body as any).notes ?? '',
-        budget_name: (body as any).budget_name ?? '',
-        timestamp: new Date().toISOString()
-      };
+      logTransactionOperation(
+        'info',
+        `DEBUG_API enabled. Sending payload to webhook: ${DEBUG_WEBHOOK_URL}`
+      );
 
+      // Send payload as-is (no normalization)
       await fetch(DEBUG_WEBHOOK_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(normalized)
+        body: JSON.stringify(body)
       });
 
       logTransactionOperation(
         'info',
-        `DEBUG_API enabled. Transaction routed to webhook: ${DEBUG_WEBHOOK_URL}`
+        `DEBUG_API payload sent successfully to: ${DEBUG_WEBHOOK_URL}`
       );
 
       // Return early to avoid hitting Firefly
@@ -135,8 +119,8 @@ export async function addTransaction(
       case TransactionType.WITHDRAWAL:
         result = await handleWithdrawalTransaction(body as WithdrawalTransactionData);
         break;
-      case TransactionType.INCOME:
-        result = await handleIncomeTransaction(body as IncomeTransactionData);
+      case TransactionType.DEPOSIT:
+        result = await handleDepositTransaction(body as DepositTransactionData);
         break;
       case TransactionType.TRANSFER:
         result = await handleTransferTransaction(body as TransferTransactionData);
@@ -223,103 +207,54 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
     // Generate external ID
     const externalId = generateExternalId(TransactionType.WITHDRAWAL, body.user_name);
 
-    // Determine currencies
-    const accountCurrency = body.account_currency || 'EUR';
-    const transactionCurrency = body.currency || accountCurrency;
-    const providedNotes = typeof body.notes === 'string' ? body.notes.trim() : '';
+    // Build base payload with exact field names from UI
+    const payload: FireflyTransactionPayload = {
+      type: 'withdrawal',
+      date: dateIso,
+      amount: formatAmount(body.amount),
+      description: body.destination_name || body.category_name,
+      source_id: String(body.account_id),
+      category_id: String(body.category_id),
+      category_name: body.category_name,
+      tags: [body.user_name],
+      currency_code: body.account_currency,
+      notes: body.notes || '',
+      external_id: externalId,
+      reconciled: false,
+    };
 
-    if (transactionCurrency === 'EUR') {
-      // EUR withdrawal transaction
-      const cleanCategory = cleanCategoryName(body.category_name);
-      const accountName = body.account_name || body.account || 'Unknown Account';
-      const payload: FireflyTransactionPayload = {
-        type: 'withdrawal',
-        date: dateIso,
-        amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency),
-        currency_code: transactionCurrency,
-        category_name: cleanCategory,
-        source_name: accountName,
-        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
-        notes: providedNotes || buildTransactionNotes(
-          `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency}`,
-          (body as any).destination_name || (body as any).comment,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-        reconciled: false,
-        budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
-      };
-
-      const transactionData = buildTransactionRequest(payload);
-
-      logTransactionOperation('info', `Sending EUR withdrawal transaction for user ${body.user_name}`, transactionData);
-
-      const response = await apiClient.request<Record<string, unknown>>(
-        '/api/v1/transactions',
-        {
-          method: 'POST',
-          body: transactionData,
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      );
-
-      // Trigger sync to update account balances
-      await triggerImmediateSync();
-
-      return [true, response || {}];
-    } else {
-      // Non-EUR withdrawal - convert to EUR
-      const amount_eur = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
-
-      if (amount_eur === null) {
-        logTransactionOperation('error', `Currency conversion failed: ${transactionCurrency} to EUR`);
-        return [false, { error: 'Currency conversion failed' }];
-      }
-
-      const cleanCategory = cleanCategoryName(body.category_name);
-      const accountName = body.account_name || body.account || 'Unknown Account';
-      const payload: FireflyTransactionPayload = {
-        type: 'withdrawal',
-        date: dateIso,
-        amount: formatAmount(body.amount),
-        description: buildWithdrawalDescription(cleanCategory, accountName, body.amount, body.currency, amount_eur),
-        currency_code: accountCurrency,
-        category_name: cleanCategory,
-        source_name: accountName,
-        destination_name: (body as any).destination_name || (body as any).comment || 'Withdrawal',
-        foreign_currency_code: 'EUR',
-        foreign_amount: formatAmount(amount_eur),
-        notes: providedNotes || buildTransactionNotes(
-          `Withdrawal ${cleanCategory} from ${accountName} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
-          (body as any).destination_name || (body as any).comment,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-        reconciled: false,
-        budget_name: (body as unknown as Record<string, unknown>).budget_name as string | undefined,
-      };
-
-      const transactionData = buildTransactionRequest(payload);
-
-      logTransactionOperation('info', `Sending non-EUR withdrawal transaction for user ${body.user_name}`, transactionData);
-
-      const response = await apiClient.request<Record<string, unknown>>(
-        '/api/v1/transactions',
-        {
-          method: 'POST',
-          body: transactionData,
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      );
-
-      // Trigger sync to update account balances
-      await triggerImmediateSync();
-
-      return [true, response || {}];
+    // Add optional fields if present
+    if (body.destination_name) {
+      payload.destination_name = body.destination_name;
     }
+    if (body.budget_name) {
+      payload.budget_name = body.budget_name;
+    }
+
+    // Add foreign currency ONLY for non-EUR accounts
+    // UI provides amount_eur for non-EUR accounts
+    if (body.account_currency !== 'EUR' && body.amount_eur) {
+      payload.foreign_amount = formatAmount(body.amount_eur);
+      payload.foreign_currency_code = 'EUR';
+    }
+
+    const transactionData = buildTransactionRequest(payload);
+
+    logTransactionOperation('info', `Sending withdrawal transaction for user ${body.user_name}`, transactionData);
+
+    const response = await apiClient.request<Record<string, unknown>>(
+      '/api/v1/transactions',
+      {
+        method: 'POST',
+        body: transactionData,
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+
+    // Trigger sync to update account balances
+    await triggerImmediateSync();
+
+    return [true, response || {}];
   } catch (error) {
     const err: any = error;
     const errorPayload =
@@ -340,9 +275,9 @@ async function handleWithdrawalTransaction(body: WithdrawalTransactionData): Pro
 }
 
 /**
- * Handle income transactions (EUR and non-EUR)
+ * Handle deposit transactions (EUR and non-EUR)
  */
-async function handleIncomeTransaction(body: IncomeTransactionData): Promise<TransactionResult> {
+async function handleDepositTransaction(body: DepositTransactionData): Promise<TransactionResult> {
   try {
     // Validate amount
     if (!validateAmount(body.amount)) {
@@ -353,96 +288,52 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
-    const externalId = generateExternalId(TransactionType.INCOME, body.user_name);
+    const externalId = generateExternalId(TransactionType.DEPOSIT, body.user_name);
 
-    // Determine currencies
-    const accountCurrency = body.account_currency || 'EUR';
-    const transactionCurrency = body.currency || accountCurrency;
+    // Build base payload with exact field names from UI
+    const payload: FireflyTransactionPayload = {
+      type: 'deposit',
+      date: dateIso,
+      amount: formatAmount(body.amount),
+      description: body.category_name,
+      destination_id: String(body.account_id),
+      category_id: String(body.category_id),
+      category_name: body.category_name,
+      tags: [body.user_name],
+      currency_code: body.account_currency,
+      notes: body.notes || '',
+      external_id: externalId,
+    };
 
-    if (transactionCurrency === 'EUR') {
-      // EUR income transaction
-      const cleanCategory = cleanCategoryName(body.category_name);
-      const payload: FireflyTransactionPayload = {
-        type: 'deposit',
-        date: dateIso,
-        amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} Comment: ${body.comment || ''}`,
-        currency_code: accountCurrency,
-        category_name: cleanCategory,
-        destination_name: body.account_name,
-        notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency}`,
-          body.comment,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-      };
-
-      const transactionData = buildTransactionRequest(payload);
-
-      logTransactionOperation('info', `Sending EUR income transaction for user ${body.user_name}`, transactionData);
-
-      const response = await apiClient.request<Record<string, unknown>>(
-        '/api/v1/transactions',
-        {
-          method: 'POST',
-          body: transactionData,
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      );
-
-      // Trigger sync to update account balances
-      await triggerImmediateSync();
-
-      return [true, response || {}];
-    } else {
-      // Non-EUR income - convert to EUR
-      const amount_eur = await convertCurrency(transactionCurrency, 'EUR', parseFloat(String(body.amount)));
-
-      if (amount_eur === null) {
-        logTransactionOperation('error', `Currency conversion failed: ${transactionCurrency} to EUR`);
-        return [false, { error: 'Currency conversion failed' }];
-      }
-
-      const cleanCategory = cleanCategoryName(body.category_name);
-      const payload: FireflyTransactionPayload = {
-        type: 'deposit',
-        date: dateIso,
-        amount: formatAmount(body.amount),
-        description: `${cleanCategory} income to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR) Comment: ${body.comment || ''}`,
-        currency_code: accountCurrency,
-        category_name: cleanCategory,
-        destination_name: body.account_name,
-        foreign_currency_code: 'EUR',
-        foreign_amount: formatAmount(amount_eur),
-        notes: buildTransactionNotes(
-          `Income ${cleanCategory} to ${body.account_name} ${body.amount} ${body.currency} (${amount_eur} EUR)`,
-          body.comment,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-      };
-
-      const transactionData = buildTransactionRequest(payload);
-
-      logTransactionOperation('info', `Sending non-EUR income transaction for user ${body.user_name}`, transactionData);
-
-      const response = await apiClient.request<Record<string, unknown>>(
-        '/api/v1/transactions',
-        {
-          method: 'POST',
-          body: transactionData,
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      );
-
-      // Trigger sync to update account balances
-      await triggerImmediateSync();
-
-      return [true, response || {}];
+    // Add optional source_name if present
+    if (body.source_name) {
+      payload.source_name = body.source_name;
     }
+
+    // Add foreign currency ONLY for non-EUR accounts
+    // UI provides amount_eur for non-EUR accounts
+    if (body.account_currency !== 'EUR' && body.amount_eur) {
+      payload.foreign_amount = formatAmount(body.amount_eur);
+      payload.foreign_currency_code = 'EUR';
+    }
+
+    const transactionData = buildTransactionRequest(payload);
+
+    logTransactionOperation('info', `Sending deposit transaction for user ${body.user_name}`, transactionData);
+
+    const response = await apiClient.request<Record<string, unknown>>(
+      '/api/v1/transactions',
+      {
+        method: 'POST',
+        body: transactionData,
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+
+    // Trigger sync to update account balances
+    await triggerImmediateSync();
+
+    return [true, response || {}];
   } catch (error) {
     const err: any = error;
     const errorPayload =
@@ -457,87 +348,49 @@ async function handleIncomeTransaction(body: IncomeTransactionData): Promise<Tra
           ? err.message
           : err;
 
-    logTransactionOperation('error', `Error handling income transaction: ${safeStringify(errorPayload)}`);
+    logTransactionOperation('error', `Error handling deposit transaction: ${safeStringify(errorPayload)}`);
     return [false, { error: errorPayload }];
   }
 }
 
 /**
  * Handle transfer transactions (same and different currencies)
+ * Uses exact field names from transfer flow UI
  */
 async function handleTransferTransaction(body: TransferTransactionData): Promise<TransactionResult> {
   try {
+    // Validate amounts
+    if (!validateAmount(body.source_amount)) {
+      return [false, { error: 'Invalid source amount: must be positive number' }];
+    }
+    if (!validateAmount(body.destination_amount)) {
+      return [false, { error: 'Invalid destination amount: must be positive number' }];
+    }
+
     // Parse date
     const dateIso = parseTransactionDate(body.date);
 
     // Generate external ID
     const externalId = generateExternalId(TransactionType.TRANSFER, body.user_name);
 
-    // Determine currencies
-    const exitCurrency = body.exit_currency || body.currency || 'EUR';
-    const entryCurrency = body.entry_currency || body.currency || 'EUR';
+    // Build main transfer payload with exact field names
+    const payload: FireflyTransactionPayload = {
+      type: 'transfer',
+      date: dateIso,
+      amount: formatAmount(body.source_amount),
+      description: `Transfer ${body.source_account_name} → ${body.destination_account_name}`,
+      source_id: String(body.source_account_id),
+      destination_id: String(body.destination_account_id),
+      tags: [body.user_name],
+      currency_code: body.source_account_currency,
+      notes: body.notes,
+      external_id: externalId,
+    };
 
-    let payload: FireflyTransactionPayload;
-
-    if (exitCurrency === entryCurrency) {
-      // Same currency transfer
-      const amount = body.exit_amount || body.currency || '0';
-
-      payload = {
-        type: 'transfer',
-        date: dateIso,
-        amount: formatAmount(amount),
-        description: buildTransferDescription(
-          body.exit_account,
-          body.entry_account,
-          amount,
-          exitCurrency,
-          body.exit_fee,
-          body.entry_fee,
-          body.description
-        ),
-        currency_code: exitCurrency,
-        source_name: body.exit_account,
-        destination_name: body.entry_account,
-        notes: buildTransactionNotes(
-          `Transfer from ${body.exit_account} to ${body.entry_account} ${amount} ${exitCurrency}`,
-          body.description,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-      };
-    } else {
-      // Different currency transfer
-      const exitAmount = body.exit_amount || '0';
-      const entryAmount = body.entry_amount || '0';
-
-      payload = {
-        type: 'transfer',
-        date: dateIso,
-        amount: formatAmount(exitAmount),
-        description: buildTransferDescription(
-          body.exit_account,
-          body.entry_account,
-          exitAmount,
-          exitCurrency,
-          body.exit_fee,
-          body.entry_fee,
-          body.description
-        ),
-        currency_code: exitCurrency,
-        source_name: body.exit_account,
-        foreign_amount: formatAmount(entryAmount),
-        foreign_currency_code: entryCurrency,
-        destination_name: body.entry_account,
-        notes: buildTransactionNotes(
-          `Transfer from ${body.exit_account} ${exitAmount} ${exitCurrency} to ${body.entry_account} ${entryAmount} ${entryCurrency}`,
-          body.description,
-          body.user_name
-        ),
-        tags: [body.user_name],
-        external_id: externalId,
-      };
+    // Add foreign currency ONLY if currencies differ
+    if (body.source_account_currency !== body.destination_account_currency) {
+      payload.foreign_amount = formatAmount(body.destination_amount);
+      payload.foreign_currency_code = body.destination_account_currency;
     }
 
     const transactionData = buildTransactionRequest(payload);
@@ -550,18 +403,36 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
       {
         method: 'POST',
         body: transactionData,
-        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        auth: 'tier2'
       }
     );
 
-    // Handle exit fee if present
-    if (body.exit_fee && parseFloat(String(body.exit_fee)) > 0) {
-      await handleTransferFee(body.exit_fee, body.exit_account, body.entry_account, 'exit', exitCurrency, body.user_name);
+    // Handle source fee if present
+    if (body.source_fee && parseFloat(String(body.source_fee)) > 0) {
+      await handleTransferFee(
+        body.source_fee,
+        body.source_account_id,
+        body.source_account_name,
+        body.destination_account_name,
+        'source',
+        body.source_account_currency,
+        body.user_name,
+        dateIso
+      );
     }
 
-    // Handle entry fee if present
-    if (body.entry_fee && parseFloat(String(body.entry_fee)) > 0) {
-      await handleTransferFee(body.entry_fee, body.entry_account, body.exit_account, 'entry', entryCurrency, body.user_name);
+    // Handle destination fee if present
+    if (body.destination_fee && parseFloat(String(body.destination_fee)) > 0) {
+      await handleTransferFee(
+        body.destination_fee,
+        body.destination_account_id,
+        body.source_account_name,
+        body.destination_account_name,
+        'destination',
+        body.destination_account_currency,
+        body.user_name,
+        dateIso
+      );
     }
 
     // Trigger sync after successful transfer
@@ -589,29 +460,32 @@ async function handleTransferTransaction(body: TransferTransactionData): Promise
 
 /**
  * Handle transfer fee transactions
+ * Creates a withdrawal transaction for the fee with exact field names
  */
 async function handleTransferFee(
   fee: string | number,
-  accountFrom: string,
-  accountTo: string,
-  feeType: 'exit' | 'entry',
+  accountId: number,
+  sourceAccountName: string,
+  destinationAccountName: string,
+  feeType: 'source' | 'destination',
   currency: string,
-  username: string
+  username: string,
+  date: string
 ): Promise<void> {
   try {
     const feeExternalId = generateExternalId(`transfer-${feeType}-fee`, username);
-    const now = new Date().toISOString();
 
     const payload: FireflyTransactionPayload = {
       type: 'withdrawal',
-      date: now,
+      date: date,
       amount: formatAmount(fee),
-      description: `${feeType.charAt(0).toUpperCase() + feeType.slice(1)} fee for transfer ${feeType === 'exit' ? 'from' : 'to'} ${accountFrom}`,
+      description: `Transfer fee (${feeType})`,
+      source_id: String(accountId),
+      destination_name: 'Transfer Fee',
+      category_name: 'Fee',
+      tags: [username, 'fee', 'transfer-fee'],
       currency_code: currency,
-      source_name: accountFrom,
-      destination_name: 'Fee',
-      notes: `${feeType === 'exit' ? 'Exit' : 'Entry'} fee for transfer ${feeType === 'exit' ? 'from' : 'to'} ${accountTo}. Added by ${username}`,
-      tags: [username],
+      notes: `Fee for ${feeType === 'source' ? 'transfer from' : 'receiving transfer from'} ${sourceAccountName} to ${destinationAccountName}`,
       external_id: feeExternalId,
     };
 
@@ -624,7 +498,7 @@ async function handleTransferFee(
       {
         method: 'POST',
         body: transactionData,
-        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        auth: 'tier2'
       }
     );
   } catch (error) {
@@ -664,33 +538,6 @@ async function verifyTransactionExists(
   }
 
   return { verified: false, error: 'Verification failed after retries' };
-}
-
-/**
- * Convert currency amount using Sync API exchange rates
- */
-async function convertCurrency(fromCurrency: string, toCurrency: string, amount: number): Promise<number | null> {
-  try {
-    // Import syncService from parent sync module
-    const syncModule = await import('../sync');
-    const syncService = syncModule.default;
-
-    logTransactionOperation('info', `Converting ${amount} ${fromCurrency} to ${toCurrency}`);
-
-    const convertedAmount = await syncService.getExchangeRate(fromCurrency, toCurrency, amount);
-
-    if (convertedAmount === null) {
-      logTransactionOperation('warn', `Currency conversion failed via API: ${fromCurrency} -> ${toCurrency}, using amount as-is`);
-      return amount;
-    }
-
-    logTransactionOperation('info', `Currency conversion successful: ${amount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`);
-    return convertedAmount;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logTransactionOperation('error', `Currency conversion error: ${errorMessage}`);
-    return null;
-  }
 }
 
 /**

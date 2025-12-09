@@ -171,7 +171,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
           </>
         )}
 
-        {transaction.type === 'income' && (
+        {transaction.type === 'deposit' && (
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">To Account</p>
@@ -209,7 +209,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
               className="text-lg font-semibold"
               style={{
                 color:
-                  displayData.type === 'income'
+                  displayData.type === 'deposit'
                     ? '#10B981'
                     : displayData.type === 'withdrawal'
                       ? '#EF4444'
@@ -235,7 +235,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
         {/* User/Tags */}
         <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
           <p className="text-xs text-gray-400 mb-1">Added by</p>
-          <p className="text-sm font-medium text-white">{transaction.username}</p>
+          <p className="text-sm font-medium text-white">{transaction.user_name}</p>
         </div>
       </div>
 

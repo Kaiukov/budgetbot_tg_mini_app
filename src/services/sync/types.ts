@@ -4,8 +4,26 @@
 
 export enum TransactionType {
   WITHDRAWAL = 'withdrawal',
-  INCOME = 'income',
+  DEPOSIT = 'deposit',
   TRANSFER = 'transfer',
+}
+
+/**
+ * Destination suggestions for withdrawal flows
+ */
+export interface DestinationSuggestion {
+  destination_id: number | string;
+  destination_name: string;
+  usage_count: number;
+}
+
+/**
+ * Source suggestions for deposit flows
+ */
+export interface SourceSuggestion {
+  source_id: number | string;
+  source_name: string;
+  usage_count: number;
 }
 
 /**
@@ -27,6 +45,7 @@ export interface BaseTransactionData {
  * Withdrawal-specific transaction data
  */
 export interface WithdrawalTransactionData extends BaseTransactionData {
+  account_currency: string;
   category_id?: string | number;
   category_name: string;
   budget_name?: string;
@@ -39,37 +58,106 @@ export interface WithdrawalTransactionData extends BaseTransactionData {
 }
 
 /**
- * Income-specific transaction data
+ * Deposit-specific transaction data
  */
-export interface IncomeTransactionData extends BaseTransactionData {
+export interface DepositTransactionData extends BaseTransactionData {
+  account_currency: string;
   category_id?: string | number;
   category_name: string;
   budget_name?: string;
   account_name?: string;
   account_id?: string | number;
-  destination_id?: string | number;
-  destination_name?: string;
+  source_id?: string | number;
+  source_name?: string;
   amount_eur?: string | number;
   user_id?: number;
 }
 
 /**
  * Transfer-specific transaction data
+ * Uses exact field names from transfer flow UI
  */
 export interface TransferTransactionData {
   user_name: string;
   date: string | Date;
-  currency?: string;
-  exit_account: string;
-  entry_account: string;
-  exit_amount?: string | number;
-  entry_amount?: string | number;
-  exit_currency?: string;
-  entry_currency?: string;
-  exit_fee?: string | number;
-  entry_fee?: string | number;
-  description?: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate?: number | null;
+  notes: string;
+  timestamp?: string;
 }
+
+/**
+ * Standardized webhook payload types
+ * Used for both DEBUG_API mode and production payload validation
+ */
+
+export interface WithdrawalWebhookPayload {
+  transactionType: 'withdrawal';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  budget_name: string;
+  destination_id: number;
+  destination_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface DepositWebhookPayload {
+  transactionType: 'deposit';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  source_id: number;
+  source_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface TransferWebhookPayload {
+  transactionType: 'transfer';
+  user_name: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate: number | null;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export type UnifiedWebhookPayload =
+  | WithdrawalWebhookPayload
+  | DepositWebhookPayload
+  | TransferWebhookPayload;
 
 /**
  * Individual transaction payload for Firefly III API
@@ -80,8 +168,11 @@ export interface FireflyTransactionPayload {
   amount: string;
   description: string;
   currency_code: string;
+  source_id?: string;
   source_name?: string;
+  destination_id?: string;
   destination_name?: string;
+  category_id?: string;
   category_name?: string;
   budget_name?: string;
   foreign_currency_code?: string;

@@ -10,7 +10,6 @@ export { budgetMachine } from './budgetMachine';
 export type {
   BudgetUser,
   TransactionForm,
-  TransferAccount,
   TransferForm,
   ResourceLoadingState,
   UIState,

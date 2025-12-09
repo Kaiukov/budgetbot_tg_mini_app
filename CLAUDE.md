@@ -3,6 +3,7 @@
 A Telegram Mini App for managing personal finances, integrated with Firefly III and a custom backend sync service.
 
 **Production URL:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
+**TEST Local URL:** http://localhost:3000/
 
 ## Key Features
 - ✅ Real-time Telegram user profile integration

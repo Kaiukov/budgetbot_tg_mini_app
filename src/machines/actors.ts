@@ -6,7 +6,7 @@
 import { fromPromise } from 'xstate';
 import type { BudgetUser } from './types';
 import telegramService from '../services/telegram';
-import { syncService, type AccountUsage, type CategoryUsage } from '../services/sync';
+import { syncService, type AccountUsage, type CategoryUsage, type SourceSuggestion } from '../services/sync';
 import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
@@ -200,6 +200,42 @@ export const categoriesFetchActor = fromPromise<
 });
 
 // ============================================================================
+// Deposit Source Name Fetch Actor
+// ============================================================================
+
+export const depositSourceNameFetchActor = fromPromise<
+  SourceSuggestion[],
+  { user_name?: string; category_id: number; timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || 30000; // 30s timeout
+
+  return new Promise<SourceSuggestion[]>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Fetch source names timeout after 30 seconds'));
+    }, timeout);
+
+    try {
+      debugLog('🔄 Fetching source names for user:', input?.user_name, 'category_id:', input?.category_id);
+      syncService.getSourceNameUsage(input?.user_name, input?.category_id)
+        .then((response) => {
+          clearTimeout(timer);
+          debugLog('✅ Source names fetched:', response.get_source_name_usage.length);
+          resolve(response.get_source_name_usage);
+        })
+        .catch((error) => {
+          clearTimeout(timer);
+          console.error('❌ Failed to fetch source names:', error);
+          reject(error);
+        });
+    } catch (error) {
+      clearTimeout(timer);
+      console.error('❌ Error in source names fetch:', error);
+      reject(error);
+    }
+  });
+});
+
+// ============================================================================
 // Transactions Fetch Actor
 // ============================================================================
 
@@ -264,7 +300,7 @@ export const transactionDetailFetchActor = fromPromise<
 export const transactionCreateActor = fromPromise<
   void,
   {
-    type: 'expense' | 'income' | 'transfer';
+    type: 'expense' | 'deposit' | 'transfer';
     data: any;
   }
 >(async ({ input }) => {
@@ -372,5 +408,82 @@ export const fireflyServiceHealthActor = fromPromise<
       success: false,
       message: error instanceof Error ? error.message : 'Failed to connect to Firefly API'
     };
+  }
+});
+
+// ============================================================================
+// Sequential Data Loading Orchestrator Actor
+// ============================================================================
+// Loads accounts first, then categories and transactions in parallel
+// This improves perceived performance by unblocking UI with accounts data sooner
+
+export interface DataLoadingResult {
+  accounts: AccountUsage[];
+  categories: CategoryUsage[];
+  transactions: DisplayTransaction[];
+}
+
+export const dataLoadingOrchestratorActor = fromPromise<
+  DataLoadingResult,
+  { user_name?: string; timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || 30000; // 30s total timeout
+  const startTime = Date.now();
+
+  try {
+    debugLog('🔄 Sequential data loading: Starting accounts fetch...');
+
+    // Step 1: Load accounts first (blocking step)
+    const accountsResponse = await Promise.race([
+      syncService.getAccountsUsage(input?.user_name),
+      new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error('Accounts fetch timeout')), timeout)
+      ),
+    ]);
+
+    const accounts = accountsResponse.get_accounts_usage || [];
+    const accountsTime = Date.now() - startTime;
+    debugLog(`✅ Accounts loaded in ${accountsTime}ms, starting parallel loads...`);
+
+    // Step 2: Load categories and transactions in parallel (non-blocking step)
+    const isUnknown = input?.user_name === 'User' || input?.user_name === 'Guest';
+    const [categoriesResponse, transactionsResponse] = await Promise.all([
+      Promise.race([
+        syncService.getCategoriesUsage(
+          isUnknown ? undefined : input?.user_name,
+          'withdrawal'
+        ),
+        new Promise<any>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Categories fetch timeout')),
+            Math.max(timeout - accountsTime, 5000)
+          )
+        ),
+      ]),
+      Promise.race([
+        fetchTransactions(1),
+        new Promise<any>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Transactions fetch timeout')),
+            Math.max(timeout - accountsTime, 5000)
+          )
+        ),
+      ]),
+    ]);
+
+    const categories = categoriesResponse.get_categories_usage || [];
+    const transactions = transactionsResponse.transactions || [];
+    const totalTime = Date.now() - startTime;
+
+    debugLog(`✅ All data loaded in ${totalTime}ms:`, {
+      accounts: accounts.length,
+      categories: categories.length,
+      transactions: transactions.length,
+    });
+
+    return { accounts, categories, transactions };
+  } catch (error) {
+    console.error('❌ Error in sequential data loading:', error);
+    throw error;
   }
 });

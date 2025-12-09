@@ -8,29 +8,46 @@ interface TransferFeeScreenProps {
   destAccount: string;
   sourceCurrency: string;
   destCurrency: string;
-  exitFee: string;
-  entryFee: string;
+  sourceFee: string;
+  destFee: string;
   isAvailable?: boolean;
+  errors?: Record<string, string>;
   onBack: () => void;
-  onExitFeeChange: (value: string) => void;
-  onEntryFeeChange: (value: string) => void;
+  onSourceFeeChange: (value: string) => void;
+  onDestFeeChange: (value: string) => void;
+  onClearError?: () => void;
   onNext: () => void;
-  onSkip: () => void;
 }
+
+const sanitizeFeeInput = (raw: string): string | null => {
+  if (raw === '') return '';
+
+  let value = raw.replace(/,/g, '.');
+  if (value.includes('-')) return null;
+  if (!/^\d*\.?\d*$/.test(value)) return null;
+  if (value.startsWith('.')) value = '0' + value;
+
+  const [intRaw, frac] = value.split('.');
+  let intPart = intRaw.replace(/^0+(?=\d)/, ''); // strip leading zeros but keep single zero
+  if (intPart === '') intPart = '0';
+
+  return frac !== undefined ? `${intPart}${frac === '' ? '.' : '.' + frac}` : intPart;
+};
 
 const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   sourceAccount,
   destAccount,
   sourceCurrency,
   destCurrency,
-  exitFee,
-  entryFee,
+  sourceFee,
+  destFee,
   isAvailable,
+  errors,
   onBack,
-  onExitFeeChange,
-  onEntryFeeChange,
-  onNext,
-  onSkip
+  onSourceFeeChange,
+  onDestFeeChange,
+  onClearError,
+  onNext
 }) => {
   // Show Telegram back button
   useEffect(() => {
@@ -41,46 +58,18 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
   const sourceCurrencyCode = sourceCurrency?.toUpperCase() || 'EUR';
   const destCurrencyCode = destCurrency?.toUpperCase() || 'EUR';
 
-  const handleExitFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-
-    // Replace comma with dot for decimal separator
-    value = value.replace(/,/g, '.');
-
-    // Reject if it contains minus sign (negative fees not allowed)
-    if (value.includes('-')) {
-      return;
-    }
-
-    // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
-      if (value.startsWith('.')) {
-        value = '0' + value;
-      }
-      onExitFeeChange(value);
-    }
+  const handleSourceFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = sanitizeFeeInput(e.target.value);
+    if (value === null) return;
+    onSourceFeeChange(value);
+    if (onClearError) onClearError();
   };
 
-  const handleEntryFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-
-    // Replace comma with dot for decimal separator
-    value = value.replace(/,/g, '.');
-
-    // Reject if it contains minus sign (negative fees not allowed)
-    if (value.includes('-')) {
-      return;
-    }
-
-    // Allow only numbers and one decimal point
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      // Add leading zero if input starts with decimal point (e.g., ".5" → "0.5")
-      if (value.startsWith('.')) {
-        value = '0' + value;
-      }
-      onEntryFeeChange(value);
-    }
+  const handleDestFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = sanitizeFeeInput(e.target.value);
+    if (value === null) return;
+    onDestFeeChange(value);
+    if (onClearError) onClearError();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -89,11 +78,17 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
     }
   };
 
-  const handleSkipFees = () => {
-    onExitFeeChange('0');
-    onEntryFeeChange('0');
-    onSkip();
+  const handleSelectAll: React.FocusEventHandler<HTMLInputElement> = (e) => {
+    // Defer select to avoid clobbering during click focus sequence
+    requestAnimationFrame(() => e.target.select());
   };
+
+  const preventMouseUpDeselection: React.MouseEventHandler<HTMLInputElement> = (e) => {
+    // Prevent mouse up from clearing the programmatic selection on first click
+    e.preventDefault();
+  };
+
+  const hasError = Boolean(errors?.validation);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -107,29 +102,37 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
       </div>
 
       <div className={layouts.contentWide}>
-        {/* Exit Fee (From Account) */}
+        {hasError && (
+          <div className="mb-3 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors?.validation}</p>
+          </div>
+        )}
+
+        {/* Source Fee (From Account) */}
         <div className={`${cardStyles.container} mb-2`}>
-          <p className="text-xs text-gray-400 mb-2">Exit Fee from: {sourceAccount}</p>
+          <p className="text-xs text-gray-400 mb-2">Fee from: {sourceAccount}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
               <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={exitFee}
-                onChange={handleExitFeeChange}
+                value={sourceFee}
+                onChange={handleSourceFeeChange}
                 onKeyDown={handleKeyDown}
+                onFocus={handleSelectAll}
+                onMouseUp={preventMouseUpDeselection}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  exitFee ? 'text-right' : 'text-center'
+                  sourceFee ? 'text-right' : 'text-center'
                 }`}
                 style={{
-                  width: exitFee ? `${Math.min(exitFee.length * 0.65, 12)}em` : '2em',
+                  width: sourceFee ? `${Math.min(sourceFee.length * 0.65, 12)}em` : '2em',
                   maxWidth: '100%'
                 }}
                 autoFocus
               />
-              {exitFee && (
+              {sourceFee && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {sourceCurrencyCode}
                 </span>
@@ -143,28 +146,30 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
           <div className="text-gray-500 text-sm">↓</div>
         </div>
 
-        {/* Entry Fee (To Account) */}
+        {/* Destination Fee (To Account) */}
         <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <p className="text-xs text-gray-400 mb-2">Entry Fee to: {destAccount}</p>
+          <p className="text-xs text-gray-400 mb-2">Fee to: {destAccount}</p>
           <div className="text-center overflow-x-auto">
             <div className="flex items-baseline justify-center gap-1 px-2 min-w-full">
               <input
                 type="text"
                 inputMode="decimal"
                 pattern="[0-9]*"
-                value={entryFee}
-                onChange={handleEntryFeeChange}
+                value={destFee}
+                onChange={handleDestFeeChange}
                 onKeyDown={handleKeyDown}
+                onFocus={handleSelectAll}
+                onMouseUp={preventMouseUpDeselection}
                 placeholder="0"
                 className={`text-4xl font-bold text-white bg-transparent border-none focus:outline-none placeholder-gray-600 min-w-0 ${
-                  entryFee ? 'text-right' : 'text-center'
+                  destFee ? 'text-right' : 'text-center'
                 }`}
                 style={{
-                  width: entryFee ? `${Math.min(entryFee.length * 0.65, 12)}em` : '2em',
+                  width: destFee ? `${Math.min(destFee.length * 0.65, 12)}em` : '2em',
                   maxWidth: '100%'
                 }}
               />
-              {entryFee && (
+              {destFee && (
                 <span className="text-2xl font-semibold text-gray-400 whitespace-nowrap ml-1">
                   {destCurrencyCode}
                 </span>
@@ -178,21 +183,12 @@ const TransferFeeScreen: React.FC<TransferFeeScreenProps> = ({
         </p>
 
         {/* Action Buttons */}
-        <div className="space-y-2">
-          <button
-            onClick={handleSkipFees}
-            className="w-full bg-gray-700 text-white py-3 rounded-lg text-sm font-medium hover:bg-gray-600 transition active:scale-98"
-          >
-            Skip Fees (Set to 0)
-          </button>
-
-          <button
-            onClick={onNext}
-            className="w-full bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition active:scale-98"
-          >
-            Next
-          </button>
-        </div>
+        <button
+          onClick={onNext}
+          className="w-full bg-blue-500 text-white py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition active:scale-98"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

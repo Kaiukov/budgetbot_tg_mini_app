@@ -111,8 +111,8 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
           <div className="flex flex-col items-center justify-center py-8">
             <Folder size={48} className="text-gray-600 mb-3" />
             <p className="text-gray-400 text-sm">
-              {transactionType === 'income'
-                ? 'No income categories found'
+              {transactionType === 'deposit'
+                ? 'No deposit categories found'
                 : 'No categories found'}
             </p>
           </div>
