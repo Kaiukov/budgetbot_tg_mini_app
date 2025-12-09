@@ -137,7 +137,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
   const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(transactionData.date));
-  const [notesInput, setNotesInput] = useState<string>(transactionData.notes || '');
+  const [notesInput, setNotesInput] = useState<string>('');
   const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
 
   // Show Telegram back button
@@ -145,6 +145,13 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     telegramService.showBackButton(onBack);
     return () => telegramService.hideBackButton();
   }, [onBack]);
+
+  // Generate auto-suggested notes on mount (always, not just first time)
+  useEffect(() => {
+    if (!hasUserEditedNotes) {
+      setNotesInput(buildNotesSuggestion());
+    }
+  }, []);
 
   // Sync local date/notes if parent transaction data changes
   useEffect(() => {
@@ -332,7 +339,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         // Transfer
         const sourceAccountId = transactionData.source_id || transactionData.account_id || 0;
         const destAccountId = transactionData.destination_id || 0;
-        const exchangeRate = (transactionData as any).exchange_rate || null;
+        const exchangeRate = (transactionData as any).exchange_rate ??
+          (parseFloat(destAmount) / parseFloat(sourceAmount) || null);
 
         webhookPayload = {
           transactionType: 'transfer',
