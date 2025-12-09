@@ -190,6 +190,9 @@ export const budgetMachine = createMachine(
               },
               notes: {
                 on: {
+                  UPDATE_DESTINATION_NAME: {
+                    actions: 'updateDestinationName',
+                  },
                   UPDATE_NOTES: {
                     actions: 'updateComment',
                   },
@@ -651,6 +654,14 @@ export const budgetMachine = createMachine(
           ...context.transaction,
           source_name: event.source_name ?? context.transaction.source_name,
           source_id: event.source_id ?? context.transaction.source_id,
+        },
+      })),
+
+      updateDestinationName: assign(({ context, event }: any) => ({
+        transaction: {
+          ...context.transaction,
+          destination_name: event.destination_name ?? context.transaction.destination_name,
+          destination_id: event.destination_id ?? context.transaction.destination_id,
         },
       })),
 

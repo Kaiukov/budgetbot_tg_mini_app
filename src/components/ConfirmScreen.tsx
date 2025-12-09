@@ -247,20 +247,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     }
   };
 
-  const ensureNotesFormat = (): string => {
-    // Always regenerate notes to ensure correct format
-    const suggestion = buildNotesSuggestion();
-
-    // If user edited notes manually, respect it; otherwise use suggestion
-    // Exception: if notes are empty or just whitespace, always use suggestion
-    const trimmed = notesInput.trim();
-    if (!trimmed || !hasUserEditedNotes) {
-      return suggestion;
-    }
-
-    return trimmed;
-  };
-
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
 
@@ -295,6 +281,22 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         : new Date().toISOString();
 
       const timestamp = new Date().toISOString();
+
+      // Ensure notes format - moved inside function to fix scope access to state variables
+      const ensureNotesFormat = (): string => {
+        // Always regenerate notes to ensure correct format
+        const suggestion = buildNotesSuggestion();
+
+        // If user edited notes manually, respect it; otherwise use suggestion
+        // Exception: if notes are empty or just whitespace, always use suggestion
+        const trimmed = notesInput.trim();
+        if (!trimmed || !hasUserEditedNotes) {
+          return suggestion;
+        }
+
+        return trimmed;
+      };
+
       const finalNotes = ensureNotesFormat();
 
       // Build standardized webhook payload based on transaction type
