@@ -341,8 +341,33 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         // Transfer
         const sourceAccountId = transactionData.source_id || transactionData.account_id || 0;
         const destAccountId = transactionData.destination_id || 0;
-        const exchangeRate = (transactionData as any).exchange_rate ??
-          (parseFloat(destAmount) / parseFloat(sourceAmount) || null);
+
+        // Calculate exchange_rate with priority-based fallback
+        const exchangeRate = (() => {
+          // Priority 1: Use machine context exchange_rate (set by AmountScreen)
+          const machineRate = (transactionData as any).exchange_rate;
+          if (machineRate !== null && machineRate !== undefined && !isNaN(machineRate)) {
+            return machineRate;
+          }
+
+          // Priority 2: Same currency → rate is always 1.0
+          const sourceCurr = sourceCurrency?.toUpperCase() || '';
+          const destCurr = destCurrency?.toUpperCase() || '';
+          if (sourceCurr && destCurr && sourceCurr === destCurr) {
+            return 1.0;
+          }
+
+          // Priority 3: Calculate from amounts (cross-currency)
+          const srcNum = parseFloat(sourceAmount || '');
+          const dstNum = parseFloat(destAmount || '');
+          if (!isNaN(srcNum) && !isNaN(dstNum) && srcNum > 0 && dstNum > 0) {
+            return dstNum / srcNum;
+          }
+
+          // Fallback: null (should not happen if validation passed)
+          console.warn('⚠️ exchange_rate could not be determined for transfer');
+          return null;
+        })();
 
         webhookPayload = {
           transactionType: 'transfer',
