@@ -8,8 +8,6 @@ This directory contains a collection of utility functions and helpers used acros
 
 **[categories.ts](categories.ts)**: Contains utility functions for handling category data, such as extracting emojis from names and assigning a default icon or color based on keywords in the category name.
 
-**[categoryFilter.ts](categoryFilter.ts)**: A utility for filtering the list of available categories based on the current transaction type (e.g., 'income', 'expense').
-
 **[currencies.ts](currencies.ts)**: A comprehensive currency utility based on Google's currency dataset. It provides functions to get currency symbols, names, and perform basic formatting.
 
 **[fetchUserData.ts](fetchUserData.ts)**: A function to fetch detailed user data (name, bio, avatar) from the backend Sync API, using Telegram's `initData` for authentication.
