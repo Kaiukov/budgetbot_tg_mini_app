@@ -10,11 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues
 - None.
 
-## [1.4.0] - 2025-12-08
+## [0.2.0] - 2025-12-08
 
 ### Major Refactoring: Unified Transaction Flows & Simplified Architecture
 
-This release delivers a comprehensive architectural refactoring consolidating withdrawal, deposit, and transfer flows into unified, reusable components. Major technical debt reduction through ~80 backup file cleanup and significant simplification of the service layer.
+This release delivers a comprehensive architectural refactoring consolidating withdrawal, deposit, and transfer flows into unified, reusable components. Major technical debt reduction through ~80 backup file cleanup and significant simplification of the service layer. **Pre-release version - not yet production-ready.**
 
 ### Added
 - **DestinationSourceNamesScreen**: New unified component for handling destination/source name selection across all transaction flows
