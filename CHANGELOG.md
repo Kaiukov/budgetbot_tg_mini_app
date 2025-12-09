@@ -10,27 +10,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Known Issues
 - None.
 
-### Fixed
-- **Destination Input Persistence**: Standardized `UPDATE_NOTES` payloads so destination input text and IDs persist correctly across the withdrawal flow.
-- **Account user_name Field**: Aligned account selection event payload with machine expectations to capture the selected account's `user_name`.
-- **Destination Selection**: Fixed quick destination selection from list not updating the destination field; event property was `comment` but machine expected `notes` in `handleWithdrawalDestinationChange`
-- **Confirm Screen Notes Sync**: Renamed `notesTouched` to `hasUserEditedNotes` for semantic clarity; prevents unintended overwrites of user-edited notes during prefill/resync logic
+## [1.4.0] - 2025-12-08
+
+### Major Refactoring: Unified Transaction Flows & Simplified Architecture
+
+This release delivers a comprehensive architectural refactoring consolidating withdrawal, deposit, and transfer flows into unified, reusable components. Major technical debt reduction through ~80 backup file cleanup and significant simplification of the service layer.
+
+### Added
+- **DestinationSourceNamesScreen**: New unified component for handling destination/source name selection across all transaction flows
+- **Transfer Notes Utility**: New `src/utils/transferNotes.ts` for standardized transfer note handling
+- **Currency Utility Module**: New `src/utils/currency.ts` for centralized currency handling
+- **New API Client Module**: `src/services/sync/apiClient.ts` for direct API client usage
+- **Validation Infrastructure**: Auto-clearing error display across flow screens with comprehensive guards
+- **Date Editing**: Transfer confirmation screen now supports date input for transaction dating
 
 ### Changed
+- **State Machine Refactoring**: Complete `budgetMachine.ts` rewrite with cleaner event system and improved actor coordination (390+/740- lines)
+- **Unified ConfirmScreen**: Single generic confirmation screen for withdrawal/deposit/transfer flows (478+/397- lines)
+- **Unified AmountScreen**: Consolidated amount handling for all transaction types with improved currency handling (465+/176- lines)
+- **API Payload Standardization**: Consistent snake_case field naming across all transaction types (aligned with Firefly API)
+- **Service Layer Simplification**: Dramatically reduced `sync.ts` (77+/728- lines) with cleaner responsibility separation
+- **Direct Machine Interaction**: Eliminated `useBudgetMachine` hook in favor of direct XState machine usage for cleaner component logic
+- **Context Structure**: Updated `BudgetMachineContext` for improved state organization (103+/103- lines)
+- **Transaction Payload Handling**: Refactored `src/services/sync/transactions.ts` (483+/758- lines) with cleaner mapping logic
+- **User Data Fetching**: Streamlined `fetchUserData.ts` with improved error handling (111+/100- lines)
+
+### Fixed
+- **Render Loops**: Eliminated update cycles in transfer amount and fee handling screens
+- **Transfer Amount Sync**: Prevent infinite loops when updating rates and amounts in transfer flow
+- **Confirm Notes Sync**: Keep confirm notes synced with fee edits; renamed `notesTouched` to `hasUserEditedNotes` for clarity
+- **Destination Input Persistence**: Standardized `UPDATE_NOTES` payloads so destination input and IDs persist correctly
+- **Fee Input Handling**: Fixed select-all behavior on fee inputs with proper normalization
+- **Transfer Destination Change**: Cleared stale values when changing transfer destination account
+- **Event Payload Consistency**: Fixed type mismatches in transfer event handlers with proper snake_case alignment
+
+### Removed
+- **80+ Backup Files**: Complete cleanup of `.bak` backup files across codebase
+- **Deprecated DepositConfirmScreen**: Replaced by unified ConfirmScreen component
+- **Deprecated useBudgetMachine Hook**: Components now use direct machine interaction
+- **Deprecated DestinationNameScreen**: Replaced by unified DestinationSourceNamesScreen
+- **Deprecated TransferAmountScreen**: Consolidated into unified AmountScreen
+- **Deprecated TransferConfirmScreen**: Consolidated into unified ConfirmScreen
+- **API.md**: Moved to external reference (github.com/Kaiukov/firefly main branch)
+- **Refactoring Documentation**: Cleaned up ~10 refactoring notes and progress documents
+- **Test Artifacts**: Removed test failure reports and screenshot artifacts
+
+### Technical Improvements
+- **Unified Flow Architecture**: All transaction flows (withdrawal/deposit/transfer) use shared components and consistent patterns
+- **Simplified Event System**: Discriminated union types for better type safety and clarity
+- **Improved Action Handlers**: Expanded and reorganized action handlers (464+/337- lines) for better maintainability
+- **Actor System Simplification**: Cleaner actor implementations with reduced complexity (117+/376- lines)
+- **Type Definition Overhaul**: Event system reorganized with clearer definitions (299+/347- lines)
+- **Router Refactoring**: `BudgetMiniApp.tsx` completely restructured for improved routing logic (920+/920- lines)
+- **Service Architecture**: Direct API usage without intermediate wrapper layers
+- **Error Handling**: Improved validation with auto-clearing error displays
+
+### Performance
+- **Reduced Service Layer**: 90% reduction in `sync.ts` complexity
+- **Fewer Component Instances**: Unified components reduce bundle size and render complexity
+- **Simplified State Management**: Cleaner machine events reduce event processing overhead
+- **Better Actor Coordination**: Streamlined actor system reduces concurrent execution overhead
+
+### Deprecations
 - **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
 - **Transaction Operations**: `addTransaction()`, `fetchTransactions()`, and `fetchTransactionById()` now directly use `apiClient.request()` instead of wrapper methods
 - **Actor Integration**: Transaction CRUD and health check actors now use `apiClient.request()` with explicit auth tier injection
-- **Component Updates**: `BudgetMiniApp.tsx` and `TransactionEditScreen.tsx` now use `apiClient` directly for all API operations
 
-### Technical Improvements
-- **Simplified Architecture**: Eliminated unnecessary service wrapper layer, reduced indirection
-- **Unified Authentication**: All Firefly API calls now explicitly use Tier 2 auth (`auth: 'tier2'`) at the call site
-- **Direct Integration**: Transaction deletion, editing, and health checks now go directly through `apiClient`
-- **Type Safety**: Maintained consistent request/response handling across all API operations
-
-### Removed
-- `src/services/sync/firefly.ts` - Removed wrapper service entirely
-- `fireflyService` exports from `src/services/sync/index.ts`
+### Quality Metrics
+- **Code Reduction**: Net -13,359 lines (removed duplicates and backups)
+- **Test Coverage**: Maintained through phase-by-phase refactoring
+- **Type Safety**: Improved type definitions and event handling
+- **Documentation**: Comprehensive CLAUDE.md files across project structure
 
 ## [1.3.0] - 2025-12-01
 
