@@ -137,7 +137,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
   const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(transactionData.date));
-  const [notesInput, setNotesInput] = useState<string>(transactionData.notes || '');
+  const [notesInput, setNotesInput] = useState<string>('');
   const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
 
   // Show Telegram back button
@@ -145,6 +145,13 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     telegramService.showBackButton(onBack);
     return () => telegramService.hideBackButton();
   }, [onBack]);
+
+  // Generate auto-suggested notes on mount (always, not just first time)
+  useEffect(() => {
+    if (!hasUserEditedNotes) {
+      setNotesInput(buildNotesSuggestion());
+    }
+  }, []);
 
   // Sync local date/notes if parent transaction data changes
   useEffect(() => {
@@ -240,20 +247,6 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     }
   };
 
-  const ensureNotesFormat = (): string => {
-    // Always regenerate notes to ensure correct format
-    const suggestion = buildNotesSuggestion();
-
-    // If user edited notes manually, respect it; otherwise use suggestion
-    // Exception: if notes are empty or just whitespace, always use suggestion
-    const trimmed = notesInput.trim();
-    if (!trimmed || !hasUserEditedNotes) {
-      return suggestion;
-    }
-
-    return trimmed;
-  };
-
   const handleConfirmTransaction = async () => {
     if (isSubmitting) return;
 
@@ -288,6 +281,22 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         : new Date().toISOString();
 
       const timestamp = new Date().toISOString();
+
+      // Ensure notes format - moved inside function to fix scope access to state variables
+      const ensureNotesFormat = (): string => {
+        // Always regenerate notes to ensure correct format
+        const suggestion = buildNotesSuggestion();
+
+        // If user edited notes manually, respect it; otherwise use suggestion
+        // Exception: if notes are empty or just whitespace, always use suggestion
+        const trimmed = notesInput.trim();
+        if (!trimmed || !hasUserEditedNotes) {
+          return suggestion;
+        }
+
+        return trimmed;
+      };
+
       const finalNotes = ensureNotesFormat();
 
       // Build standardized webhook payload based on transaction type
@@ -332,7 +341,33 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         // Transfer
         const sourceAccountId = transactionData.source_id || transactionData.account_id || 0;
         const destAccountId = transactionData.destination_id || 0;
-        const exchangeRate = (transactionData as any).exchange_rate || null;
+
+        // Calculate exchange_rate with priority-based fallback
+        const exchangeRate = (() => {
+          // Priority 1: Use machine context exchange_rate (set by AmountScreen)
+          const machineRate = (transactionData as any).exchange_rate;
+          if (machineRate !== null && machineRate !== undefined && !isNaN(machineRate)) {
+            return machineRate;
+          }
+
+          // Priority 2: Same currency → rate is always 1.0
+          const sourceCurr = sourceCurrency?.toUpperCase() || '';
+          const destCurr = destCurrency?.toUpperCase() || '';
+          if (sourceCurr && destCurr && sourceCurr === destCurr) {
+            return 1.0;
+          }
+
+          // Priority 3: Calculate from amounts (cross-currency)
+          const srcNum = parseFloat(sourceAmount || '');
+          const dstNum = parseFloat(destAmount || '');
+          if (!isNaN(srcNum) && !isNaN(dstNum) && srcNum > 0 && dstNum > 0) {
+            return dstNum / srcNum;
+          }
+
+          // Fallback: null (should not happen if validation passed)
+          console.warn('⚠️ exchange_rate could not be determined for transfer');
+          return null;
+        })();
 
         webhookPayload = {
           transactionType: 'transfer',

@@ -4,14 +4,12 @@ import telegramService from '../services/telegram';
 import type { CategoryUsage } from '../services/sync';
 import { extractBudgetName } from '../services/sync/utils';
 import { extractEmoji, getCategoryNameWithoutEmoji, getCategoryColor } from '../utils/categories';
-import { filterCategoriesByType, type TransactionType } from '../utils/categoryFilter';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 
 interface CategoryScreenProps {
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
-  transactionType?: TransactionType;
   isAvailable?: boolean;
   onBack: () => void;
   onSelectCategory: (category_name: string, categoryId: number, budgetName?: string) => void;
@@ -22,7 +20,6 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   categories,
   categoriesLoading,
   categoriesError,
-  transactionType = 'withdrawal',
   isAvailable,
   onBack,
   onSelectCategory,
@@ -33,9 +30,6 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
     telegramService.showBackButton(onBack);
     return () => telegramService.hideBackButton();
   }, [onBack]);
-
-  // Filter categories based on transaction type (income only filters, withdrawal shows all)
-  const displayCategories = filterCategoriesByType(categories, transactionType);
 
   return (
     <div className={`${layouts.screen} ${gradients.screen}`}>
@@ -70,9 +64,9 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
         )}
 
         {/* Categories List */}
-        {!categoriesLoading && !categoriesError && displayCategories.length > 0 && (
+        {!categoriesLoading && !categoriesError && categories.length > 0 && (
           <div className={layouts.listContainer}>
-            {displayCategories.map((category, idx) => {
+            {categories.map((category, idx) => {
               const color = getCategoryColor(category.category_name);
               const emoji = extractEmoji(category.category_name);
               const categoryNameWithoutEmoji = getCategoryNameWithoutEmoji(category.category_name);
@@ -107,14 +101,10 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
         )}
 
         {/* Empty State */}
-        {!categoriesLoading && !categoriesError && displayCategories.length === 0 && (
+        {!categoriesLoading && !categoriesError && categories.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8">
             <Folder size={48} className="text-gray-600 mb-3" />
-            <p className="text-gray-400 text-sm">
-              {transactionType === 'deposit'
-                ? 'No deposit categories found'
-                : 'No categories found'}
-            </p>
+            <p className="text-gray-400 text-sm">No categories found</p>
           </div>
         )}
       </div>
