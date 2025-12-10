@@ -10,6 +10,7 @@ import { syncService, type AccountUsage, type CategoryUsage, type SourceSuggesti
 import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
+import { ACTOR_TIMEOUTS } from '../config/actorTimeouts';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 const debugLog = (...args: any[]) => {
@@ -26,7 +27,7 @@ export const telegramInitActor = fromPromise<
   BudgetUser,
   { timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 5000;
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.TELEGRAM_INIT;
 
   return new Promise<BudgetUser>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -135,7 +136,7 @@ export const accountsFetchActor = fromPromise<
   AccountUsage[],
   { user_name?: string; timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 30000; // 30s timeout
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
 
   return new Promise<AccountUsage[]>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -171,7 +172,7 @@ export const categoriesFetchActor = fromPromise<
   CategoryUsage[],
   { user_name?: string; type?: 'withdrawal' | 'deposit'; timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 30000; // 30s timeout
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
 
   return new Promise<CategoryUsage[]>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -207,7 +208,7 @@ export const depositSourceNameFetchActor = fromPromise<
   SourceSuggestion[],
   { user_name?: string; category_id: number; timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 30000; // 30s timeout
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
 
   return new Promise<SourceSuggestion[]>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -243,7 +244,7 @@ export const transactionsFetchActor = fromPromise<
   DisplayTransaction[],
   { page?: number; timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 30000; // 30s timeout
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
 
   return new Promise<DisplayTransaction[]>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -277,11 +278,22 @@ export const transactionsFetchActor = fromPromise<
 
 export const transactionDetailFetchActor = fromPromise<
   TransactionData,
-  { transactionId: string }
+  { transactionId: string; timeout?: number }
 >(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Transaction detail fetch timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog('🔄 Fetching transaction detail:', input.transactionId);
-    const response = await fetchTransactionById(input.transactionId);
+    const response = await Promise.race([
+      timeoutPromise,
+      fetchTransactionById(input.transactionId),
+    ]);
     if (!response.rawData) {
       throw new Error('Transaction not found');
     }
@@ -302,11 +314,23 @@ export const transactionCreateActor = fromPromise<
   {
     type: 'expense' | 'deposit' | 'transfer';
     data: any;
+    timeout?: number;
   }
 >(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Transaction create timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog(`🔄 Creating ${input.type} transaction...`);
-    await addTransaction(input.data, input.type, true);
+    await Promise.race([
+      timeoutPromise,
+      addTransaction(input.data, input.type, true),
+    ]);
     debugLog(`✅ ${input.type} transaction created`);
   } catch (error) {
     console.error(`❌ Failed to create ${input.type} transaction:`, error);
@@ -323,18 +347,30 @@ export const transactionEditActor = fromPromise<
   {
     transactionId: string;
     data: any;
+    timeout?: number;
   }
 >(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Transaction edit timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog('🔄 Editing transaction:', input.transactionId);
-    await apiClient.request<Record<string, unknown>>(
-      `/api/v1/transactions/${input.transactionId}`,
-      {
-        method: 'PUT',
-        body: { transactions: [input.data] },
-        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-      }
-    );
+    await Promise.race([
+      timeoutPromise,
+      apiClient.request<Record<string, unknown>>(
+        `/api/v1/transactions/${input.transactionId}`,
+        {
+          method: 'PUT',
+          body: { transactions: [input.data] },
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
+      ),
+    ]);
     debugLog('✅ Transaction edited');
   } catch (error) {
     console.error('❌ Failed to edit transaction:', error);
@@ -348,17 +384,28 @@ export const transactionEditActor = fromPromise<
 
 export const transactionDeleteActor = fromPromise<
   void,
-  { transactionId: string }
+  { transactionId: string; timeout?: number }
 >(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Transaction delete timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog('🔄 Deleting transaction:', input.transactionId);
-    await apiClient.request<Record<string, unknown>>(
-      `/api/v1/transactions/${input.transactionId}`,
-      {
-        method: 'DELETE',
-        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-      }
-    );
+    await Promise.race([
+      timeoutPromise,
+      apiClient.request<Record<string, unknown>>(
+        `/api/v1/transactions/${input.transactionId}`,
+        {
+          method: 'DELETE',
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
+      ),
+    ]);
     debugLog('✅ Transaction deleted');
   } catch (error) {
     console.error('❌ Failed to delete transaction:', error);
@@ -372,11 +419,22 @@ export const transactionDeleteActor = fromPromise<
 
 export const syncServiceHealthActor = fromPromise<
   { success: boolean; message: string },
-  { user_name?: string }
->(async () => {
+  { user_name?: string; timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.HEALTH_CHECK;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Sync service health check timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog('🔄 Checking Sync API connection...');
-    const result = await syncService.checkConnection();
+    const result = await Promise.race([
+      timeoutPromise,
+      syncService.checkConnection(),
+    ]);
     debugLog('✅ Sync API status:', result);
     return result;
   } catch (error) {
@@ -387,18 +445,29 @@ export const syncServiceHealthActor = fromPromise<
 
 export const fireflyServiceHealthActor = fromPromise<
   { success: boolean; message: string },
-  {}
->(async () => {
+  { timeout?: number }
+>(async ({ input }) => {
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.HEALTH_CHECK;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Firefly service health check timeout after ${timeout}ms`));
+    }, timeout);
+  });
+
   try {
     debugLog('🔄 Checking Firefly API connection...');
     // Test connection by making a simple request to the API
-    await apiClient.request<{ data: unknown }>(
-      '/api/v1/transactions?limit=1',
-      {
-        method: 'GET',
-        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-      }
-    );
+    await Promise.race([
+      timeoutPromise,
+      apiClient.request<{ data: unknown }>(
+        '/api/v1/transactions?limit=1',
+        {
+          method: 'GET',
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
+      ),
+    ]);
     const result = { success: true, message: 'Firefly API is accessible' };
     debugLog('✅ Firefly API status:', result);
     return result;
@@ -427,7 +496,7 @@ export const dataLoadingOrchestratorActor = fromPromise<
   DataLoadingResult,
   { user_name?: string; timeout?: number }
 >(async ({ input }) => {
-  const timeout = input?.timeout || 30000; // 30s total timeout
+  const timeout = input?.timeout || ACTOR_TIMEOUTS.ORCHESTRATOR;
   const startTime = Date.now();
 
   try {

@@ -13,7 +13,9 @@ This directory contains the core source code for the Budget Mini App, a React ap
 
 - **[assets/](assets/)**: Contains static assets, such as custom SVG icons.
 - **[components/](components/)**: Home to all React components, which are organized by screens (e.g., `HomeScreen`, `AccountsScreen`) and reusable UI elements (e.g., `TransactionCard`).
+- **[config/](config/)**: Configuration files including centralized actor timeout settings (`actorTimeouts.ts`).
 - **[hooks/](hooks/)**: Contains custom React hooks that encapsulate and manage stateful logic, such as fetching user data (`useTelegramUser`) or managing transaction form state (`useTransactionData`).
+- **[machines/](machines/)**: XState v5 state machine definitions, actors, and types for centralized state management. See `machines/CLAUDE.md` for detailed architecture.
 - **[services/](services/)**: Includes services for interacting with external APIs. It's responsible for all communication with the Firefly III API, a custom backend sync service, and the Telegram Mini App API. See `services/CLAUDE.md` for more details.
 - **[theme/](theme/)**: Contains the application's visual styling and theme configurations, including a systematic color engine and dark mode specific utilities. See `theme/CLAUDE.md` for more details.
 - **[types/](types/)**: Defines TypeScript types and interfaces used throughout the application, ensuring data consistency and type safety. See `types/CLAUDE.md` for more details.
@@ -52,3 +54,58 @@ The application now features a fully machine-driven **withdrawal flow** (renamed
 ### Testing
 - E2E: `tests/e2e/withdrawal-flow.spec.ts` covers navigation, terminology, and submission
 - Manual: Verify back stack, FX conversion, and required notes validation
+
+## Machines Architecture (`machines/`)
+
+The application uses **XState v5** for centralized state management with hierarchical finite state machines and actor-based side effects orchestration.
+
+### Core Files
+
+- **[budgetMachine.ts](machines/budgetMachine.ts)**: Main state machine definition with hierarchical states and event handlers
+- **[actors.ts](machines/actors.ts)**: 11 actor definitions for async operations (data fetching, CRUD, health checks)
+- **[types.ts](machines/types.ts)**: TypeScript type definitions for machine context, events, and forms
+- **[actions.ts](machines/actions.ts)**: Action functions for state updates and side effects
+- **[index.ts](machines/index.ts)**: Barrel export for clean imports
+
+### Actor Timeout Configuration
+
+All actors use centralized timeout configuration from `src/config/actorTimeouts.ts`:
+
+| Timeout Constant | Value | Usage |
+|-----------------|-------|-------|
+| `TELEGRAM_INIT` | 5s | Telegram WebApp SDK initialization |
+| `DATA_FETCH` | 30s | Account, category, transaction bulk fetches |
+| `CRUD_OPERATION` | 15s | Single transaction create/edit/delete |
+| `HEALTH_CHECK` | 10s | Service health ping checks |
+| `ORCHESTRATOR` | 30s | Parallel data loading orchestration |
+
+**Benefits:**
+- Single source of truth for all timeout values
+- Type-safe semantic constants (vs magic numbers)
+- All actors have timeout protection (including CRUD + Health Check actors)
+- Easy to tune based on production metrics
+- Foundation for error handling patterns
+
+### Actor Categories
+
+**Initialization Actors** (5s timeout):
+- `telegramInitActor` - Initialize Telegram user with fallback to browser mode
+
+**Data Fetch Actors** (30s timeout):
+- `accountsFetchActor` - Load user accounts with usage statistics
+- `categoriesFetchActor` - Load transaction categories (filtered by type)
+- `depositSourceNameFetchActor` - Load source name suggestions for deposits
+- `transactionsFetchActor` - Load transaction history with pagination
+
+**CRUD Actors** (15s timeout):
+- `transactionDetailFetchActor` - Fetch single transaction details
+- `transactionCreateActor` - Create new transaction (withdrawal/deposit/transfer)
+- `transactionEditActor` - Edit existing transaction
+- `transactionDeleteActor` - Delete transaction
+
+**Health Check Actors** (10s timeout):
+- `syncServiceHealthActor` - Monitor Sync API connectivity
+- `fireflyServiceHealthActor` - Monitor Firefly API connectivity
+
+**Orchestration Actors** (30s timeout):
+- `dataLoadingOrchestratorActor` - Sequential + parallel data loading optimization

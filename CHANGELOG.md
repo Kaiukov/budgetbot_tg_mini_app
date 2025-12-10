@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Centralized Actor Timeout Configuration**: Created `src/config/actorTimeouts.ts` with semantic timeout constants (TELEGRAM_INIT: 5s, DATA_FETCH: 30s, CRUD_OPERATION: 15s, HEALTH_CHECK: 10s, ORCHESTRATOR: 30s). All 11 actors in `src/machines/actors.ts` now use centralized configuration instead of hardcoded magic numbers. Added timeout protection to 5 actors previously missing it (CRUD operations + Health checks). (#33)
+
 ### Known Issues
 - None.
 
