@@ -7,8 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-11
+
+### Added
+- **Centralized Actor Timeout Configuration**: Created `src/config/actorTimeouts.ts` with semantic timeout constants (TELEGRAM_INIT: 5s, DATA_FETCH: 30s, CRUD_OPERATION: 15s, HEALTH_CHECK: 10s)
+- **Comprehensive Project Documentation**: Updated CLAUDE.md files across all directories for DRY compliance
+- **Telegram Mini Apps Skill Reference**: Added `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md` with complete Budget Mini App architecture reference
+
 ### Changed
-- **Centralized Actor Timeout Configuration**: Created `src/config/actorTimeouts.ts` with semantic timeout constants (TELEGRAM_INIT: 5s, DATA_FETCH: 30s, CRUD_OPERATION: 15s, HEALTH_CHECK: 10s, ORCHESTRATOR: 30s). All 11 actors in `src/machines/actors.ts` now use centralized configuration instead of hardcoded magic numbers. Added timeout protection to 5 actors previously missing it (CRUD operations + Health checks). (#33)
+- **All 11 Actors**: Now use centralized timeout configuration from `src/config/actorTimeouts.ts` instead of hardcoded magic numbers
+- **CRUD Actor Protection**: Added timeout protection to 5 actors previously missing it (transaction create/edit/delete, transaction detail fetch, health checks)
+- **CLAUDE.md Files**: Refactored for conciseness (70% size reduction while preserving essential info)
+  - Root CLAUDE.md: High-level overview with links to skill documentation
+  - `src/CLAUDE.md`: Directory structure + 11 actor table
+  - `src/components/CLAUDE.md`: Existing comprehensive documentation maintained
+  - `src/machines/CLAUDE.md`: Actor timeout table + core files reference
+- **Timeout Semantics**: Replaced magic numbers with semantic constants across all actor implementations
+
+### Technical Improvements
+- Single source of truth for all timeout values across the application
+- Type-safe semantic constants replacing magic numbers throughout codebase
+- DRY documentation: bulk details moved to skill, project docs focus on essentials
+- Foundation for error handling patterns and timeout-based retry logic (#35)
+
+### Documentation Structure
+- **Quick Reference**: Root CLAUDE.md + src/CLAUDE.md for rapid project understanding
+- **Component Details**: src/components/CLAUDE.md for screen/component architecture
+- **Skill Integration**: Budget Mini App complete reference in telegram-mini-apps-skill
+- **Machine Architecture**: src/machines/CLAUDE.md with actor timeout reference table
 
 ### Known Issues
 - None.
