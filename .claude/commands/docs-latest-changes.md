@@ -8,13 +8,13 @@ personas: []
 ---
 
 
-## Instructions
+## Instructions each step must be done: 
 - Use SKILL `telegram-mini-apps-skill`
 - Follow DRY principles and do not duplicate work
 - Keep the bulk of the project explanation in the CLAUDE SKILL `~/.claude/skills/telegram-mini-apps-skill`
     - update if requred: SKILL.md
-    - update if requred: ./references
-    - update if requred: ./examples
+    - list all filed ./references -> update if requred
+    - list all filed ./examples -> update if requred
 - THe `CLAUDE.md` must be ultra concise and short, do not overhelmed
 
 # Triger /docs-latest-changes 
