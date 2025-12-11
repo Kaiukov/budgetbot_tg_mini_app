@@ -15,6 +15,17 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 
 **Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
 
+## Latest Changes (v0.2.1)
+
+**Dec 11, 2025** - Centralized Actor Timeout Configuration + DRY Documentation Refactoring
+
+- ✅ **Centralized Timeouts:** All 11 actors now use semantic constants from `src/config/actorTimeouts.ts` (single source of truth)
+- ✅ **Type-Safe Configuration:** Magic numbers replaced with semantic constants: `TELEGRAM_INIT`, `DATA_FETCH`, `CRUD_OPERATION`, `HEALTH_CHECK`
+- ✅ **DRY Documentation:** Documentation refactored across 3 levels (root, skill, internal) to eliminate duplication while maintaining accessibility
+- ✅ **Improved Error Handling:** Foundation set for timeout-based retry logic and better error recovery
+
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
 ## Architecture
 
 ### Directory Structure
