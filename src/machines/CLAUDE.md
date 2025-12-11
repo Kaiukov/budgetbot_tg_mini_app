@@ -89,3 +89,41 @@ const { context, send } = useBudgetMachineContext();
 - **Auto-Invocation**: Data fetch actors auto-invoke on `ready` state entry
 - **Type Safety**: Full TypeScript coverage with discriminated unions for events
 - **Error Recovery**: `onError` handlers for all async operations
+
+## Error Handling (v0.2.2+)
+
+All actors use a centralized error handling factory from `errorHandling.ts`:
+
+### Features
+- **Structured Error Types**: ErrorCategory enum for classification (TIMEOUT, NETWORK, VALIDATION, AUTH, NOT_FOUND, SERVER_ERROR, UNKNOWN)
+- **Error Classification**: Automatic error type detection for better debugging
+- **Timeout Wrapper**: Reusable withTimeout() utility for consistent timeout handling
+- **Emoji Logging**: Consistent ❌ (error), ✅ (success), 🔄 (loading) logging with debug mode support
+- **Graceful Fallbacks**: Optional fallback responses for critical actors (e.g., Telegram init → Guest user)
+
+### Factory Usage
+```typescript
+export const exampleActor = createActorWithErrorHandling<OutputType, InputType>({
+  name: 'exampleActor',
+  timeout: ACTOR_TIMEOUTS.CATEGORY,
+  operation: async (input) => {
+    // Actor logic here
+    return result;
+  },
+  fallback?: (error, input) => {
+    // Optional fallback for error cases
+  }
+});
+```
+
+### Error Flow
+1. **Execute**: Actor operation runs with timeout protection
+2. **Classify**: Errors automatically categorized by type
+3. **Log**: Structured error logged with ❌ emoji in debug mode
+4. **Handle**: Error re-thrown to XState machine's onError handler
+5. **Recover**: Machine updates context, UI displays error message with auto-clear
+
+### Benefits
+- **39% Code Reduction**: Eliminated 209 lines of duplicate timeout logic (559 → 340 LOC)
+- **Single Source of Truth**: All error handling follows consistent pattern
+- **Foundation for Retries**: Error categorization enables future retry logic

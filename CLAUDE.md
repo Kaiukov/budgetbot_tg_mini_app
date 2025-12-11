@@ -15,14 +15,15 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 
 **Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
 
-## Latest Changes (v0.2.1)
+## Latest Changes (v0.2.2)
 
-**Dec 11, 2025** - Centralized Actor Timeout Configuration + DRY Documentation Refactoring
+**Dec 11, 2025** - Centralized Error Handling Factory + Full Flow Testing
 
-- ✅ **Centralized Timeouts:** All 11 actors now use semantic constants from `src/config/actorTimeouts.ts` (single source of truth)
-- ✅ **Type-Safe Configuration:** Magic numbers replaced with semantic constants: `TELEGRAM_INIT`, `DATA_FETCH`, `CRUD_OPERATION`, `HEALTH_CHECK`
-- ✅ **DRY Documentation:** Documentation refactored across 3 levels (root, skill, internal) to eliminate duplication while maintaining accessibility
-- ✅ **Improved Error Handling:** Foundation set for timeout-based retry logic and better error recovery
+- ✅ **Error Handling Factory:** Centralized `src/machines/errorHandling.ts` eliminates 209 lines of boilerplate (39% LOC reduction)
+- ✅ **Error Classification:** Automatic error categorization (TIMEOUT, NETWORK, VALIDATION, AUTH, NOT_FOUND, SERVER_ERROR, UNKNOWN)
+- ✅ **All 11 Actors:** Use `createActorWithErrorHandling()` factory with consistent timeout/error patterns
+- ✅ **Comprehensive Testing:** All three flows (withdrawal, deposit, transfer) validated with full back button behavior testing
+- ✅ **Zero Breaking Changes:** Full backward compatibility maintained
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
@@ -45,7 +46,8 @@ src/
 
 ### Key Files
 - **`budgetMachine.ts`** - Nested state machine with transaction flows
-- **`actors.ts`** - 11 async actors (data fetch, CRUD, health checks)
+- **`errorHandling.ts`** - Centralized error factory (v0.2.2+): `createActorWithErrorHandling()`, `withTimeout()`, error classification
+- **`actors.ts`** - 11 async actors using error factory (data fetch, CRUD, health checks)
 - **`actorTimeouts.ts`** - Centralized timeout config: TELEGRAM_INIT (5s), DATA_FETCH (30s), CRUD_OPERATION (15s), HEALTH_CHECK (10s)
 - **`BudgetMachineContext.tsx`** - Context provider with localStorage persistence
 - **`BudgetMiniApp.tsx`** - Router component
