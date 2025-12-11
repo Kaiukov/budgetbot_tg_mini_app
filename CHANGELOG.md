@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-12-11
+
+### Changed
+- **Refactored Actor Error Handling**: Created centralized error handling factory to eliminate 209 lines of duplicate timeout logic across all 11 actors
+- **Unified Error Patterns**: Standardized all actors to use Promise.race pattern with structured error categorization
+- **Improved Error Logging**: Consistent emoji-based logging (❌, ✅, 🔄) across all actors with debug mode support
+
+### Added
+- **Error Type Hierarchy**: Introduced ErrorCategory enum (TIMEOUT, NETWORK, VALIDATION, AUTH, NOT_FOUND, SERVER_ERROR, UNKNOWN)
+- **Error Classification System**: Automatic error categorization for better debugging and future retry logic
+- **Timeout Wrapper Utility**: Reusable withTimeout() function for consistent timeout handling across all actors
+
+### Technical
+- **Code Reduction**: Reduced src/machines/actors.ts from 559 → 340 LOC (39% reduction)
+- **Foundation for Future Enhancements**: Error categorization enables retry logic, circuit breakers, and error analytics
+- **Zero Breaking Changes**: Full backward compatibility maintained - existing error handling unaffected
+- **Type Safety**: All error paths fully typed with structured error metadata
+
 ## [0.2.1] - 2025-12-11
 
 ### Added

@@ -56,3 +56,17 @@ All flows use shared components:
 | `transactionDetailFetchActor` | 15s | Fetch single transaction |
 | `syncServiceHealthActor` | 10s | Health check |
 | `fireflyServiceHealthActor` | 10s | Health check |
+| `dataLoadingOrchestratorActor` | 30s | Orchestrate parallel data loading |
+
+### Error Handling (v0.2.2+)
+
+All actors use **centralized error handling factory** at `src/machines/errorHandling.ts`:
+
+**Features:**
+- ErrorCategory enum for structured error classification
+- Automatic timeout, network, validation, and auth error detection
+- Graceful fallbacks (e.g., Telegram init → Guest user)
+- Consistent emoji logging (❌ errors, ✅ success, 🔄 loading)
+- Foundation for future retry logic and circuit breakers
+
+**Result:** 39% LOC reduction (559 → 340), single source of truth for error handling
