@@ -11,471 +11,261 @@ import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } fr
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import { fetchUserData } from '../utils/fetchUserData';
 import { ACTOR_TIMEOUTS } from '../config/actorTimeouts';
-
-const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
-const debugLog = (...args: any[]) => {
-  if (enableDebugLogs) {
-    console.log(...args);
-  }
-};
+import { createActorWithErrorHandling, withTimeout, logActorEvent } from './errorHandling';
 
 // ============================================================================
 // Telegram User Initialization Actor
 // ============================================================================
 
-export const telegramInitActor = fromPromise<
-  BudgetUser,
-  { timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.TELEGRAM_INIT;
+export const telegramInitActor = createActorWithErrorHandling<BudgetUser, {}>({
+  name: 'telegramInit',
+  timeout: ACTOR_TIMEOUTS.TELEGRAM_INIT,
 
-  return new Promise<BudgetUser>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Telegram initialization timeout'));
-    }, timeout);
+  operation: async () => {
+    // Check if Telegram WebApp is available
+    const isAvailable = telegramService.isAvailable();
 
-    try {
-      // Check if Telegram WebApp is available
-      const isAvailable = telegramService.isAvailable();
-
-      if (!isAvailable) {
-        clearTimeout(timer);
-        console.warn('Telegram WebApp not available. Running in browser mode.');
-        resolve({
-          id: 0,
-          user_name: 'User',
-          fullName: 'User',
-          photoUrl: null,
-          initials: 'U',
-          bio: 'Manage finances and create reports',
-          colorScheme: 'dark',
-          rawUser: null,
-        });
-        return;
-      }
-
-      const user = telegramService.getUser();
-      const user_name = telegramService.getUserName();
-      const userPhotoUrl = telegramService.getUserPhotoUrl();
-      const userInitials = telegramService.getUserInitials();
-      const colorScheme = telegramService.getColorScheme();
-      const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
-
-      debugLog('🔍 Telegram User Data:', { user_name, userInitials });
-
-      // Fetch additional user data from backend
-      if (user?.id) {
-        debugLog('📸 Fetching comprehensive user data from backend...');
-        fetchUserData(user.id)
-          .then((backendData) => {
-            clearTimeout(timer);
-            if (backendData?.success && backendData.userData) {
-              resolve({
-                id: user.id,
-                user_name: backendData.userData.username || user_name,
-                fullName: backendData.userData.name || user_name,
-                photoUrl: userPhotoUrl,
-                initials: userInitials,
-                bio: backendData.userData.bio || userBio,
-                colorScheme,
-                rawUser: user,
-              });
-            } else {
-              resolve({
-                id: user.id,
-                user_name: user_name,
-                fullName: user_name,
-                photoUrl: userPhotoUrl,
-                initials: userInitials,
-                bio: userBio,
-                colorScheme,
-                rawUser: user,
-              });
-            }
-          })
-          .catch((error) => {
-            clearTimeout(timer);
-            console.error('❌ Failed to fetch comprehensive user data:', error);
-            resolve({
-              id: user.id,
-              user_name: user_name,
-              fullName: user_name,
-              photoUrl: userPhotoUrl,
-              initials: userInitials,
-              bio: userBio,
-              colorScheme,
-              rawUser: user,
-            });
-          });
-      } else {
-        clearTimeout(timer);
-        resolve({
-          id: user?.id || 0,
-          user_name: user_name,
-          fullName: user_name,
-          photoUrl: userPhotoUrl,
-          initials: userInitials,
-          bio: userBio,
-          colorScheme,
-          rawUser: user || null,
-        });
-      }
-    } catch (error) {
-      clearTimeout(timer);
-      console.error('❌ Telegram initialization error:', error);
-      reject(error);
+    if (!isAvailable) {
+      throw new Error('Telegram WebApp not available');
     }
-  });
+
+    const user = telegramService.getUser();
+    const user_name = telegramService.getUserName();
+    const userPhotoUrl = telegramService.getUserPhotoUrl();
+    const userInitials = telegramService.getUserInitials();
+    const colorScheme = telegramService.getColorScheme();
+    const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
+
+    // Fetch additional user data from backend if user ID available
+    if (user?.id) {
+      try {
+        const backendData = await fetchUserData(user.id);
+        if (backendData?.success && backendData.userData) {
+          return {
+            id: user.id,
+            user_name: backendData.userData.username || user_name,
+            fullName: backendData.userData.name || user_name,
+            photoUrl: userPhotoUrl,
+            initials: userInitials,
+            bio: backendData.userData.bio || userBio,
+            colorScheme,
+            rawUser: user,
+          };
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch comprehensive user data:', error);
+        // Fall through to return basic user data
+      }
+    }
+
+    return {
+      id: user?.id || 0,
+      user_name: user_name,
+      fullName: user_name,
+      photoUrl: userPhotoUrl,
+      initials: userInitials,
+      bio: userBio,
+      colorScheme,
+      rawUser: user || null,
+    };
+  },
+
+  // Graceful fallback to Guest user
+  fallback: () => {
+    console.warn('⚠️ Telegram initialization failed. Running in browser mode.');
+    return {
+      id: 0,
+      user_name: 'User',
+      fullName: 'User',
+      photoUrl: null,
+      initials: 'U',
+      bio: 'Manage finances and create reports',
+      colorScheme: 'dark' as const,
+      rawUser: null,
+    };
+  }
 });
 
 // ============================================================================
 // Accounts Fetch Actor
 // ============================================================================
 
-export const accountsFetchActor = fromPromise<
+export const accountsFetchActor = createActorWithErrorHandling<
   AccountUsage[],
-  { user_name?: string; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
-
-  return new Promise<AccountUsage[]>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Fetch accounts timeout after 30 seconds'));
-    }, timeout);
-
-    try {
-      debugLog('🔄 Fetching accounts for user:', input?.user_name);
-      syncService.getAccountsUsage(input?.user_name)
-        .then((response) => {
-          clearTimeout(timer);
-          debugLog('✅ Accounts fetched:', response.get_accounts_usage.length);
-          resolve(response.get_accounts_usage);
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          console.error('❌ Failed to fetch accounts:', error);
-          reject(error);
-        });
-    } catch (error) {
-      clearTimeout(timer);
-      console.error('❌ Error in accounts fetch:', error);
-      reject(error);
-    }
-  });
+  { user_name?: string }
+>({
+  name: 'accountsFetch',
+  timeout: ACTOR_TIMEOUTS.DATA_FETCH,
+  operation: async (input) => {
+    const response = await syncService.getAccountsUsage(input.user_name);
+    return response.get_accounts_usage;
+  },
 });
 
 // ============================================================================
 // Categories Fetch Actor
 // ============================================================================
 
-export const categoriesFetchActor = fromPromise<
+export const categoriesFetchActor = createActorWithErrorHandling<
   CategoryUsage[],
-  { user_name?: string; type?: 'withdrawal' | 'deposit'; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
-
-  return new Promise<CategoryUsage[]>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Fetch categories timeout after 30 seconds'));
-    }, timeout);
-
-    try {
-      debugLog('🔄 Fetching categories for user:', input?.user_name, 'type:', input?.type);
-      syncService.getCategoriesUsage(input?.user_name, input?.type)
-        .then((response) => {
-          clearTimeout(timer);
-          debugLog('✅ Categories fetched:', response.get_categories_usage.length);
-          resolve(response.get_categories_usage);
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          console.error('❌ Failed to fetch categories:', error);
-          reject(error);
-        });
-    } catch (error) {
-      clearTimeout(timer);
-      console.error('❌ Error in categories fetch:', error);
-      reject(error);
-    }
-  });
+  { user_name?: string; type?: 'withdrawal' | 'deposit' }
+>({
+  name: 'categoriesFetch',
+  timeout: ACTOR_TIMEOUTS.DATA_FETCH,
+  operation: async (input) => {
+    const response = await syncService.getCategoriesUsage(input.user_name, input.type);
+    return response.get_categories_usage;
+  },
 });
 
 // ============================================================================
 // Deposit Source Name Fetch Actor
 // ============================================================================
 
-export const depositSourceNameFetchActor = fromPromise<
+export const depositSourceNameFetchActor = createActorWithErrorHandling<
   SourceSuggestion[],
-  { user_name?: string; category_id: number; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
-
-  return new Promise<SourceSuggestion[]>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Fetch source names timeout after 30 seconds'));
-    }, timeout);
-
-    try {
-      debugLog('🔄 Fetching source names for user:', input?.user_name, 'category_id:', input?.category_id);
-      syncService.getSourceNameUsage(input?.user_name, input?.category_id)
-        .then((response) => {
-          clearTimeout(timer);
-          debugLog('✅ Source names fetched:', response.get_source_name_usage.length);
-          resolve(response.get_source_name_usage);
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          console.error('❌ Failed to fetch source names:', error);
-          reject(error);
-        });
-    } catch (error) {
-      clearTimeout(timer);
-      console.error('❌ Error in source names fetch:', error);
-      reject(error);
-    }
-  });
+  { user_name?: string; category_id: number }
+>({
+  name: 'depositSourceNameFetch',
+  timeout: ACTOR_TIMEOUTS.DATA_FETCH,
+  operation: async (input) => {
+    const response = await syncService.getSourceNameUsage(input.user_name, input.category_id);
+    return response.get_source_name_usage;
+  },
 });
 
 // ============================================================================
 // Transactions Fetch Actor
 // ============================================================================
 
-export const transactionsFetchActor = fromPromise<
+export const transactionsFetchActor = createActorWithErrorHandling<
   DisplayTransaction[],
-  { page?: number; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.DATA_FETCH;
-
-  return new Promise<DisplayTransaction[]>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Fetch transactions timeout after 30 seconds'));
-    }, timeout);
-
-    try {
-      debugLog('🔄 Fetching transactions, page:', input?.page || 1);
-      fetchTransactions(input?.page || 1)
-        .then((response) => {
-          clearTimeout(timer);
-          debugLog('✅ Transactions fetched:', response.transactions.length);
-          resolve(response.transactions);
-        })
-        .catch((error) => {
-          clearTimeout(timer);
-          console.error('❌ Failed to fetch transactions:', error);
-          reject(error);
-        });
-    } catch (error) {
-      clearTimeout(timer);
-      console.error('❌ Error in transactions fetch:', error);
-      reject(error);
-    }
-  });
+  { page?: number }
+>({
+  name: 'transactionsFetch',
+  timeout: ACTOR_TIMEOUTS.DATA_FETCH,
+  operation: async (input) => {
+    const response = await fetchTransactions(input.page || 1);
+    return response.transactions;
+  },
 });
 
 // ============================================================================
 // Transaction Detail Fetch Actor
 // ============================================================================
 
-export const transactionDetailFetchActor = fromPromise<
+export const transactionDetailFetchActor = createActorWithErrorHandling<
   TransactionData,
-  { transactionId: string; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Transaction detail fetch timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog('🔄 Fetching transaction detail:', input.transactionId);
-    const response = await Promise.race([
-      timeoutPromise,
-      fetchTransactionById(input.transactionId),
-    ]);
+  { transactionId: string }
+>({
+  name: 'transactionDetailFetch',
+  timeout: ACTOR_TIMEOUTS.CRUD_OPERATION,
+  operation: async (input) => {
+    const response = await fetchTransactionById(input.transactionId);
     if (!response.rawData) {
       throw new Error('Transaction not found');
     }
-    debugLog('✅ Transaction detail fetched');
     return response.rawData;
-  } catch (error) {
-    console.error('❌ Failed to fetch transaction detail:', error);
-    throw error;
-  }
+  },
 });
 
 // ============================================================================
 // Transaction Creation Actor
 // ============================================================================
 
-export const transactionCreateActor = fromPromise<
+export const transactionCreateActor = createActorWithErrorHandling<
   void,
   {
     type: 'expense' | 'deposit' | 'transfer';
     data: any;
-    timeout?: number;
   }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Transaction create timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog(`🔄 Creating ${input.type} transaction...`);
-    await Promise.race([
-      timeoutPromise,
-      addTransaction(input.data, input.type, true),
-    ]);
-    debugLog(`✅ ${input.type} transaction created`);
-  } catch (error) {
-    console.error(`❌ Failed to create ${input.type} transaction:`, error);
-    throw error;
-  }
+>({
+  name: 'transactionCreate',
+  timeout: ACTOR_TIMEOUTS.CRUD_OPERATION,
+  operation: async (input) => {
+    await addTransaction(input.data, input.type, true);
+  },
 });
 
 // ============================================================================
 // Transaction Edit Actor
 // ============================================================================
 
-export const transactionEditActor = fromPromise<
+export const transactionEditActor = createActorWithErrorHandling<
   void,
   {
     transactionId: string;
     data: any;
-    timeout?: number;
   }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Transaction edit timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog('🔄 Editing transaction:', input.transactionId);
-    await Promise.race([
-      timeoutPromise,
-      apiClient.request<Record<string, unknown>>(
-        `/api/v1/transactions/${input.transactionId}`,
-        {
-          method: 'PUT',
-          body: { transactions: [input.data] },
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      ),
-    ]);
-    debugLog('✅ Transaction edited');
-  } catch (error) {
-    console.error('❌ Failed to edit transaction:', error);
-    throw error;
-  }
+>({
+  name: 'transactionEdit',
+  timeout: ACTOR_TIMEOUTS.CRUD_OPERATION,
+  operation: async (input) => {
+    await apiClient.request<Record<string, unknown>>(
+      `/api/v1/transactions/${input.transactionId}`,
+      {
+        method: 'PUT',
+        body: { transactions: [input.data] },
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+  },
 });
 
 // ============================================================================
 // Transaction Delete Actor
 // ============================================================================
 
-export const transactionDeleteActor = fromPromise<
+export const transactionDeleteActor = createActorWithErrorHandling<
   void,
-  { transactionId: string; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.CRUD_OPERATION;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Transaction delete timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog('🔄 Deleting transaction:', input.transactionId);
-    await Promise.race([
-      timeoutPromise,
-      apiClient.request<Record<string, unknown>>(
-        `/api/v1/transactions/${input.transactionId}`,
-        {
-          method: 'DELETE',
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      ),
-    ]);
-    debugLog('✅ Transaction deleted');
-  } catch (error) {
-    console.error('❌ Failed to delete transaction:', error);
-    throw error;
-  }
+  { transactionId: string }
+>({
+  name: 'transactionDelete',
+  timeout: ACTOR_TIMEOUTS.CRUD_OPERATION,
+  operation: async (input) => {
+    await apiClient.request<Record<string, unknown>>(
+      `/api/v1/transactions/${input.transactionId}`,
+      {
+        method: 'DELETE',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+  },
 });
 
 // ============================================================================
 // Service Health Check Actors
 // ============================================================================
 
-export const syncServiceHealthActor = fromPromise<
+export const syncServiceHealthActor = createActorWithErrorHandling<
   { success: boolean; message: string },
-  { user_name?: string; timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.HEALTH_CHECK;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Sync service health check timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog('🔄 Checking Sync API connection...');
-    const result = await Promise.race([
-      timeoutPromise,
-      syncService.checkConnection(),
-    ]);
-    debugLog('✅ Sync API status:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Sync API health check failed:', error);
-    throw error;
-  }
+  { user_name?: string }
+>({
+  name: 'syncServiceHealth',
+  timeout: ACTOR_TIMEOUTS.HEALTH_CHECK,
+  operation: async () => syncService.checkConnection(),
 });
 
-export const fireflyServiceHealthActor = fromPromise<
+export const fireflyServiceHealthActor = createActorWithErrorHandling<
   { success: boolean; message: string },
-  { timeout?: number }
->(async ({ input }) => {
-  const timeout = input?.timeout || ACTOR_TIMEOUTS.HEALTH_CHECK;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Firefly service health check timeout after ${timeout}ms`));
-    }, timeout);
-  });
-
-  try {
-    debugLog('🔄 Checking Firefly API connection...');
-    // Test connection by making a simple request to the API
-    await Promise.race([
-      timeoutPromise,
-      apiClient.request<{ data: unknown }>(
-        '/api/v1/transactions?limit=1',
-        {
-          method: 'GET',
-          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
-        }
-      ),
-    ]);
-    const result = { success: true, message: 'Firefly API is accessible' };
-    debugLog('✅ Firefly API status:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Firefly API health check failed:', error);
+  {}
+>({
+  name: 'fireflyServiceHealth',
+  timeout: ACTOR_TIMEOUTS.HEALTH_CHECK,
+  operation: async () => {
+    await apiClient.request<{ data: unknown }>(
+      '/api/v1/transactions?limit=1',
+      {
+        method: 'GET',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+    return { success: true, message: 'Firefly API is accessible' };
+  },
+  fallback: (error) => {
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to connect to Firefly API'
+      message: error.message
     };
   }
 });
@@ -500,59 +290,51 @@ export const dataLoadingOrchestratorActor = fromPromise<
   const startTime = Date.now();
 
   try {
-    debugLog('🔄 Sequential data loading: Starting accounts fetch...');
+    logActorEvent('start', 'dataLoadingOrchestrator', { user_name: input?.user_name });
 
     // Step 1: Load accounts first (blocking step)
-    const accountsResponse = await Promise.race([
+    const accountsResponse = await withTimeout(
       syncService.getAccountsUsage(input?.user_name),
-      new Promise<any>((_, reject) =>
-        setTimeout(() => reject(new Error('Accounts fetch timeout')), timeout)
-      ),
-    ]);
+      timeout,
+      'dataLoadingOrchestrator - accounts'
+    );
 
     const accounts = accountsResponse.get_accounts_usage || [];
     const accountsTime = Date.now() - startTime;
-    debugLog(`✅ Accounts loaded in ${accountsTime}ms, starting parallel loads...`);
 
-    // Step 2: Load categories and transactions in parallel (non-blocking step)
+    // Step 2: Load categories and transactions in parallel
     const isUnknown = input?.user_name === 'User' || input?.user_name === 'Guest';
+    const remainingTimeout = Math.max(timeout - accountsTime, 5000);
     const [categoriesResponse, transactionsResponse] = await Promise.all([
-      Promise.race([
+      withTimeout(
         syncService.getCategoriesUsage(
           isUnknown ? undefined : input?.user_name,
           'withdrawal'
         ),
-        new Promise<any>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Categories fetch timeout')),
-            Math.max(timeout - accountsTime, 5000)
-          )
-        ),
-      ]),
-      Promise.race([
+        remainingTimeout,
+        'dataLoadingOrchestrator - categories'
+      ),
+      withTimeout(
         fetchTransactions(1),
-        new Promise<any>((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Transactions fetch timeout')),
-            Math.max(timeout - accountsTime, 5000)
-          )
-        ),
-      ]),
+        remainingTimeout,
+        'dataLoadingOrchestrator - transactions'
+      ),
     ]);
 
     const categories = categoriesResponse.get_categories_usage || [];
     const transactions = transactionsResponse.transactions || [];
     const totalTime = Date.now() - startTime;
 
-    debugLog(`✅ All data loaded in ${totalTime}ms:`, {
+    logActorEvent('success', 'dataLoadingOrchestrator', {
       accounts: accounts.length,
       categories: categories.length,
       transactions: transactions.length,
+      totalTime: `${totalTime}ms`
     });
 
     return { accounts, categories, transactions };
   } catch (error) {
-    console.error('❌ Error in sequential data loading:', error);
+    console.error('❌ dataLoadingOrchestrator: Error in sequential data loading:', error);
     throw error;
   }
 });
