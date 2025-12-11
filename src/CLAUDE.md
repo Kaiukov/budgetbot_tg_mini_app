@@ -1,54 +1,58 @@
 # Source Code (`src`)
 
-This directory contains the core source code for the Budget Mini App, a React application built with TypeScript and Vite.
+Core React + TypeScript application for Budget Mini App. State managed by XState v5 with 11 async actors.
 
 ## Root Files
-
-- **[BudgetMiniApp.tsx](BudgetMiniApp.tsx)**: The main application component. It manages the application's state, screen navigation (routing), and orchestrates data fetching and UI rendering.
-- **[main.tsx](main.tsx)**: The entry point of the application. It renders the root `BudgetMiniApp` component and performs initial setup for the Telegram Mini App environment.
-- **[index.css](index.css)**: Global stylesheet, including Tailwind CSS setup and base styles.
-- **[vite-env.d.ts](vite-env.d.ts)**: TypeScript declarations for Vite environment variables.
+- **[BudgetMiniApp.tsx](BudgetMiniApp.tsx)** - Router component dispatching screens from machine state
+- **[main.tsx](main.tsx)** - App entry point, Telegram SDK init, context provider setup
+- **[index.css](index.css)** - Global Tailwind CSS + base styles
+- **[vite-env.d.ts](vite-env.d.ts)** - Vite environment variable types
 
 ## Directories
+- **[components/](components/)** - Screen components + UI elements (see CLAUDE.md in directory)
+- **[machines/](machines/)** - XState v5 state machine, 11 actors, types, actions
+- **[services/](services/)** - API clients (Sync, Firefly, Telegram)
+- **[context/](context/)** - React context provider with localStorage persistence
+- **[config/](config/)** - Centralized timeout constants (`actorTimeouts.ts`)
+- **[theme/](theme/)** - Tailwind dark mode colors + utilities
+- **[types/](types/)** - TypeScript interfaces for all domain models
+- **[utils/](utils/)** - Helpers (Cache, currency conversion, validation)
+- **[hooks/](hooks/)** - Custom React hooks for state + data fetching
+- **[assets/](assets/)** - SVG currency + transaction icons
 
-- **[assets/](assets/)**: Contains static assets, such as custom SVG icons.
-- **[components/](components/)**: Home to all React components, which are organized by screens (e.g., `HomeScreen`, `AccountsScreen`) and reusable UI elements (e.g., `TransactionCard`).
-- **[hooks/](hooks/)**: Contains custom React hooks that encapsulate and manage stateful logic, such as fetching user data (`useTelegramUser`) or managing transaction form state (`useTransactionData`).
-- **[services/](services/)**: Includes services for interacting with external APIs. It's responsible for all communication with the Firefly III API, a custom backend sync service, and the Telegram Mini App API. See `services/CLAUDE.md` for more details.
-- **[theme/](theme/)**: Contains the application's visual styling and theme configurations, including a systematic color engine and dark mode specific utilities. See `theme/CLAUDE.md` for more details.
-- **[types/](types/)**: Defines TypeScript types and interfaces used throughout the application, ensuring data consistency and type safety. See `types/CLAUDE.md` for more details.
-- **[utils/](utils/)**: A collection of miscellaneous helper functions for tasks like data formatting, caching, and other shared logic. See `utils/CLAUDE.md` for more details.
+## Unified Transaction Flows (v0.2.0+)
 
-## Withdrawal Flow (v1.3.0+)
+All flows use shared components:
+- **Withdrawal**: Accounts → Amount → Category → Destination (notes) → Confirm (date + notes)
+- **Deposit**: Accounts → Amount → Category → Source (name) → Confirm (date + comment)
+- **Transfer**: Source → Dest → Amount → Fees → Destination → Confirm (date + comment + breakdown)
 
-The application now features a fully machine-driven **withdrawal flow** (renamed from expense) with the following architecture:
+**Key Features:**
+- Single `AmountScreen`, `ConfirmScreen`, `DestinationSourceNamesScreen` for all flows
+- Real-time FX conversion for non-EUR with preview
+- Validation: Amount > 0, FX required for non-EUR, notes required at confirmation
+- Centralized timeouts: DATA_FETCH (30s), CRUD_OPERATION (15s), HEALTH_CHECK (10s)
 
-### Flow Path
-**Home** → **Accounts** → **Amount** (FX preview for non-EUR) → **Category** → **Destination Name** → **Confirm** (date + notes) → **Submit**
+## State Machine (`machines/`)
 
-### State Management
-- **State Machine**: Nested states under `ready.withdrawalFlow` (accounts → amount → category → notes → confirm)
-- **Events**: `NAVIGATE_WITHDRAWAL_ACCOUNTS`, `UPDATE_ACCOUNT`, `UPDATE_AMOUNT`, `NAVIGATE_CATEGORY`, `UPDATE_CATEGORY`, `NAVIGATE_CONFIRM`, `SUBMIT_TRANSACTION`
-- **Back Navigation**: Automatic state reversal with amount preservation on same-account re-select; amount cleared on account switch
+### Core Files
+- **[budgetMachine.ts](machines/budgetMachine.ts)** - Nested state machine (ready → flows → screens)
+- **[actors.ts](machines/actors.ts)** - 11 async actors with timeout protection
+- **[types.ts](machines/types.ts)** - Discriminated union events, context types
+- **[actions.ts](machines/actions.ts)** - State update handlers
+- **[index.ts](machines/index.ts)** - Barrel export
 
-### Key Features
-1. **Currency Conversion**: Automatic FX preview for non-EUR accounts using `syncService.getExchangeRate()`
-2. **Category Filtering**: Dynamic category fetching filtered by `withdrawal` type
-3. **Notes + Date**: Confirmation screen collects notes (required) and date (defaults to today)
-4. **Validation**: Amount must be positive; FX conversion required for non-EUR; notes required at confirmation
-
-### Data Capture
-- **Account Screen**: Stores account ID, currency, username for transaction context
-- **Amount Screen**: Client-side FX conversion stored as `amount_eur` for Firefly payload
-- **Category Screen**: Selected category with optional budget context
-- **Destination Screen**: Notes/comment for transaction description
-- **Confirm Screen**: Final date and notes for submission
-
-### Known Issues (Review 2025-12-01)
-1. **Destination not persisted**: `DestinationNameScreen` input clears after typing due to payload key mismatch (`notes` vs `event.comment`). Fix: Standardize `UPDATE_NOTES` payload across callers and machine action.
-2. **user_name not recorded**: Account select dispatches `username` but machine expects `user_name`, leaving `transaction.user_name` blank.
-3. **Cosmetic**: "expense flow" comment stray text in budgetMachine.ts
-
-### Testing
-- E2E: `tests/e2e/withdrawal-flow.spec.ts` covers navigation, terminology, and submission
-- Manual: Verify back stack, FX conversion, and required notes validation
+### 11 Actors with Centralized Timeouts
+**From `src/config/actorTimeouts.ts`:**
+| Actor | Timeout | Purpose |
+|-------|---------|---------|
+| `telegramInitActor` | 5s | User init + Telegram SDK |
+| `accountsFetchActor` | 30s | Load accounts |
+| `categoriesFetchActor` | 30s | Load categories |
+| `transactionsFetchActor` | 30s | Load transaction history |
+| `transactionCreateActor` | 15s | Create transaction |
+| `transactionEditActor` | 15s | Edit transaction |
+| `transactionDeleteActor` | 15s | Delete transaction |
+| `transactionDetailFetchActor` | 15s | Fetch single transaction |
+| `syncServiceHealthActor` | 10s | Health check |
+| `fireflyServiceHealthActor` | 10s | Health check |
