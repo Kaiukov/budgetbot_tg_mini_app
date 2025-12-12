@@ -35,12 +35,12 @@ export { apiClient } from './apiClient';
 // ============================================================================
 // Transaction Operations (consolidated from src/services/firefly/transactions.ts)
 // ============================================================================
-export { addTransaction } from './transactions';
+export { addTransaction } from './addTransactions';
 
 // ============================================================================
 // Transaction Fetching (consolidated from src/services/firefly/transactionsFetch.ts)
 // ============================================================================
-export { fetchTransactions, fetchTransactionById, createTransactionsFetchService } from './transactionsFetch';
+export { fetchTransactions, fetchTransactionById, createTransactionsFetchService } from './getTransactions';
 
 // ============================================================================
 // Utility Functions (consolidated from src/services/firefly/utils.ts)
