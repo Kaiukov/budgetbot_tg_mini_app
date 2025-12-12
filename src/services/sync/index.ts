@@ -83,3 +83,8 @@ export {
   type DestinationSuggestion,
   type SourceSuggestion,
 } from './types';
+
+// ============================================================================
+// Exchange Rate Service
+// ============================================================================
+export { getExchangeRate, getExchangeRateOnly, needsConversion, clearCache as clearExchangeRateCache } from './exchangeRate';

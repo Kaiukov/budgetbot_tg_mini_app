@@ -122,13 +122,12 @@ class SyncService {
   }
 
   /**
-   * Get exchange rate
-   * Note: This method needs to be added to a dedicated service
-   * For now, returning a stub implementation
+   * Get exchange rate and convert amount
+   * @deprecated Use exchangeRateService.getExchangeRate() instead
    */
-  public async getExchangeRate(_from: string, _to: string, _amount: number = 1.0): Promise<number | null> {
-    console.warn('⚠️ getExchangeRate is deprecated, use a dedicated exchange service');
-    return null;
+  public async getExchangeRate(from: string, to: string, amount: number = 1.0): Promise<number | null> {
+    const { getExchangeRate } = await import('./sync/exchangeRate');
+    return getExchangeRate(from, to, amount);
   }
 
   /**
