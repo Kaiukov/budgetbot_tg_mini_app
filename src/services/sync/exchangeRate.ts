@@ -2,19 +2,27 @@
  * Sync API - Exchange Rate Service
  * Provides currency conversion with caching (memory + localStorage)
  * Handles non-EUR to EUR conversion for transaction forms
+ *
+ * API Response Format:
+ * {
+ *   success: true,
+ *   exchangeData: {
+ *     exchangeAmount: 110.5  // Converted amount (e.g., 100 USD * 1.105 = 110.5 EUR)
+ *   }
+ * }
  */
 
 import { apiClient } from './apiClient';
 import { exchangeRateCacheManager } from './cache';
 
 interface ExchangeRateResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  from: string;
-  to: string;
-  rate: number;
-  amount?: number;
+  success?: boolean;
+  exchangeData?: {
+    exchangeAmount: number;
+  };
+  // Alternative formats the backend might return
+  result?: number;
+  converted_amount?: number;
 }
 
 /**
@@ -60,12 +68,23 @@ export async function getExchangeRate(
       }
     );
 
-    if (response && response.success && typeof response.rate === 'number' && response.rate > 0) {
-      // Cache the rate for future use
-      exchangeRateCacheManager.set(normalizedFrom, normalizedTo, response.rate);
+    // Extract converted amount from response (supports multiple formats)
+    let convertedAmount: number | null = null;
 
-      const convertedAmount = amount * response.rate;
-      console.log('💱 Exchange rate fetched and cached:', { from: normalizedFrom, to: normalizedTo, rate: response.rate, amount, converted: convertedAmount });
+    if (response?.exchangeData?.exchangeAmount && typeof response.exchangeData.exchangeAmount === 'number') {
+      convertedAmount = response.exchangeData.exchangeAmount;
+    } else if (response?.result && typeof response.result === 'number') {
+      convertedAmount = response.result;
+    } else if (response?.converted_amount && typeof response.converted_amount === 'number') {
+      convertedAmount = response.converted_amount;
+    }
+
+    if (convertedAmount !== null && convertedAmount > 0) {
+      // Calculate and cache the exchange rate (rate per 1 unit)
+      const rate = convertedAmount / amount;
+      exchangeRateCacheManager.set(normalizedFrom, normalizedTo, rate);
+
+      console.log('💱 Exchange rate fetched and cached:', { from: normalizedFrom, to: normalizedTo, rate, amount, converted: convertedAmount });
       return convertedAmount;
     }
 
@@ -107,7 +126,7 @@ export async function getExchangeRateOnly(
       return cachedRate;
     }
 
-    // Fetch from API
+    // Fetch from API (amount=1 to get direct rate)
     const response = await apiClient.request<ExchangeRateResponse>(
       `/api/v1/exchange_rate?from=${normalizedFrom}&to=${normalizedTo}&amount=1`,
       {
@@ -116,11 +135,23 @@ export async function getExchangeRateOnly(
       }
     );
 
-    if (response && response.success && typeof response.rate === 'number' && response.rate > 0) {
-      // Cache the rate
-      exchangeRateCacheManager.set(normalizedFrom, normalizedTo, response.rate);
-      console.log('💱 Exchange rate fetched and cached (rate only):', { from: normalizedFrom, to: normalizedTo, rate: response.rate });
-      return response.rate;
+    // Extract converted amount from response and convert to rate
+    let convertedAmount: number | null = null;
+
+    if (response?.exchangeData?.exchangeAmount && typeof response.exchangeData.exchangeAmount === 'number') {
+      convertedAmount = response.exchangeData.exchangeAmount;
+    } else if (response?.result && typeof response.result === 'number') {
+      convertedAmount = response.result;
+    } else if (response?.converted_amount && typeof response.converted_amount === 'number') {
+      convertedAmount = response.converted_amount;
+    }
+
+    if (convertedAmount !== null && convertedAmount > 0) {
+      // Rate is the converted amount (since amount=1)
+      const rate = convertedAmount;
+      exchangeRateCacheManager.set(normalizedFrom, normalizedTo, rate);
+      console.log('💱 Exchange rate fetched and cached (rate only):', { from: normalizedFrom, to: normalizedTo, rate });
+      return rate;
     }
 
     console.warn('⚠️ Exchange rate API returned invalid response:', response);
