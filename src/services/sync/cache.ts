@@ -196,6 +196,3 @@ class ExchangeRateCacheManager {
 // Export singleton instances and utilities
 export const cacheManager = CacheManager;
 export const exchangeRateCacheManager = new ExchangeRateCacheManager();
-
-// Export types
-export type { ExchangeRateCache };
