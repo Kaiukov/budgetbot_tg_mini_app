@@ -35,12 +35,12 @@ export { apiClient } from './apiClient';
 // ============================================================================
 // Transaction Operations (consolidated from src/services/firefly/transactions.ts)
 // ============================================================================
-export { addTransaction } from './transactions';
+export { addTransaction, updateTransaction, deleteTransaction } from './addTransactions';
 
 // ============================================================================
 // Transaction Fetching (consolidated from src/services/firefly/transactionsFetch.ts)
 // ============================================================================
-export { fetchTransactions, fetchTransactionById, createTransactionsFetchService } from './transactionsFetch';
+export { fetchTransactions, fetchTransactionById, createTransactionsFetchService } from './getTransactions';
 
 // ============================================================================
 // Utility Functions (consolidated from src/services/firefly/utils.ts)
@@ -83,3 +83,15 @@ export {
   type DestinationSuggestion,
   type SourceSuggestion,
 } from './types';
+
+// ============================================================================
+// Exchange Rate Service
+// ============================================================================
+export { getExchangeRate, getExchangeRateOnly, needsConversion, clearCache as clearExchangeRateCache } from './exchangeRate';
+
+// ============================================================================
+// Gateway Facade (Phase 3)
+// ============================================================================
+// Simple facade consolidating all API operations into single entry point
+// Usage: import { gateway } from '../sync/gateway'
+export { gateway } from './gateway';

@@ -603,5 +603,126 @@ function getUsername(body: unknown): string {
   return 'unknown';
 }
 
+/**
+ * Update existing transaction
+ * Sends PUT request to Firefly API to modify transaction
+ *
+ * @param transactionId Transaction ID to update
+ * @param data Partial transaction data with fields to update
+ */
+export async function updateTransaction(
+  transactionId: string,
+  data: Record<string, unknown>
+): Promise<TransactionResult> {
+  const timer = new OperationTimer();
+
+  try {
+    if (!transactionId || transactionId.trim() === '') {
+      return [false, { error: 'Invalid transaction ID' }];
+    }
+
+    logTransactionOperation('info', `Updating transaction ${transactionId}`, data);
+
+    const response = await apiClient.request<Record<string, unknown>>(
+      `/api/v1/transactions/${transactionId}`,
+      {
+        method: 'PUT',
+        body: { transactions: [data] },
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+
+    // Trigger sync to update account balances
+    await triggerImmediateSync();
+
+    const duration = timer.getDuration();
+    logTransactionOperation(
+      'info',
+      `Transaction ${transactionId} updated successfully in ${duration.toFixed(2)}s`
+    );
+
+    return [true, response || {}];
+  } catch (error) {
+    const duration = timer.getDuration();
+    const err: any = error;
+    const errorPayload =
+      err && typeof err === 'object' && 'status' in err
+        ? {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            body: err.body
+          }
+        : err instanceof Error
+          ? err.message
+          : err;
+
+    logTransactionOperation(
+      'error',
+      `Failed to update transaction ${transactionId} after ${duration.toFixed(2)}s: ${safeStringify(errorPayload)}`
+    );
+
+    return [false, { error: errorPayload }];
+  }
+}
+
+/**
+ * Delete existing transaction
+ * Sends DELETE request to Firefly API to remove transaction
+ *
+ * @param transactionId Transaction ID to delete
+ */
+export async function deleteTransaction(transactionId: string): Promise<TransactionResult> {
+  const timer = new OperationTimer();
+
+  try {
+    if (!transactionId || transactionId.trim() === '') {
+      return [false, { error: 'Invalid transaction ID' }];
+    }
+
+    logTransactionOperation('info', `Deleting transaction ${transactionId}`);
+
+    const response = await apiClient.request<Record<string, unknown>>(
+      `/api/v1/transactions/${transactionId}`,
+      {
+        method: 'DELETE',
+        auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+      }
+    );
+
+    // Trigger sync to update account balances
+    await triggerImmediateSync();
+
+    const duration = timer.getDuration();
+    logTransactionOperation(
+      'info',
+      `Transaction ${transactionId} deleted successfully in ${duration.toFixed(2)}s`
+    );
+
+    return [true, response || {}];
+  } catch (error) {
+    const duration = timer.getDuration();
+    const err: any = error;
+    const errorPayload =
+      err && typeof err === 'object' && 'status' in err
+        ? {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            body: err.body
+          }
+        : err instanceof Error
+          ? err.message
+          : err;
+
+    logTransactionOperation(
+      'error',
+      `Failed to delete transaction ${transactionId} after ${duration.toFixed(2)}s: ${safeStringify(errorPayload)}`
+    );
+
+    return [false, { error: errorPayload }];
+  }
+}
+
 // Type alias for clarity
 type FireflyTransactionResponse = Record<string, unknown>;

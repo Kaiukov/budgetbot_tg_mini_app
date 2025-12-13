@@ -10,6 +10,7 @@ interface CategoryScreenProps {
   categories: CategoryUsage[];
   categoriesLoading: boolean;
   categoriesError: string | null;
+  transactionType?: string;
   isAvailable?: boolean;
   onBack: () => void;
   onSelectCategory: (category_name: string, categoryId: number, budgetName?: string) => void;
@@ -20,6 +21,7 @@ const CategoryScreen: React.FC<CategoryScreenProps> = ({
   categories,
   categoriesLoading,
   categoriesError,
+  transactionType: _transactionType,
   isAvailable,
   onBack,
   onSelectCategory,
