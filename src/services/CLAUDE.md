@@ -1,9 +1,27 @@
 # Services
 
-This directory contains services for interacting with external APIs and the Telegram Mini App interface.
+API integration layer with modular facades. All services follow single-responsibility principle with clean re-export boundaries.
 
-**[firefly/](firefly/)**: Contains all services related to interacting with the Firefly III API. This includes creating and fetching transactions, as well as type definitions and utility functions. See the `firefly/CLAUDE.md` for more details.
+## Sync Service Architecture (v0.2.3)
 
-**[sync.ts](sync.ts)**: Implements the `SyncService` for communicating with the custom backend Sync API. This service is responsible for fetching user-specific data like account and category usage, handling currency conversions, and retrieving Telegram user data from the backend.
+**`sync.ts`** - Facade pattern facade re-exporting domain modules for clean API surface.
 
-**[telegram.ts](telegram.ts)**: Implements the `TelegramService`, which is a wrapper around the Telegram Mini App API. It provides methods to interact with the Telegram client, such as getting user data, controlling native UI components (e.g., Main Button, Back Button), and handling haptic feedback.
+**`sync/` directory** - Domain-specific modules:
+- **`index.ts`** - Barrel exports for all sync operations
+- **`gateway.ts`** - HTTP request abstraction with Tier 2 authentication
+- **`auth.ts`** - Tier 2 auth helpers and header construction
+- **`cache.ts`** - Centralized cache management (accounts 5min, categories 1min, FX rates 1h)
+- **`exchangeRate.ts`** - Real FX conversion service with caching
+- **`syncAccounts.ts`** - Account balance and usage operations
+- **`syncCategories.ts`** - Category fetching and filtering
+- **`syncDestinationSourceNames.ts`** - Auto-complete suggestions
+- **`addTransactions.ts`** - Transaction CRUD: create, update, delete
+- **`getTransactions.ts`** - Transaction fetching and filtering
+
+**Benefits:** Clear separation, improved testability, reduced cognitive load, backward compatible.
+
+## Other Services
+
+**[firefly/](firefly/)**: Firefly III API integration. See `firefly/CLAUDE.md` for details.
+
+**[telegram.ts](telegram.ts)**: Telegram Mini App SDK wrapper for buttons, events, themes, haptic feedback.

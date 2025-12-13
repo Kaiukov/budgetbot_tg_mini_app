@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-13
+
+### Major Changes
+- **Service Architecture Refactoring**: Converted 800+ LOC monolithic `sync.ts` to clean facade pattern with 8 domain-specific modules
+- **Transaction CRUD Operations**: Added `updateTransaction()` and `deleteTransaction()` operations with proper Tier 2 authentication
+- **Exchange Rate Service**: Implemented real FX conversion service with dual-layer caching (memory + localStorage, 1h TTL)
+- **Test Consolidation**: Unified E2E tests from mixed locations into single `tests/e2e/` directory
+
+### Added
+- **New Sync Modules** (v0.2.3):
+  - `sync/gateway.ts` - HTTP request abstraction with Tier 2 auth (138 LOC)
+  - `sync/auth.ts` - Authentication helpers (88 LOC)
+  - `sync/cache.ts` - Centralized cache management (198 LOC)
+  - `sync/exchangeRate.ts` - FX conversion service (181 LOC)
+  - `sync/syncAccounts.ts` - Account operations (257 LOC)
+  - `sync/syncCategories.ts` - Category operations (222 LOC)
+  - `sync/syncDestinationSourceNames.ts` - Auto-complete suggestions (171 LOC)
+  - `sync/addTransactions.ts` - Transaction CRUD (create, update, delete)
+  - `sync/getTransactions.ts` - Transaction fetching (read operations)
+- **Facade Pattern**: Clean `sync.ts` re-exports all domain modules for backward compatibility
+
+### Fixed
+- **Exchange Rate API Response**: Fixed parsing for backend format `{exchangeData: {exchangeAmount}}`
+- **FX Conversion Blocking USD**: Resolves P1 issue preventing USD/non-EUR transaction flows
+- **Response Fallback Handling**: Support multiple response formats with graceful degradation
+
+### Technical Improvements
+- **Clear Separation of Concerns**: Each module has single, focused responsibility
+- **Improved Testability**: Smaller, focused modules easier to unit test
+- **Reduced Cognitive Load**: Easier navigation and understanding of service layer
+- **Type Safety**: Proper TypeScript interfaces for all response formats
+- **Cache Strategy**: Tiered caching (accounts: 5min, categories: 1min, FX: 1h)
+
+### Test Suite (v0.2.3)
+- **File Organization**: Unified `tests/e2e/` directory (consolidated from mixed locations)
+- **Full Coverage**: 17/17 tests passing (deposit: 7, withdrawal: 8, transfer: 2)
+- **Flow Validation**: All transaction flows tested end-to-end with back button behavior
+- **Mocked APIs**: Complete mock suite with no real network calls
+- **Runtime**: ~10 seconds for full test suite
+
+### Quality Metrics
+- **Service Refactoring**: 3,361 insertions, 1,037 deletions
+- **Architecture Improvement**: Facade pattern replacing monolith
+- **Code Organization**: 9 focused modules vs 1 large file
+- **API Gateway**: Standardized request handling with error classification
+- **Error Handling**: Full integration with v0.2.2 error handling factory
+
 ## [0.2.2] - 2025-12-11
 
 ### Changed

@@ -88,3 +88,10 @@ export {
 // Exchange Rate Service
 // ============================================================================
 export { getExchangeRate, getExchangeRateOnly, needsConversion, clearCache as clearExchangeRateCache } from './exchangeRate';
+
+// ============================================================================
+// Gateway Facade (Phase 3)
+// ============================================================================
+// Simple facade consolidating all API operations into single entry point
+// Usage: import { gateway } from '../sync/gateway'
+export { gateway } from './gateway';

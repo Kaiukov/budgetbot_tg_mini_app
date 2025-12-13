@@ -5,6 +5,8 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 **Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
 **Local Dev:** `npm run dev` → http://localhost:3000
 
+**Git Branch:** `chore/fix-issue-34-api-signle-getaway` (15 commits ahead of dev)
+
 ## Quick Facts
 - **Language:** TypeScript 5
 - **Framework:** React 18 + Vite 5
@@ -14,16 +16,18 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 - **Quality:** `npm run lint` + `npx tsc --noEmit`
 
 **Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
+**Testing guide:** See `~/.claude/skills/telegram-mini-apps-skill/examples/test-e2e.md`
 
-## Latest Changes (v0.2.2)
+## Latest Changes (v0.2.3)
 
-**Dec 11, 2025** - Centralized Error Handling Factory + Full Flow Testing
+**Dec 13, 2025** - Modular Service Architecture + Complete Test Consolidation
 
-- ✅ **Error Handling Factory:** Centralized `src/machines/errorHandling.ts` eliminates 209 lines of boilerplate (39% LOC reduction)
-- ✅ **Error Classification:** Automatic error categorization (TIMEOUT, NETWORK, VALIDATION, AUTH, NOT_FOUND, SERVER_ERROR, UNKNOWN)
-- ✅ **All 11 Actors:** Use `createActorWithErrorHandling()` factory with consistent timeout/error patterns
-- ✅ **Comprehensive Testing:** All three flows (withdrawal, deposit, transfer) validated with full back button behavior testing
-- ✅ **Zero Breaking Changes:** Full backward compatibility maintained
+- ✅ **Service Refactoring:** Converted 800+ LOC monolithic `sync.ts` to clean facade with 8 domain modules
+- ✅ **New Modules:** gateway, auth, cache, exchangeRate, syncAccounts, syncCategories, syncDestinationSourceNames, addTransactions, getTransactions
+- ✅ **Transaction CRUD:** Added `updateTransaction()` and `deleteTransaction()` with Tier 2 auth
+- ✅ **Exchange Rate Service:** Real FX conversion with 1h caching (memory + localStorage)
+- ✅ **Test Consolidation:** Unified E2E tests into `tests/e2e/` (17 tests, 100% pass rate, ~10s)
+- ✅ **API Response Fixes:** Fixed exchange rate parsing and P1 issue blocking USD flows
 
 See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
@@ -53,12 +57,26 @@ src/
 - **`BudgetMiniApp.tsx`** - Router component
 
 ## Scripts
+
+### Development
 ```bash
 npm run dev          # Start Vite dev server (http://localhost:3000)
 npm run build        # Production build
 npm run lint         # Check code quality
-npm test             # Run tests
-npm run test:ui      # Interactive test UI
+```
+
+### Testing (v0.2.3+)
+```bash
+npm run test tests/e2e/                          # Run all E2E tests (17 tests, ~10s)
+npm run test tests/e2e/withdrawal-mock-flow      # Withdrawal flow only (8 tests)
+npm run test tests/e2e/deposit-mock-flow         # Deposit flow only (7 tests)
+npm run test tests/e2e/transfer-mock-flow        # Transfer flow only (2 tests)
+npx playwright test tests/e2e/ --ui              # Interactive UI mode (watch tests)
+npx playwright show-report                       # View HTML test report
+```
+
+### Deployment
+```bash
 wrangler deploy      # Deploy to Cloudflare Pages
 ```
 
@@ -70,7 +88,8 @@ wrangler deploy      # Deploy to Cloudflare Pages
 - **`.env.example`** - Required environment variables
 
 ## Additional Documentation
-See detailed guides in `src/` subdirectories:
+
+### Project Documentation
 - **`src/CLAUDE.md`** - Source structure overview
 - **`src/components/CLAUDE.md`** - Component architecture
 - **`src/machines/CLAUDE.md`** - State machine details
@@ -78,5 +97,11 @@ See detailed guides in `src/` subdirectories:
 - **`src/theme/CLAUDE.md`** - Theme system
 - **`src/types/CLAUDE.md`** - Type definitions
 
-## Skill Reference
-Complete Telegram Mini Apps guidance in: `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
+### Test Documentation
+- **`tests/e2e/`** - Playwright E2E test suite (17 tests, 100% passing)
+- **`test-results/`** - Test reports and documentation
+
+### Skill References
+Complete guidance available in the telegram-mini-apps-skill:
+- **`budget-app-overview.md`** - Complete architecture and implementation reference
+- **`test-e2e.md`** - Comprehensive E2E testing guide with patterns and examples
