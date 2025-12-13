@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-12-13
+
+### Changed
+- **Refactored Data Loading Actions**: Introduced factory pattern for state action generation to eliminate duplicated action definitions
+- **Action Factory Pattern**: Created `createResourceActions()` factory in `src/machines/helpers/actionFactory.ts` following established ActorConfig design
+
+### Added
+- **Action Factory**: New `src/machines/helpers/actionFactory.ts` module that generates standardized loading/success/error action triplets
+  - Supports both orchestrator pattern (`event.output.accounts`) and manual event pattern (`event.accounts`)
+  - Generic type support for type-safe resource actions
+  - Foundation for future enhancements (callbacks, validation)
+
+### Technical
+- **Code Reduction**: Eliminated 62 LOC of duplicated action definitions in `actions.ts`
+- **Pattern Consistency**: Factory follows same design as v0.2.2 `errorHandling.ts` ActorConfig pattern
+- **Maintainability**: Single source of truth for resource state management patterns
+- **Extensibility**: Adding new data resources now requires 3 lines instead of 9 manual action definitions
+- **Zero Breaking Changes**: 100% behavioral equivalence maintained (17/17 E2E tests pass)
+
 ## [0.2.3] - 2025-12-13
 
 ### Major Changes

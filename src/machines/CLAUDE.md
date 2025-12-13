@@ -7,7 +7,8 @@ XState v5 state machine definitions and actors for centralized application state
 - **[budgetMachine.ts](budgetMachine.ts)**: Main hierarchical state machine with nested flows (loading → ready → withdrawal/deposit/transfer/transactions/debug)
 - **[actors.ts](actors.ts)**: 11 async actors for data fetching, CRUD operations, and health checks
 - **[types.ts](types.ts)**: TypeScript definitions for machine context, events, and state shapes
-- **[actions.ts](actions.ts)**: State update actions and side effects
+- **[actions.ts](actions.ts)**: State update actions and side effects (factory-generated + validation guards)
+- **[helpers/actionFactory.ts](helpers/actionFactory.ts)** (v0.2.4+): Factory for generating standardized loading/success/error action triplets
 - **[index.ts](index.ts)**: Barrel exports
 
 ## Actor Timeout Configuration
@@ -89,6 +90,35 @@ const { context, send } = useBudgetMachineContext();
 - **Auto-Invocation**: Data fetch actors auto-invoke on `ready` state entry
 - **Type Safety**: Full TypeScript coverage with discriminated unions for events
 - **Error Recovery**: `onError` handlers for all async operations
+
+## Action Factory (v0.2.4+)
+
+Data loading actions use a factory pattern from `helpers/actionFactory.ts`:
+
+### Features
+- **Factory Function**: `createResourceActions()` generates standardized action triplets (loading, success, error)
+- **Unified Event Handling**: Supports both orchestrator pattern (`event.output.accounts`) and manual events (`event.accounts`)
+- **Type Safety**: Generic type support for resource-specific actions
+- **Code Reduction**: Eliminates 62 LOC of duplicated action definitions
+- **Extensibility**: Adding new resources requires 3 lines instead of 9
+
+### Example Usage
+```typescript
+const accountActions = createResourceActions<AccountUsage[]>({
+  resourceName: 'accounts'
+});
+
+export const actions = {
+  setAccounts: accountActions.setData,
+  setAccountsLoading: accountActions.setLoading,
+  setAccountsError: accountActions.setError,
+};
+```
+
+### Benefits
+- **Single Source of Truth**: Base pattern defined once, reused for all resources
+- **Consistent Patterns**: Matches v0.2.2 error handling factory design
+- **Future-Proof**: Foundation for optional callbacks, validation, retry logic
 
 ## Error Handling (v0.2.2+)
 
