@@ -48,3 +48,6 @@ vite.config.ts.timestamp-*
 
 # DOCS
 claudedocs/
+
+# E2E
+playwright-report/
