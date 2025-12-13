@@ -106,3 +106,16 @@ wrangler deploy      # Deploy to Cloudflare Pages
 Complete guidance available in the telegram-mini-apps-skill:
 - **`budget-app-overview.md`** - Complete architecture and implementation reference
 - **`test-e2e.md`** - Comprehensive E2E testing guide with patterns and examples
+
+### CLAUDE.md
+
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/CLAUDE.md - Root index linking all directory guides.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/CLAUDE.md - Source structure overview for the React/Vite app.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/services/CLAUDE.md - Sync/Telegram service facades and helpers.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/theme/CLAUDE.md - Theme tokens, palettes, and dark utilities.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/machines/CLAUDE.md - XState machine, actors, actions, and types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/components/CLAUDE.md - Screens and shared UI components.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/utils/CLAUDE.md - Utility helpers (cache, currency, categories, formatting).
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/types/CLAUDE.md - Shared TypeScript domain and Telegram types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/functions/CLAUDE.md - Cloudflare Pages middleware note.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/tests/e2e/CLAUDE.md - Mocked Playwright withdrawal/deposit/transfer suites.
