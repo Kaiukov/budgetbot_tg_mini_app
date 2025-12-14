@@ -3,8 +3,8 @@
  * Provides utilities for interacting with Telegram Mini App API
  */
 
-import type { TelegramWebApp, TelegramWebAppUser } from '../types/telegram';
-import { isBrowserMode, generateFakeInitData, generateFakeInitDataUnsafe } from '../utils/fakeInitData';
+import type { TelegramWebApp, TelegramWebAppUser } from '../../types/telegram';
+import { isBrowserMode, generateFakeInitData, generateFakeInitDataUnsafe } from '../../utils/fakeInitData';
 
 class TelegramService {
   private webApp: TelegramWebApp | null = null;
