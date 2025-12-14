@@ -8,7 +8,7 @@ import {
   type UnifiedWebhookPayload
 } from '../services/sync/index';
 import telegramService from '../services/telegram';
-import type { TransactionData } from '../hooks/useTransactionData';
+import type { WithdrawalForm, DepositForm, TransferForm } from '../machines/types';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, layouts } from '../theme/dark';

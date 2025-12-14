@@ -162,6 +162,24 @@ test.describe('Transfer flow (mocked, fast)', () => {
     await expect(destFeeInput(page)).toHaveValue('0.5');
   });
 
+  test('happy path diff-currency transfer with mocked data', async ({ page }) => {
+    await page.getByText('Transfer').first().click();
+    await page.getByText('O PUMB USD').first().click(); // source account (USD)
+    await page.getByText('O PUMP €').first().click(); // destination account (EUR - different currency)
+
+    await page.waitForSelector('text=Transfer Amount', { timeout: 3000 });
+    await srcAmountInput(page).fill('200');
+    await dstAmountInput(page).fill('169.46'); // 200 USD * 0.8473 (exchange rate)
+    await page.getByRole('button', { name: /Next|Continue|→/ }).click();
+
+    await page.waitForSelector('text=Transfer Fees', { timeout: 3000 });
+    await sourceFeeInput(page).fill('2');
+    await destFeeInput(page).fill('1.5');
+    // Verify fees were entered correctly
+    await expect(sourceFeeInput(page)).toHaveValue('2');
+    await expect(destFeeInput(page)).toHaveValue('1.5');
+  });
+
   test('back button clears amounts when destination account changes (cross currency)', async ({ page }) => {
     await page.getByText('Transfer').first().click();
     await page.getByText('O PUMB USD').first().click(); // source account
@@ -202,15 +220,20 @@ test.describe('Transfer flow (mocked, fast)', () => {
  * Command to run this single fast test:
  *   npx playwright test --headless --workers auto tests/e2e/transfer-mock-flow.spec.ts
  *
- * Test coverage:
- * ✅ Complete transfer flow (source account → destination account → amount → fees → destination → confirmation)
+ * Test coverage (3 tests):
+ * ✅ Same-currency transfer (USD → USD with fees)
+ * ✅ Different-currency transfer (USD → EUR with exchange rate and fees)
+ * ✅ Back button navigation and state clearing with currency change
+ *
+ * Scenarios covered:
+ * ✅ Complete transfer flow (source account → destination account → amount → fees → confirmation)
  * ✅ State preservation and clearing logic
  * ✅ Back button navigation at all stages
- * ✅ Destination selection changes
- * ✅ Fee modifications
- * ✅ Same-currency transfers
+ * ✅ Destination account selection and changes
+ * ✅ Fee modifications (source and destination)
+ * ✅ Same-currency transfers (no conversion)
  * ✅ Cross-currency transfers with exchange rate conversion
  * ✅ Bidirectional currency conversion (USD↔EUR)
- * ✅ Sequential multi-account transfers
+ * ✅ Exchange rate calculation validation
  * ✅ Confirmation page data validation
  */

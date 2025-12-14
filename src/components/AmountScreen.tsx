@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
-import type { TransactionData } from '../hooks/useTransactionData';
+import type { WithdrawalForm, DepositForm, TransferForm } from '../machines/types';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 import { needsConversion, normalizeCurrency } from '../utils/currency';
 

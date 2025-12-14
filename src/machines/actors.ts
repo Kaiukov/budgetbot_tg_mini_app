@@ -5,7 +5,7 @@
 
 import { fromPromise } from 'xstate';
 import type { BudgetUser } from './types';
-import telegramService from '../services/telegram';
+import telegramService, { initializeTelegramUser } from '../services/telegram';
 import { syncService, type AccountUsage, type CategoryUsage, type SourceSuggestion } from '../services/sync';
 import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
@@ -22,52 +22,10 @@ export const telegramInitActor = createActorWithErrorHandling<BudgetUser, {}>({
   timeout: ACTOR_TIMEOUTS.TELEGRAM_INIT,
 
   operation: async () => {
-    // Check if Telegram WebApp is available
-    const isAvailable = telegramService.isAvailable();
-
-    if (!isAvailable) {
-      throw new Error('Telegram WebApp not available');
-    }
-
-    const user = telegramService.getUser();
-    const user_name = telegramService.getUserName();
-    const userPhotoUrl = telegramService.getUserPhotoUrl();
-    const userInitials = telegramService.getUserInitials();
-    const colorScheme = telegramService.getColorScheme();
-    const userBio = telegramService.getUserBio() || 'Manage finances and create reports';
-
-    // Fetch additional user data from backend if user ID available
-    if (user?.id) {
-      try {
-        const backendData = await fetchUserData(user.id);
-        if (backendData?.success && backendData.userData) {
-          return {
-            id: user.id,
-            user_name: backendData.userData.username || user_name,
-            fullName: backendData.userData.name || user_name,
-            photoUrl: userPhotoUrl,
-            initials: userInitials,
-            bio: backendData.userData.bio || userBio,
-            colorScheme,
-            rawUser: user,
-          };
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch comprehensive user data:', error);
-        // Fall through to return basic user data
-      }
-    }
-
-    return {
-      id: user?.id || 0,
-      user_name: user_name,
-      fullName: user_name,
-      photoUrl: userPhotoUrl,
-      initials: userInitials,
-      bio: userBio,
-      colorScheme,
-      rawUser: user || null,
-    };
+    // Use shared initialization function with timeout protection
+    return await initializeTelegramUser({
+      timeout: ACTOR_TIMEOUTS.TELEGRAM_INIT,
+    });
   },
 
   // Graceful fallback to Guest user

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useTelegramUser } from './hooks/useTelegramUser';
 import { syncService } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
@@ -22,7 +21,6 @@ import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
 import BrowserBackButton from './components/BrowserBackButton';
 import type { DisplayTransaction, TransactionData as APITransactionData } from './types/transaction';
-import type { TransactionData as HookTransactionData } from './hooks/useTransactionData';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -81,11 +79,13 @@ const BudgetMiniApp = () => {
   // Category fetch dedupe key
   const lastCategoriesKeyRef = useRef<string | null>(null);
 
-  // Get Telegram user data
-  const { user_name, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
-
   // Get machine context for state and actions (withdrawal flow)
   const machineContext = useBudgetMachineContext();
+
+  // Get Telegram user data from machine context
+  const user = machineContext.context.user;
+  const { user_name, fullName: userFullName, photoUrl: userPhotoUrl, initials: userInitials, bio: userBio } = user;
+  const isAvailable = telegramService.isAvailable();
 
   // Screen derivations from machine state
   const isHomeScreen = machineContext.state.matches({ ready: 'home' });
@@ -603,6 +603,7 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-notes' && (
         <DestinationSourceNamesScreen
           transactionType="withdrawal"
+          user_name={user_name}
           name={
             (machineContext.context.transaction as any).destination_name ||
             (machineContext.context.transaction as any).comment ||
@@ -748,6 +749,7 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-notes' && (
         <DestinationSourceNamesScreen
           transactionType="deposit"
+          user_name={user_name}
           name={(machineContext.context.transaction as any).source_name || ''}
           category_name={machineContext.context.transaction.category}
           category_id={machineContext.context.transaction.category_id}

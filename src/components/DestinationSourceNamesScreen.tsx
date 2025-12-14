@@ -2,12 +2,14 @@ import { ArrowLeft, Loader } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
-import { useTelegramUser } from '../hooks/useTelegramUser';
 import { gradients, layouts } from '../theme/dark';
 
 interface DestinationSourceNamesScreenProps {
   // Mode: determines which flow (withdrawal=destination, deposit=source)
   transactionType: 'withdrawal' | 'deposit';
+
+  // User identification
+  user_name: string;
 
   // Common props for both flows
   name: string; // destination_name or source_name
@@ -33,6 +35,7 @@ interface DestinationSourceNamesScreenProps {
 
 const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> = ({
   transactionType,
+  user_name,
   name,
   category_name,
   category_id,
@@ -49,7 +52,6 @@ const DestinationSourceNamesScreen: React.FC<DestinationSourceNamesScreenProps> 
   onClearError,
   onNext
 }) => {
-  const { user_name } = useTelegramUser();
   const effectiveUser = user_name === 'User' || user_name === 'Guest' ? undefined : user_name;
   const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
