@@ -558,6 +558,7 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-amount' && (
         <AmountScreen
           account={machineContext.context.transaction.account}
+          accountCurrency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
           conversionAmount={machineContext.context.transaction.conversionAmount}
@@ -665,6 +666,7 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-amount' && (
         <AmountScreen
           account={machineContext.context.transaction.account}
+          accountCurrency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
           conversionAmount={machineContext.context.transaction.conversionAmount}
