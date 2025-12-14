@@ -560,20 +560,6 @@ const BudgetMiniApp = () => {
           account={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: machineContext.context.transaction.conversionAmount || 0,
-            category_id: 0,
-            category_name: '',
-            budget_name: '',
-            destination_id: 0,
-            destination_name: '',
-            date: ''
-          } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
           errors={(machineContext.context.transaction as any).errors}
@@ -637,31 +623,6 @@ const BudgetMiniApp = () => {
             (machineContext.context.transaction as any).comment ||
             ''
           }
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: (() => {
-              const conversionAmount = machineContext.context.transaction.conversionAmount;
-              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
-              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
-
-              // Priority: Use conversion if valid, else use original amount for EUR, else 0
-              if (conversionAmount && conversionAmount > 0) return conversionAmount;
-              if (isEUR && parsedAmount > 0) return parsedAmount;
-              return 0;
-            })(),
-            category_id: machineContext.context.transaction.category_id || 0,
-            category_name: machineContext.context.transaction.category,
-            budget_name: (machineContext.context.transaction as any).budget_name || '',
-            destination_id: (machineContext.context.transaction as any).destination_id || 0,
-            destination_name:
-              (machineContext.context.transaction as any).destination_name || '',
-            notes: machineContext.context.transaction.notes,
-            date: ''
-          } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
           errors={(machineContext.context.transaction as any).errors}
@@ -706,20 +667,6 @@ const BudgetMiniApp = () => {
           account={machineContext.context.transaction.account}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: machineContext.context.transaction.conversionAmount || 0,
-            category_id: machineContext.context.transaction.category_id,
-            category_name: machineContext.context.transaction.category,
-            budget_name: machineContext.context.transaction.budget_name,
-            destination_id: machineContext.context.transaction.destination_id,
-            destination_name: machineContext.context.transaction.destination_name,
-            date: '',
-          } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
           errors={(machineContext.context.transaction as any).errors}
@@ -777,29 +724,6 @@ const BudgetMiniApp = () => {
           destination_name={machineContext.context.transaction.destination_name}
           source_name={(machineContext.context.transaction as any).source_name}
           source_id={(machineContext.context.transaction as any).source_id}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: (() => {
-              const conversionAmount = machineContext.context.transaction.conversionAmount;
-              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
-              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
-
-              // Priority: Use conversion if valid, else use original amount for EUR, else 0
-              if (conversionAmount && conversionAmount > 0) return conversionAmount;
-              if (isEUR && parsedAmount > 0) return parsedAmount;
-              return 0;
-            })(),
-            category_id: machineContext.context.transaction.category_id,
-            category_name: machineContext.context.transaction.category,
-            source_id: (machineContext.context.transaction as any).source_id,
-            source_name: (machineContext.context.transaction as any).source_name,
-            notes: machineContext.context.transaction.notes,
-            date: '',
-          } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
           errors={(machineContext.context.transaction as any).errors}
@@ -925,24 +849,6 @@ const BudgetMiniApp = () => {
           destAmount={machineContext.context.transfer.destination_amount}
           sourceFee={machineContext.context.transfer.source_fee}
           destFee={machineContext.context.transfer.destination_fee}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transfer.source_account_name,
-            account_id: Number(machineContext.context.transfer.source_account_id) || 0,
-            account_currency: machineContext.context.transfer.source_account_currency,
-            amount: machineContext.context.transfer.source_amount,
-            amount_eur: Number(machineContext.context.transfer.source_amount) || 0,
-            category_id: 0,
-            category_name: '',
-            budget_name: '',
-            destination_id: Number(machineContext.context.transfer.destination_account_id) || 0,
-            destination_name: machineContext.context.transfer.destination_account_name,
-            source_id: Number(machineContext.context.transfer.source_account_id) || 0,
-            source_name: machineContext.context.transfer.source_account_name,
-            notes: machineContext.context.transfer.notes,
-            date: machineContext.context.transfer.date,
-            exchange_rate: machineContext.context.transfer.exchange_rate,
-          } as HookTransactionData & { exchange_rate: number | null }}
           isSubmitting={false}
           submitMessage={null}
           errors={{}}

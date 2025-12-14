@@ -8,7 +8,6 @@ import {
   type UnifiedWebhookPayload
 } from '../services/sync/index';
 import telegramService from '../services/telegram';
-import type { WithdrawalForm, DepositForm, TransferForm } from '../machines/types';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, layouts } from '../theme/dark';
@@ -42,6 +41,8 @@ type BaseConfirmScreenProps = {
   submitMessage?: { type: 'success' | 'error'; text: string } | null;
   errors?: Record<string, string>;
   isAvailable?: boolean;
+  date?: string; // transaction date (ISO format)
+  notes?: string; // transaction notes
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -51,7 +52,6 @@ type BaseConfirmScreenProps = {
   onDateChange?: (isoDate: string) => void;
   onNotesChange?: (notes: string) => void;
   onClearError?: () => void;
-  transactionData: TransactionData;
 };
 
 type WithdrawalConfirmProps = BaseConfirmScreenProps & {
@@ -89,11 +89,12 @@ type ConfirmScreenProps = WithdrawalConfirmProps | DepositConfirmProps | Transfe
 const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const {
     transactionType,
-    transactionData,
     isSubmitting: propIsSubmitting,
     submitMessage: propSubmitMessage,
     errors = {},
     isAvailable,
+    date: propDate = '',
+    notes: propNotes = '',
     onBack,
     onCancel,
     onConfirm,
@@ -119,6 +120,25 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const destAccount = isTransfer ? (props as TransferConfirmProps).destAccount : '';
   const sourceAmount = isTransfer ? (props as TransferConfirmProps).sourceAmount : '';
   const destAmount = isTransfer ? (props as TransferConfirmProps).destAmount : '';
+
+  // Construct transactionData from available props for use in component logic
+  const transactionData = {
+    user_name: '',
+    account_name: account_name || sourceAccount || '',
+    account_id: 0,
+    account_currency: '',
+    amount: amount || sourceAmount || '',
+    amount_eur: 0,
+    category_id: 0,
+    category_name: budget_name,
+    budget_name: budget_name,
+    destination_id: 0,
+    destination_name: (props as WithdrawalConfirmProps | DepositConfirmProps).destination_name || destAccount || '',
+    date: propDate,
+    notes: propNotes,
+    source_id: 0,
+    source_name: (props as DepositConfirmProps).source_name || sourceAccount || ''
+  };
   const sourceCurrency = isTransfer ? (props as TransferConfirmProps).sourceCurrency : '';
   const destCurrency = isTransfer ? (props as TransferConfirmProps).destCurrency : '';
   const sourceFee = isTransfer ? (props as TransferConfirmProps).sourceFee : '';
@@ -136,8 +156,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
 
   const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
-  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(transactionData.date));
-  const [notesInput, setNotesInput] = useState<string>('');
+  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(propDate));
+  const [notesInput, setNotesInput] = useState<string>(propNotes);
   const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
 
   // Show Telegram back button
@@ -155,8 +175,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
 
   // Sync local date/notes if parent transaction data changes
   useEffect(() => {
-    setDateInput(getDateInputValue(transactionData.date));
-  }, [transactionData.date]);
+    setDateInput(getDateInputValue(propDate));
+  }, [propDate]);
 
   const buildNotesSuggestion = () => {
     if (isTransfer) {

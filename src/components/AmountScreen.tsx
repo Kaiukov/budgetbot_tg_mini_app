@@ -2,7 +2,6 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { syncService } from '../services/sync';
 import telegramService from '../services/telegram';
-import type { WithdrawalForm, DepositForm, TransferForm } from '../machines/types';
 import { gradients, cardStyles, layouts } from '../theme/dark';
 import { needsConversion, normalizeCurrency } from '../utils/currency';
 
@@ -15,8 +14,8 @@ interface AmountScreenProps {
 
   // Single-amount (withdrawal/deposit)
   account?: string;
+  accountCurrency?: string; // single mode account currency for FX conversion
   amount?: string;
-  transactionData?: TransactionData;
   conversionAmount?: number | null;
   isLoadingConversion?: boolean;
 
@@ -72,8 +71,8 @@ const AmountScreen: React.FC<AmountScreenProps> = (props) => {
 // -----------------------------------------------------------------------------
 const SingleAmountVariant: React.FC<AmountScreenProps> = ({
   account = '',
+  accountCurrency = '',
   amount = '',
-  transactionData,
   conversionAmount: propConversionAmount,
   isLoadingConversion: propIsLoadingConversion,
   errors = {},
@@ -95,7 +94,7 @@ const SingleAmountVariant: React.FC<AmountScreenProps> = ({
     return () => telegramService.hideBackButton();
   }, [onBack]);
 
-  const currencyCode = normalizeCurrency(transactionData?.account_currency || '');
+  const currencyCode = normalizeCurrency(accountCurrency || '');
   const conversionRequired = needsConversion(currencyCode);
 
   useEffect(() => {

@@ -5,11 +5,10 @@
 
 import { fromPromise } from 'xstate';
 import type { BudgetUser } from './types';
-import telegramService, { initializeTelegramUser } from '../services/telegram';
+import { initializeTelegramUser } from '../services/telegram';
 import { syncService, type AccountUsage, type CategoryUsage, type SourceSuggestion } from '../services/sync';
 import { apiClient, addTransaction, fetchTransactions, fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
-import { fetchUserData } from '../utils/fetchUserData';
 import { ACTOR_TIMEOUTS } from '../config/actorTimeouts';
 import { createActorWithErrorHandling, withTimeout, logActorEvent } from './errorHandling';
 
