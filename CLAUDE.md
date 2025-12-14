@@ -5,7 +5,7 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 **Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
 **Local Dev:** `npm run dev` → http://localhost:3000
 
-**Git Branch:** `chore/fix-issue-34-api-signle-getaway` (15 commits ahead of dev)
+**Git Branch:** `chore/fix-bug-36` (action factory refactoring)
 
 ## Quick Facts
 - **Language:** TypeScript 5
@@ -18,18 +18,17 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 **Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
 **Testing guide:** See `~/.claude/skills/telegram-mini-apps-skill/examples/test-e2e.md`
 
-## Latest Changes (v0.2.3)
+## Latest Changes (v0.2.4)
 
-**Dec 13, 2025** - Modular Service Architecture + Complete Test Consolidation
+**Dec 13, 2025** - Action Factory Pattern + State Management Refactoring
 
-- ✅ **Service Refactoring:** Converted 800+ LOC monolithic `sync.ts` to clean facade with 8 domain modules
-- ✅ **New Modules:** gateway, auth, cache, exchangeRate, syncAccounts, syncCategories, syncDestinationSourceNames, addTransactions, getTransactions
-- ✅ **Transaction CRUD:** Added `updateTransaction()` and `deleteTransaction()` with Tier 2 auth
-- ✅ **Exchange Rate Service:** Real FX conversion with 1h caching (memory + localStorage)
-- ✅ **Test Consolidation:** Unified E2E tests into `tests/e2e/` (17 tests, 100% pass rate, ~10s)
-- ✅ **API Response Fixes:** Fixed exchange rate parsing and P1 issue blocking USD flows
+- ✅ **Action Factory:** Created `createResourceActions()` factory following ActorConfig pattern
+- ✅ **Code Reduction:** Eliminated 62 LOC of duplicated action definitions in `actions.ts`
+- ✅ **Pattern Consistency:** Factory matches v0.2.2 error handling design principles
+- ✅ **Extensibility:** Adding new resources now requires 3 lines instead of 9
+- ✅ **Quality:** 17/17 E2E tests pass, 0 TypeScript errors, 100% behavioral equivalence
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history.
+See [CHANGELOG.md](CHANGELOG.md) for full version history (v0.2.3, v0.2.2, v0.2.1).
 
 ## Architecture
 
@@ -51,8 +50,10 @@ src/
 ### Key Files
 - **`budgetMachine.ts`** - Nested state machine with transaction flows
 - **`errorHandling.ts`** - Centralized error factory (v0.2.2+): `createActorWithErrorHandling()`, `withTimeout()`, error classification
+- **`helpers/actionFactory.ts`** - Action factory (v0.2.4+): `createResourceActions()` for standardized state actions
 - **`actors.ts`** - 11 async actors using error factory (data fetch, CRUD, health checks)
 - **`actorTimeouts.ts`** - Centralized timeout config: TELEGRAM_INIT (5s), DATA_FETCH (30s), CRUD_OPERATION (15s), HEALTH_CHECK (10s)
+- **`actions.ts`** - Machine actions (factory-generated + validation guards)
 - **`BudgetMachineContext.tsx`** - Context provider with localStorage persistence
 - **`BudgetMiniApp.tsx`** - Router component
 
@@ -105,3 +106,16 @@ wrangler deploy      # Deploy to Cloudflare Pages
 Complete guidance available in the telegram-mini-apps-skill:
 - **`budget-app-overview.md`** - Complete architecture and implementation reference
 - **`test-e2e.md`** - Comprehensive E2E testing guide with patterns and examples
+
+### CLAUDE.md
+
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/CLAUDE.md - Root index linking all directory guides.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/CLAUDE.md - Source structure overview for the React/Vite app.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/services/CLAUDE.md - Sync/Telegram service facades and helpers.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/theme/CLAUDE.md - Theme tokens, palettes, and dark utilities.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/machines/CLAUDE.md - XState machine, actors, actions, and types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/components/CLAUDE.md - Screens and shared UI components.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/utils/CLAUDE.md - Utility helpers (cache, currency, categories, formatting).
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/types/CLAUDE.md - Shared TypeScript domain and Telegram types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/functions/CLAUDE.md - Cloudflare Pages middleware note.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/tests/e2e/CLAUDE.md - Mocked Playwright withdrawal/deposit/transfer suites.

@@ -15,8 +15,27 @@ import { initialTransactionForm as transactionFormDefault, initialTransferForm a
 import { extractBudgetName } from '../services/sync/utils';
 import { needsConversion, normalizeCurrency } from '../utils/currency';
 import { buildTransferNotesFromContext } from '../utils/transferNotes';
+import { createResourceActions } from './helpers/actionFactory';
+import type { AccountUsage, CategoryUsage } from '../services/sync';
+import type { DisplayTransaction } from '../types/transaction';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
+
+// ============================================================================
+// Factory-Generated Actions
+// ============================================================================
+
+const accountActions = createResourceActions<AccountUsage[]>({
+  resourceName: 'accounts'
+});
+
+const categoryActions = createResourceActions<CategoryUsage[]>({
+  resourceName: 'categories'
+});
+
+const transactionActions = createResourceActions<DisplayTransaction[]>({
+  resourceName: 'transactions'
+});
 
 // ============================================================================
 // Update Actions
@@ -336,81 +355,18 @@ export const actions = {
     },
   }),
 
-  // Data Management
-  setAccounts: assign({
-    data: ({ context }, params: { accounts: any[] }) => ({
-      ...context.data,
-      accounts: params.accounts,
-    }),
-    ui: ({ context }) => ({
-      ...context.ui,
-      accounts: { loading: false, error: null },
-    }),
-  }),
+  // Data Management (Factory-Generated Actions)
+  setAccounts: accountActions.setData,
+  setAccountsLoading: accountActions.setLoading,
+  setAccountsError: accountActions.setError,
 
-  setAccountsLoading: assign({
-    ui: ({ context }) => ({
-      ...context.ui,
-      accounts: { loading: true, error: null },
-    }),
-  }),
+  setCategories: categoryActions.setData,
+  setCategoriesLoading: categoryActions.setLoading,
+  setCategoriesError: categoryActions.setError,
 
-  setAccountsError: assign({
-    ui: ({ context }, params: { error: string }) => ({
-      ...context.ui,
-      accounts: { loading: false, error: params.error },
-    }),
-  }),
-
-  setCategories: assign({
-    data: ({ context }, params: { categories: any[] }) => ({
-      ...context.data,
-      categories: params.categories,
-    }),
-    ui: ({ context }) => ({
-      ...context.ui,
-      categories: { loading: false, error: null },
-    }),
-  }),
-
-  setCategoriesLoading: assign({
-    ui: ({ context }) => ({
-      ...context.ui,
-      categories: { loading: true, error: null },
-    }),
-  }),
-
-  setCategoriesError: assign({
-    ui: ({ context }, params: { error: string }) => ({
-      ...context.ui,
-      categories: { loading: false, error: params.error },
-    }),
-  }),
-
-  setTransactions: assign({
-    data: ({ context }, params: { transactions: any[] }) => ({
-      ...context.data,
-      transactions: params.transactions,
-    }),
-    ui: ({ context }) => ({
-      ...context.ui,
-      transactions: { loading: false, error: null },
-    }),
-  }),
-
-  setTransactionsLoading: assign({
-    ui: ({ context }) => ({
-      ...context.ui,
-      transactions: { loading: true, error: null },
-    }),
-  }),
-
-  setTransactionsError: assign({
-    ui: ({ context }, params: { error: string }) => ({
-      ...context.ui,
-      transactions: { loading: false, error: params.error },
-    }),
-  }),
+  setTransactions: transactionActions.setData,
+  setTransactionsLoading: transactionActions.setLoading,
+  setTransactionsError: transactionActions.setError,
 
   // Service Status
   setServiceStatus: assign({

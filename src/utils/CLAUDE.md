@@ -1,21 +1,63 @@
-# Utils
+### CLAUDE.md
 
-This directory contains a collection of utility functions and helpers used across the application for various tasks like data formatting, caching, and providing configuration.
+accounts.ts - Icon + color helpers for accounts.
+    - getAccountIcon "Picks Lucide icon based on currency or name"
+    - getAccountColor "Returns accent color per currency/name"
 
-**[accounts.ts](accounts.ts)**: Provides helper functions to determine the appropriate icon and color for a bank account based on its currency or name.
+cache.ts - Generic cache with memory + localStorage.
+    - Cache "TTL-based cache class with set/get/clear"
+    - transactionCache "Shared cache for DisplayTransaction[]"
+    - TRANSACTION_CACHE_KEYS "Key constants for cache buckets"
+    - clearTransactionCache "Clears transaction caches"
 
-**[cache.ts](cache.ts)**: Implements a generic, dual-layer (memory + localStorage) caching system with configurable expiration. It is used for caching API responses like transaction data.
+categories.ts - Category emoji/icon helpers.
+    - extractEmoji "Pulls emoji from category name"
+    - getCategoryNameWithoutEmoji "Strips emoji prefix"
+    - getCategoryIcon "Maps name keywords to Lucide icon"
+    - getCategoryColor "Assigns color by keyword"
+    - suggestedComments "Preset comments list"
 
-**[categories.ts](categories.ts)**: Contains utility functions for handling category data, such as extracting emojis from names and assigning a default icon or color based on keywords in the category name.
+currencies.ts - Currency metadata and formatting.
+    - CURRENCIES "Record of code → symbol/name"
+    - getCurrencySymbol "Returns symbol or defaults"
+    - getCurrencyName "Returns human-readable name"
+    - formatCurrency "Formats amount with code and locale"
+    - isValidCurrency "Validity guard for currency codes"
 
-**[currencies.ts](currencies.ts)**: A comprehensive currency utility based on Google's currency dataset. It provides functions to get currency symbols, names, and perform basic formatting.
+currency.ts - Currency normalization utilities.
+    - normalizeCurrency "Uppercases codes with fallbacks"
+    - needsConversion "Detects non-EUR currencies"
 
-**[fetchUserData.ts](fetchUserData.ts)**: A function to fetch detailed user data (name, bio, avatar) from the backend Sync API, using Telegram's `initData` for authentication.
+fakeInitData.ts - Browser-mode Telegram data helpers.
+    - isBrowserMode "Detects browser debug mode"
+    - generateFakeInitData "Produces signed-ish initData string"
+    - generateFakeInitDataUnsafe "Returns parsed mock initData"
+    - getInitData/getInitDataUnsafe "Retrieves stored fake payloads"
 
-**[fetchUserPhoto.ts](fetchUserPhoto.ts)**: Appears to be an older or redundant version of `fetchUserData.ts`, with a similar purpose but a slightly different implementation.
+fetchUserData.ts - User profile fetcher via Sync API.
+    - fetchUserData "Returns name/bio/avatar using initData auth"
 
-**[formatCurrency.ts](formatCurrency.ts)**: Provides robust currency formatting functions using the `Intl.NumberFormat` API for locale-aware currency display.
+fetchUserPhoto.ts - Legacy user photo fetcher.
+    - fetchUserData "Fetches basic user info by id"
 
-**[serviceStatus.ts](serviceStatus.ts)**: Defines types and initial state for tracking the connection status of the application's backend services.
+formatCurrency.ts - Intl-based currency formatter.
+    - formatCurrency "Formats amount with code"
+    - formatCurrencyWithSymbol "Formats amount with currency symbol"
 
-**[transactionHelpers.ts](transactionHelpers.ts)**: A suite of helper functions for formatting transaction data for display in the UI, including generating labels, amounts, dates, and icons.
+serviceStatus.ts - Service connectivity state helpers.
+    - getInitialServiceStatuses "Initial status objects for sync/firefly"
+
+transactionHelpers.ts - Display formatting for transactions.
+    - formatTransactionAmount "Formats main amount with currency"
+    - getTransactionIcon "Chooses icon per transaction type"
+    - getTransactionLabel "Primary label builder"
+    - getTransactionSecondaryLabel "Secondary label builder"
+    - formatTransactionDate/formatTransactionTime "Date/time formatters"
+    - getDisplayAmount "Derives display amount handling transfers"
+    - shouldShowForeignAmount "Determines if FX amount should show"
+    - formatForeignAmountComparison "Creates secondary FX string"
+    - getTransactionStatus "Returns reconciled/unreconciled label"
+    - formatTransactionForDisplay "Normalizes transaction for UI list"
+
+transferNotes.ts - Transfer-specific note builder.
+    - buildTransferNotesFromContext "Creates descriptive transfer note text"
