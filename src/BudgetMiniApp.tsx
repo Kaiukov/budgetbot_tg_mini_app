@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useTelegramUser } from './hooks/useTelegramUser';
 import { syncService } from './services/sync';
 import telegramService from './services/telegram';
 import { getInitialServiceStatuses, type ServiceStatus } from './utils/serviceStatus';
@@ -22,7 +21,6 @@ import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
 import BrowserBackButton from './components/BrowserBackButton';
 import type { DisplayTransaction, TransactionData as APITransactionData } from './types/transaction';
-import type { TransactionData as HookTransactionData } from './hooks/useTransactionData';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -81,11 +79,13 @@ const BudgetMiniApp = () => {
   // Category fetch dedupe key
   const lastCategoriesKeyRef = useRef<string | null>(null);
 
-  // Get Telegram user data
-  const { user_name, userFullName, userPhotoUrl, userInitials, userBio, isAvailable } = useTelegramUser();
-
   // Get machine context for state and actions (withdrawal flow)
   const machineContext = useBudgetMachineContext();
+
+  // Get Telegram user data from machine context
+  const user = machineContext.context.user;
+  const { user_name, fullName: userFullName, photoUrl: userPhotoUrl, initials: userInitials, bio: userBio } = user;
+  const isAvailable = telegramService.isAvailable();
 
   // Screen derivations from machine state
   const isHomeScreen = machineContext.state.matches({ ready: 'home' });
@@ -558,22 +558,9 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-amount' && (
         <AmountScreen
           account={machineContext.context.transaction.account}
+          accountCurrency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: machineContext.context.transaction.conversionAmount || 0,
-            category_id: 0,
-            category_name: '',
-            budget_name: '',
-            destination_id: 0,
-            destination_name: '',
-            date: ''
-          } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
           errors={(machineContext.context.transaction as any).errors}
@@ -603,6 +590,7 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-notes' && (
         <DestinationSourceNamesScreen
           transactionType="withdrawal"
+          user_name={user_name}
           name={
             (machineContext.context.transaction as any).destination_name ||
             (machineContext.context.transaction as any).comment ||
@@ -628,39 +616,21 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-confirm' && (
         <ConfirmScreen
           transactionType="withdrawal"
+          user_name={user_name}
           account_name={machineContext.context.transaction.account}
+          account_id={machineContext.context.transaction.account_id}
+          account_currency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
+          amount_eur={machineContext.context.transaction.conversionAmount || parseFloat(machineContext.context.transaction.amount) || 0}
+          category_id={machineContext.context.transaction.category_id}
+          category_name={machineContext.context.transaction.category}
           budget_name={(machineContext.context.transaction as any).budget_name || ''}
+          destination_id={machineContext.context.transaction.destination_id}
           destination_name={
             (machineContext.context.transaction as any).destination_name ||
             (machineContext.context.transaction as any).comment ||
             ''
           }
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: (() => {
-              const conversionAmount = machineContext.context.transaction.conversionAmount;
-              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
-              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
-
-              // Priority: Use conversion if valid, else use original amount for EUR, else 0
-              if (conversionAmount && conversionAmount > 0) return conversionAmount;
-              if (isEUR && parsedAmount > 0) return parsedAmount;
-              return 0;
-            })(),
-            category_id: machineContext.context.transaction.category_id || 0,
-            category_name: machineContext.context.transaction.category,
-            budget_name: (machineContext.context.transaction as any).budget_name || '',
-            destination_id: (machineContext.context.transaction as any).destination_id || 0,
-            destination_name:
-              (machineContext.context.transaction as any).destination_name || '',
-            notes: machineContext.context.transaction.notes,
-            date: ''
-          } as HookTransactionData}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
           errors={(machineContext.context.transaction as any).errors}
@@ -703,22 +673,9 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-amount' && (
         <AmountScreen
           account={machineContext.context.transaction.account}
+          accountCurrency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
           canProceed={validationGuards.canProceedFromAmountPage(machineContext.context.transaction as any)}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: machineContext.context.transaction.conversionAmount || 0,
-            category_id: machineContext.context.transaction.category_id,
-            category_name: machineContext.context.transaction.category,
-            budget_name: machineContext.context.transaction.budget_name,
-            destination_id: machineContext.context.transaction.destination_id,
-            destination_name: machineContext.context.transaction.destination_name,
-            date: '',
-          } as HookTransactionData}
           conversionAmount={machineContext.context.transaction.conversionAmount}
           isLoadingConversion={machineContext.context.transaction.isLoadingConversion}
           errors={(machineContext.context.transaction as any).errors}
@@ -748,6 +705,7 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-notes' && (
         <DestinationSourceNamesScreen
           transactionType="deposit"
+          user_name={user_name}
           name={(machineContext.context.transaction as any).source_name || ''}
           category_name={machineContext.context.transaction.category}
           category_id={machineContext.context.transaction.category_id}
@@ -769,35 +727,18 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-confirm' && (
         <ConfirmScreen
           transactionType="deposit"
+          user_name={user_name}
           account_name={machineContext.context.transaction.account}
+          account_id={machineContext.context.transaction.account_id}
+          account_currency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
+          amount_eur={machineContext.context.transaction.conversionAmount || parseFloat(machineContext.context.transaction.amount) || 0}
+          category_id={machineContext.context.transaction.category_id}
+          category_name={machineContext.context.transaction.category}
           budget_name={machineContext.context.transaction.budget_name}
           destination_name={machineContext.context.transaction.destination_name}
-          source_name={(machineContext.context.transaction as any).source_name}
-          source_id={(machineContext.context.transaction as any).source_id}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transaction.account,
-            account_id: Number(machineContext.context.transaction.account_id) || 0,
-            account_currency: machineContext.context.transaction.account_currency,
-            amount: machineContext.context.transaction.amount,
-            amount_eur: (() => {
-              const conversionAmount = machineContext.context.transaction.conversionAmount;
-              const isEUR = machineContext.context.transaction.account_currency?.toUpperCase() === 'EUR';
-              const parsedAmount = Number(machineContext.context.transaction.amount) || 0;
-
-              // Priority: Use conversion if valid, else use original amount for EUR, else 0
-              if (conversionAmount && conversionAmount > 0) return conversionAmount;
-              if (isEUR && parsedAmount > 0) return parsedAmount;
-              return 0;
-            })(),
-            category_id: machineContext.context.transaction.category_id,
-            category_name: machineContext.context.transaction.category,
-            source_id: (machineContext.context.transaction as any).source_id,
-            source_name: (machineContext.context.transaction as any).source_name,
-            notes: machineContext.context.transaction.notes,
-            date: '',
-          } as HookTransactionData}
+          source_name={machineContext.context.transaction.source_name || ''}
+          source_id={machineContext.context.transaction.source_id}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
           errors={(machineContext.context.transaction as any).errors}
@@ -915,32 +856,17 @@ const BudgetMiniApp = () => {
       {transferScreen === 'transfer-confirm' && (
         <ConfirmScreen
           transactionType="transfer"
+          user_name={user_name}
           sourceAccount={machineContext.context.transfer.source_account_name}
+          sourceAccountId={machineContext.context.transfer.source_account_id}
           destAccount={machineContext.context.transfer.destination_account_name}
+          destAccountId={machineContext.context.transfer.destination_account_id}
           sourceCurrency={machineContext.context.transfer.source_account_currency}
           destCurrency={machineContext.context.transfer.destination_account_currency}
           sourceAmount={machineContext.context.transfer.source_amount}
           destAmount={machineContext.context.transfer.destination_amount}
           sourceFee={machineContext.context.transfer.source_fee}
           destFee={machineContext.context.transfer.destination_fee}
-          transactionData={{
-            user_name: machineContext.context.user.user_name,
-            account_name: machineContext.context.transfer.source_account_name,
-            account_id: Number(machineContext.context.transfer.source_account_id) || 0,
-            account_currency: machineContext.context.transfer.source_account_currency,
-            amount: machineContext.context.transfer.source_amount,
-            amount_eur: Number(machineContext.context.transfer.source_amount) || 0,
-            category_id: 0,
-            category_name: '',
-            budget_name: '',
-            destination_id: Number(machineContext.context.transfer.destination_account_id) || 0,
-            destination_name: machineContext.context.transfer.destination_account_name,
-            source_id: Number(machineContext.context.transfer.source_account_id) || 0,
-            source_name: machineContext.context.transfer.source_account_name,
-            notes: machineContext.context.transfer.notes,
-            date: machineContext.context.transfer.date,
-            exchange_rate: machineContext.context.transfer.exchange_rate,
-          } as HookTransactionData & { exchange_rate: number | null }}
           isSubmitting={false}
           submitMessage={null}
           errors={{}}

@@ -8,7 +8,6 @@ import {
   type UnifiedWebhookPayload
 } from '../services/sync/index';
 import telegramService from '../services/telegram';
-import type { TransactionData } from '../hooks/useTransactionData';
 import { getCurrencySymbol } from '../utils/currencies';
 import { refreshHomeTransactionCache } from '../utils/cache';
 import { gradients, layouts } from '../theme/dark';
@@ -42,6 +41,8 @@ type BaseConfirmScreenProps = {
   submitMessage?: { type: 'success' | 'error'; text: string } | null;
   errors?: Record<string, string>;
   isAvailable?: boolean;
+  date?: string; // transaction date (ISO format)
+  notes?: string; // transaction notes
   onBack: () => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -51,31 +52,46 @@ type BaseConfirmScreenProps = {
   onDateChange?: (isoDate: string) => void;
   onNotesChange?: (notes: string) => void;
   onClearError?: () => void;
-  transactionData: TransactionData;
 };
 
 type WithdrawalConfirmProps = BaseConfirmScreenProps & {
   transactionType: 'withdrawal';
+  user_name: string;
   account_name: string;
+  account_id: number | string;
+  account_currency: string;
   amount: string;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
   budget_name: string;
+  destination_id: number | string;
   destination_name: string;
 };
 
 type DepositConfirmProps = BaseConfirmScreenProps & {
   transactionType: 'deposit';
+  user_name: string;
   account_name: string;
+  account_id: number | string;
+  account_currency: string;
   amount: string;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
   budget_name: string;
   destination_name: string;
-  source_name?: string;
-  source_id?: number | string;
+  source_name: string;
+  source_id: number | string;
 };
 
 type TransferConfirmProps = BaseConfirmScreenProps & {
   transactionType: 'transfer';
+  user_name: string;
   sourceAccount: string;
+  sourceAccountId: number | string;
   destAccount: string;
+  destAccountId: number | string;
   sourceAmount: string;
   destAmount: string;
   sourceCurrency: string;
@@ -89,11 +105,12 @@ type ConfirmScreenProps = WithdrawalConfirmProps | DepositConfirmProps | Transfe
 const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const {
     transactionType,
-    transactionData,
     isSubmitting: propIsSubmitting,
     submitMessage: propSubmitMessage,
     errors = {},
     isAvailable,
+    date: propDate = '',
+    notes: propNotes = '',
     onBack,
     onCancel,
     onConfirm,
@@ -109,16 +126,49 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
   const isTransfer = transactionType === 'transfer';
   const isWithdrawal = transactionType === 'withdrawal';
 
+  const user_name_prop = isTransfer
+    ? (props as TransferConfirmProps).user_name
+    : (props as WithdrawalConfirmProps | DepositConfirmProps).user_name;
+
   // For withdrawal/deposit
   const account_name = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_name : '';
+  const account_id_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_id : 0;
+  const account_currency = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_currency : '';
   const amount = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).amount : '';
+  const amount_eur_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).amount_eur : 0;
+  const category_id_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).category_id : 0;
+  const category_name_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).category_name : '';
   const budget_name = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).budget_name : '';
+  const destination_id_prop = !isTransfer && isWithdrawal ? (props as WithdrawalConfirmProps).destination_id : 0;
 
   // For transfer
   const sourceAccount = isTransfer ? (props as TransferConfirmProps).sourceAccount : '';
+  const sourceAccountId = isTransfer ? (props as TransferConfirmProps).sourceAccountId : 0;
   const destAccount = isTransfer ? (props as TransferConfirmProps).destAccount : '';
+  const destAccountId = isTransfer ? (props as TransferConfirmProps).destAccountId : 0;
   const sourceAmount = isTransfer ? (props as TransferConfirmProps).sourceAmount : '';
   const destAmount = isTransfer ? (props as TransferConfirmProps).destAmount : '';
+  const source_id_prop = !isTransfer && !isWithdrawal ? (props as DepositConfirmProps).source_id : 0;
+  const source_name_prop = !isTransfer && !isWithdrawal ? (props as DepositConfirmProps).source_name : '';
+
+  // Construct transactionData from available props for use in component logic
+  const transactionData = {
+    user_name: user_name_prop || '',
+    account_name: account_name || sourceAccount || '',
+    account_id: account_id_prop || 0,
+    account_currency: account_currency || '',
+    amount: amount || sourceAmount || '',
+    amount_eur: amount_eur_prop || 0,
+    category_id: category_id_prop || 0,
+    category_name: category_name_prop || budget_name,
+    budget_name: budget_name,
+    destination_id: destination_id_prop || 0,
+    destination_name: (props as WithdrawalConfirmProps | DepositConfirmProps).destination_name || destAccount || '',
+    date: propDate,
+    notes: propNotes,
+    source_id: source_id_prop || 0,
+    source_name: source_name_prop || sourceAccount || ''
+  };
   const sourceCurrency = isTransfer ? (props as TransferConfirmProps).sourceCurrency : '';
   const destCurrency = isTransfer ? (props as TransferConfirmProps).destCurrency : '';
   const sourceFee = isTransfer ? (props as TransferConfirmProps).sourceFee : '';
@@ -136,8 +186,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
 
   const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
   const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
-  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(transactionData.date));
-  const [notesInput, setNotesInput] = useState<string>('');
+  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(propDate));
+  const [notesInput, setNotesInput] = useState<string>(propNotes);
   const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
 
   // Show Telegram back button
@@ -155,8 +205,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
 
   // Sync local date/notes if parent transaction data changes
   useEffect(() => {
-    setDateInput(getDateInputValue(transactionData.date));
-  }, [transactionData.date]);
+    setDateInput(getDateInputValue(propDate));
+  }, [propDate]);
 
   const buildNotesSuggestion = () => {
     if (isTransfer) {
@@ -207,6 +257,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
       setNotesInput(suggestion);
       onNotesChange?.(suggestion);
     }
+  // Note: notesInput intentionally excluded from deps to prevent infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasUserEditedNotes,
     transactionData.notes,
@@ -222,9 +274,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     sourceCurrency,
     destCurrency,
     sourceFee,
-    destFee,
-    notesInput,
-    onNotesChange
+    destFee
   ]);
 
   const handleDateChange = (value: string) => {
@@ -251,7 +301,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
     if (isSubmitting) return;
 
     // Validate amount_eur is available (required for API submission)
-    if (!transactionData.amount_eur || transactionData.amount_eur === 0) {
+    if (!isTransfer && (!transactionData.amount_eur || transactionData.amount_eur === 0)) {
       const errorMsg = {
         type: 'error' as const,
         text: 'Currency conversion failed. Please retry or check your connection.'
@@ -314,7 +364,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
           category_id: transactionData.category_id,
           category_name: transactionData.category_name,
           budget_name: transactionData.budget_name || '',
-          destination_id: transactionData.destination_id,
+          destination_id: Number(transactionData.destination_id) || 0,
           destination_name: transactionData.destination_name || '',
           date: effectiveDateIso,
           notes: finalNotes,
@@ -331,7 +381,7 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
           amount_eur: transactionData.amount_eur || 0,
           category_id: transactionData.category_id,
           category_name: transactionData.category_name,
-          source_id: transactionData.source_id || 0,
+          source_id: Number(transactionData.source_id) || 0,
           source_name: transactionData.source_name || '',
           date: effectiveDateIso,
           notes: finalNotes,
@@ -339,8 +389,8 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
         } as DepositWebhookPayload;
       } else {
         // Transfer
-        const sourceAccountId = transactionData.source_id || transactionData.account_id || 0;
-        const destAccountId = transactionData.destination_id || 0;
+        const srcAccountId = Number(sourceAccountId) || 0;
+        const dstAccountId = Number(destAccountId) || 0;
 
         // Calculate exchange_rate with priority-based fallback
         const exchangeRate = (() => {
@@ -373,12 +423,12 @@ const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
           transactionType: 'transfer',
           user_name: transactionData.user_name || 'unknown',
           source_account_name: sourceAccount,
-          source_account_id: Number(sourceAccountId) || 0,
+          source_account_id: srcAccountId,
           source_account_currency: sourceCurrency?.toUpperCase() || 'EUR',
           source_amount: parseFloat(sourceAmount),
           source_fee: sourceFee ? parseFloat(sourceFee) : 0,
           destination_account_name: destAccount,
-          destination_account_id: Number(destAccountId) || 0,
+          destination_account_id: dstAccountId,
           destination_account_currency: destCurrency?.toUpperCase() || 'EUR',
           destination_amount: parseFloat(destAmount),
           destination_fee: destFee ? parseFloat(destFee) : 0,

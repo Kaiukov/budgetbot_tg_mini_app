@@ -106,12 +106,12 @@ function mockTelegram(page: Page) {
         viewportStableHeight: 900,
         headerColor: '#ffffff',
         backgroundColor: '#ffffff',
-        BackButton: { show() {}, hide() {}, onClick() {} },
-        MainButton: { setText() {}, onClick() {}, show() {}, hide() {}, enable() {}, disable() {}, showProgress() {}, hideProgress() {}, isVisible: false, isActive: true, isProgressVisible: false },
-        HapticFeedback: { impactOccurred() {}, notificationOccurred() {}, selectionChanged() {} },
-        ready() {},
-        expand() {},
-        close() {},
+        BackButton: { show() { }, hide() { }, onClick() { } },
+        MainButton: { setText() { }, onClick() { }, show() { }, hide() { }, enable() { }, disable() { }, showProgress() { }, hideProgress() { }, isVisible: false, isActive: true, isProgressVisible: false },
+        HapticFeedback: { impactOccurred() { }, notificationOccurred() { }, selectionChanged() { } },
+        ready() { },
+        expand() { },
+        close() { },
         showAlert: (message: string) => console.log('Telegram Alert:', message),
         showConfirm: (_msg: string, cb?: (confirmed: boolean) => void) => cb?.(true),
       },
@@ -146,7 +146,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
   test.beforeEach(async ({ page }) => {
     await mockTelegram(page);
     await installApiMocks(page);
-    page.on('dialog', (d) => d.accept().catch(() => {}));
+    page.on('dialog', (d) => d.accept().catch(() => { }));
     await page.goto('/');
     await page.waitForSelector('text=Deposit', { timeout: 5000 });
   });
@@ -321,6 +321,26 @@ test.describe('Deposit flow (mocked, fast)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click();
     await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
   });
+
+  test('Decline button cancels transaction and returns to home', async ({ page }) => {
+    // Navigate to confirmation page
+    await page.getByText('Deposit').first().click();
+    await page.getByText('O PUMP €').first().click();
+
+    await amountInput(page).fill('100');
+    await page.getByRole('button', { name: /Next|Continue|→/ }).click();
+
+    await page.getByText('Salary').first().click();
+    await page.getByRole('button', { name: 'Income' }).click();
+
+    await page.waitForSelector('text=Confirm Deposit', { timeout: 3000 });
+
+    // Click Decline
+    await page.getByRole('button', { name: 'Decline' }).click();
+
+    // Verify returned to home
+    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+  });
 });
 
 /**
@@ -334,4 +354,5 @@ test.describe('Deposit flow (mocked, fast)', () => {
  * ✅ Source selection changes
  * ✅ Exchange rate conversion display
  * ✅ Confirmation page data validation (amount, account, category, source, date, notes)
+ * ✅ Decline action cancels and returns home
  */
