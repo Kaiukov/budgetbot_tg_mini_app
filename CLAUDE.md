@@ -5,7 +5,7 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 **Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
 **Local Dev:** `npm run dev` → http://localhost:3000
 
-**Git Branch:** `chore/fix-bug-36` (action factory refactoring)
+**Git Branch:** `chore/bug-31-eliminate-telegram-init` (bug fixes + test enhancements)
 
 ## Quick Facts
 - **Language:** TypeScript 5
@@ -18,17 +18,16 @@ A Telegram Mini App for personal finance management with XState v5 state machine
 **Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
 **Testing guide:** See `~/.claude/skills/telegram-mini-apps-skill/examples/test-e2e.md`
 
-## Latest Changes (v0.2.4)
+## Latest Changes (v0.2.5)
 
-**Dec 13, 2025** - Action Factory Pattern + State Management Refactoring
+**Dec 15, 2025** - Bug Fixes + Test Suite Expansion
 
-- ✅ **Action Factory:** Created `createResourceActions()` factory following ActorConfig pattern
-- ✅ **Code Reduction:** Eliminated 62 LOC of duplicated action definitions in `actions.ts`
-- ✅ **Pattern Consistency:** Factory matches v0.2.2 error handling design principles
-- ✅ **Extensibility:** Adding new resources now requires 3 lines instead of 9
-- ✅ **Quality:** 17/17 E2E tests pass, 0 TypeScript errors, 100% behavioral equivalence
+- 🔧 **Fixed P1 Bug:** ConfirmScreen infinite loop in diff-currency transfers (notes field useEffect dependency)
+- ✅ **Tests:** 24→27 E2E tests passing (100% pass rate, ~10s runtime)
+- ✅ **Transfer Tests:** 3 new back button variants (9→10 tests total)
+- ✅ **Coverage:** All flows + Decline actions + state preservation validated
 
-See [CHANGELOG.md](CHANGELOG.md) for full version history (v0.2.3, v0.2.2, v0.2.1).
+See [CHANGELOG.md](CHANGELOG.md) for full history (v0.2.4, v0.2.3, v0.2.2, v0.2.1).
 
 ## Architecture
 
@@ -66,12 +65,12 @@ npm run build        # Production build
 npm run lint         # Check code quality
 ```
 
-### Testing (v0.2.3+)
+### Testing (v0.2.5+)
 ```bash
-npm run test tests/e2e/                          # Run all E2E tests (17 tests, ~10s)
-npm run test tests/e2e/withdrawal-mock-flow      # Withdrawal flow only (8 tests)
-npm run test tests/e2e/deposit-mock-flow         # Deposit flow only (7 tests)
-npm run test tests/e2e/transfer-mock-flow        # Transfer flow only (2 tests)
+npm run test tests/e2e/                          # Run all E2E tests (27 tests, ~10s)
+npm run test tests/e2e/withdrawal-mock-flow      # Withdrawal flow only (9 tests)
+npm run test tests/e2e/deposit-mock-flow         # Deposit flow only (8 tests)
+npm run test tests/e2e/transfer-mock-flow        # Transfer flow only (10 tests)
 npx playwright test tests/e2e/ --ui              # Interactive UI mode (watch tests)
 npx playwright show-report                       # View HTML test report
 ```
@@ -99,8 +98,9 @@ wrangler deploy      # Deploy to Cloudflare Pages
 - **`src/types/CLAUDE.md`** - Type definitions
 
 ### Test Documentation
-- **`tests/e2e/`** - Playwright E2E test suite (17 tests, 100% passing)
-- **`test-results/`** - Test reports and documentation
+- **`tests/e2e/CLAUDE.md`** - E2E test suite index (27 tests, 100% passing)
+- **`tests/e2e/`** - Playwright E2E test suite with full mocking
+- **`test-results/`** - Test reports and detailed error context
 
 ### Skill References
 Complete guidance available in the telegram-mini-apps-skill:

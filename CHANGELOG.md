@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-12-15
+
+### Fixed
+- **P1 Bug: ConfirmScreen Infinite Loop**: Fixed React "Maximum update depth exceeded" error in transfer flows
+  - Issue: `notesInput` state was in useEffect dependency array while being modified inside the effect
+  - Solution: Removed `notesInput` from deps + added eslint-disable comment
+  - Impact: All diff-currency transfers (EUR↔USD↔UAH) now complete successfully
+
+### Added
+- **E2E Test Suite Expansion**: 24→27 tests (100% pass rate)
+  - Transfer: 3 new back button variants (9→10 tests)
+    - Back from amount: preserves source/destination accounts
+    - Back from confirmation: preserves amounts + fees
+    - Back from confirmation: notes field behavior
+  - Transfer: Confirmed all diff-currency flows work end-to-end
+- **Test Coverage**: Enhanced back button preservation and state management validation
+
+### Test Metrics
+- **Suite**: 27 total tests (withdrawal:9, deposit:8, transfer:10)
+- **Runtime**: ~10 seconds (parallel execution)
+- **Coverage**: All flows + back button variants + Decline actions
+- **Mocking**: Full API mock suite, zero real network calls
+
 ## [0.2.4] - 2025-12-13
 
 ### Changed

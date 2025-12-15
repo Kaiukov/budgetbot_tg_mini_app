@@ -616,9 +616,16 @@ const BudgetMiniApp = () => {
       {withdrawalScreen === 'withdrawal-confirm' && (
         <ConfirmScreen
           transactionType="withdrawal"
+          user_name={user_name}
           account_name={machineContext.context.transaction.account}
+          account_id={machineContext.context.transaction.account_id}
+          account_currency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
+          amount_eur={machineContext.context.transaction.conversionAmount || parseFloat(machineContext.context.transaction.amount) || 0}
+          category_id={machineContext.context.transaction.category_id}
+          category_name={machineContext.context.transaction.category}
           budget_name={(machineContext.context.transaction as any).budget_name || ''}
+          destination_id={machineContext.context.transaction.destination_id}
           destination_name={
             (machineContext.context.transaction as any).destination_name ||
             (machineContext.context.transaction as any).comment ||
@@ -720,12 +727,18 @@ const BudgetMiniApp = () => {
       {depositScreen === 'deposit-confirm' && (
         <ConfirmScreen
           transactionType="deposit"
+          user_name={user_name}
           account_name={machineContext.context.transaction.account}
+          account_id={machineContext.context.transaction.account_id}
+          account_currency={machineContext.context.transaction.account_currency}
           amount={machineContext.context.transaction.amount}
+          amount_eur={machineContext.context.transaction.conversionAmount || parseFloat(machineContext.context.transaction.amount) || 0}
+          category_id={machineContext.context.transaction.category_id}
+          category_name={machineContext.context.transaction.category}
           budget_name={machineContext.context.transaction.budget_name}
           destination_name={machineContext.context.transaction.destination_name}
-          source_name={(machineContext.context.transaction as any).source_name}
-          source_id={(machineContext.context.transaction as any).source_id}
+          source_name={machineContext.context.transaction.source_name || ''}
+          source_id={machineContext.context.transaction.source_id}
           isSubmitting={(machineContext.context.transaction as any).isSubmitting || false}
           submitMessage={(machineContext.context.transaction as any).submitMessage || null}
           errors={(machineContext.context.transaction as any).errors}
@@ -843,8 +856,11 @@ const BudgetMiniApp = () => {
       {transferScreen === 'transfer-confirm' && (
         <ConfirmScreen
           transactionType="transfer"
+          user_name={user_name}
           sourceAccount={machineContext.context.transfer.source_account_name}
+          sourceAccountId={machineContext.context.transfer.source_account_id}
           destAccount={machineContext.context.transfer.destination_account_name}
+          destAccountId={machineContext.context.transfer.destination_account_id}
           sourceCurrency={machineContext.context.transfer.source_account_currency}
           destCurrency={machineContext.context.transfer.destination_account_currency}
           sourceAmount={machineContext.context.transfer.source_amount}

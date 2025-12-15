@@ -161,24 +161,24 @@ function mockTelegram(page: Page) {
         viewportStableHeight: 900,
         headerColor: '#ffffff',
         backgroundColor: '#ffffff',
-        BackButton: { show() {}, hide() {}, onClick() {} },
+        BackButton: { show() { }, hide() { }, onClick() { } },
         MainButton: {
-          setText() {},
-          onClick() {},
-          show() {},
-          hide() {},
-          enable() {},
-          disable() {},
-          showProgress() {},
-          hideProgress() {},
+          setText() { },
+          onClick() { },
+          show() { },
+          hide() { },
+          enable() { },
+          disable() { },
+          showProgress() { },
+          hideProgress() { },
           isVisible: false,
           isActive: true,
           isProgressVisible: false,
         },
-        HapticFeedback: { impactOccurred() {}, notificationOccurred() {}, selectionChanged() {} },
-        ready() {},
-        expand() {},
-        close() {},
+        HapticFeedback: { impactOccurred() { }, notificationOccurred() { }, selectionChanged() { } },
+        ready() { },
+        expand() { },
+        close() { },
         showAlert: (message: string) => console.log('Telegram Alert:', message),
         showConfirm: (_msg: string, cb?: (confirmed: boolean) => void) => cb?.(true),
       },
@@ -230,10 +230,20 @@ async function installApiMocks(page: Page) {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockBalance) })
   );
 
-  // Transactions list (after submit)
-  await page.route('**/api/v1/transactions**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockTransactions) })
-  );
+  // Transactions list (after submit) - handles GET only
+  // POST is handled separately in tests that need to capture the payload
+  await page.route('**/api/v1/transactions**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockTransactions) });
+    } else {
+      // For POST/PUT/DELETE, return success
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { id: 'mock-123', type: 'transactions' } })
+      });
+    }
+  });
 
   // Webhook / submission endpoints (swallow)
   await page.route('**/webhook/**', (route) =>
@@ -248,7 +258,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
   test.beforeEach(async ({ page }) => {
     await mockTelegram(page);
     await installApiMocks(page);
-    page.on('dialog', (dialog) => dialog.accept().catch(() => {}));
+    page.on('dialog', (dialog) => dialog.accept().catch(() => { }));
     await page.goto('/');
     await page.waitForSelector('text=Withdrawal', { timeout: 5000 });
   });
@@ -472,6 +482,36 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await page.getByRole('button', { name: 'Confirm' }).click();
     await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
   });
+
+  test('Decline button cancels transaction and returns to home', async ({ page }) => {
+    let postCalled = false;
+
+    // Monitor POST calls via request event
+    page.on('request', (request) => {
+      if (request.url().includes('/api/v1/transactions') && request.method() === 'POST') {
+        postCalled = true;
+      }
+    });
+
+    // Navigate to confirmation page
+    await page.getByText('Withdrawal').first().click();
+    await page.getByText('O PUMP €').first().click();
+
+    await amountInput(page).fill('25');
+    await page.getByRole('button', { name: /Next|Continue|→/ }).click();
+
+    await page.getByText("Підписки та зв'язок").click();
+    await page.getByRole('button', { name: 'Google one' }).click();
+
+    await page.waitForSelector('text=Confirm Withdrawal', { timeout: 3000 });
+
+    // Click Decline
+    await page.getByRole('button', { name: 'Decline' }).click();
+
+    // Verify returned to home
+    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    expect(postCalled).toBe(false);
+  });
 });
 
 /**
@@ -487,4 +527,5 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
  * ✅ Confirmation page data validation (amount, account, category, destination, date, notes)
  * ✅ All three account types (EUR, USD, UAH)
  * ✅ Multi-account sequential withdrawal flow
+ * ✅ Decline action cancels and returns home without posting
  */
