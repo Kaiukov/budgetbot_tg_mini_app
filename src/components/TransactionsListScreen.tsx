@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { syncService } from '../services/sync';
+import { fetchTransactions } from '../services/sync/index';
 import type { DisplayTransaction, PaginationMeta } from '../types/transaction';
 import TransactionCard from './TransactionCard';
 import { layouts, gradients } from '../theme/dark';
@@ -42,14 +42,14 @@ const TransactionsListScreen: React.FC<TransactionsListScreenProps> = ({
       setLoading(true);
       setError(null);
 
-      const response = await syncService.fetchTransactions(pagination.current_page, LIMIT);
+      const result = await fetchTransactions(pagination.current_page, LIMIT);
 
-      if (response.error) {
-        setError(response.error);
+      if (result.error) {
+        setError(result.error);
         setTransactions([]);
       } else {
-        setTransactions(response.transactions || []);
-        setPagination(response.pagination);
+        setTransactions(result.transactions);
+        setPagination(result.pagination);
       }
 
       setLoading(false);

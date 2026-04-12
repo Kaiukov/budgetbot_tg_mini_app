@@ -1,14 +1,19 @@
+import { useState, useEffect } from 'react';
 import { Search, TrendingDown, TrendingUp, DollarSign, CreditCard, Home, Heart, ChevronRight, Bug, ArrowRightLeft } from 'lucide-react';
-import TransactionCard from './TransactionCard';
+import { syncService } from '../services/sync';
 import type { DisplayTransaction } from '../types/transaction';
+import { fetchTransactions } from '../services/sync/index';
+import { transactionCache, TRANSACTION_CACHE_KEYS } from '../utils/cache';
+import TransactionCard from './TransactionCard';
 
 interface HomeScreenProps {
-  userFullName?: string;
-  userPhotoUrl?: string | null;
-  userInitials?: string;
-  userBio?: string;
-  isAvailable?: boolean;
-  onNavigate?: (screen: string) => void;
+  userFullName: string;        // Full name for display (e.g., "Oleksandr 🇺🇦 Kaiukov")
+  userPhotoUrl: string | null;
+  userInitials: string;
+  userBio: string;
+  isAvailable: boolean;
+  onLogout: () => void;
+  onNavigate: (screen: string) => void;
 }
 
 const features = [
@@ -20,19 +25,78 @@ const features = [
 ];
 
 const HomeScreen: React.FC<HomeScreenProps> = ({
-  userFullName = 'Budget App',
-  userPhotoUrl = null,
-  userInitials = 'BA',
-  userBio = 'Financial Management',
-  isAvailable = false,
-  onNavigate = () => {}
+  userFullName,
+  userPhotoUrl,
+  userInitials,
+  userBio,
+  isAvailable,
+  onLogout,
+  onNavigate
 }) => {
-  const latestTransactions: DisplayTransaction[] = [];
-  const totalBalance = 0;
+  const [latestTransactions, setLatestTransactions] = useState<DisplayTransaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [totalBalance, setTotalBalance] = useState(0);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try {
+        const balance = await syncService.fetchCurrentBalance();
+        setTotalBalance(balance);
+      } catch (error) {
+        console.warn('Failed to fetch total balance:', error);
+      }
+    };
+
+    if (isAvailable) {
+      fetchBalance();
+    }
+  }, [isAvailable]);
+
+  // Fetch latest 10 transactions on component mount with caching
+  useEffect(() => {
+    const loadLatestTransactions = async () => {
+      setLoadingTransactions(true);
+
+      // Try cache first
+      const cached = transactionCache.get(TRANSACTION_CACHE_KEYS.HOME_LATEST);
+      if (cached) {
+        setLatestTransactions(cached);
+        setLoadingTransactions(false);
+        return;
+      }
+
+      // Cache miss - fetch from API
+      try {
+        const result = await fetchTransactions(1, 10);
+        if (!result.error) {
+          setLatestTransactions(result.transactions);
+          transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
+        }
+      } catch (error) {
+        console.warn('Failed to load latest transactions:', error);
+      } finally {
+        setLoadingTransactions(false);
+      }
+    };
+
+    if (isAvailable) {
+      loadLatestTransactions();
+    }
+  }, [isAvailable]);
 
   return (
-    <div className="min-h-screen text-white bg-gradient-to-b from-slate-900 to-slate-800">
+    <div className="min-h-screen text-white">
       <div className="flex flex-col items-center pt-8 pb-6 px-4">
+        <div className="w-full flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+          >
+            Logout
+          </button>
+        </div>
+
         {/* User Avatar */}
         <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
           {userPhotoUrl ? (
@@ -50,15 +114,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <h1 className="text-2xl font-bold text-white mb-1 bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
           {userFullName}
         </h1>
-        {!isAvailable ? (
-          <p className="text-xs text-gray-400 text-center px-4 mt-1">
-            Browser Mode - Limited Features
-          </p>
-        ) : userBio ? (
-          <p className="text-xs text-gray-400 text-center px-4 mt-1">
-            {userBio}
-          </p>
-        ) : null}
+        <p className="text-xs text-gray-400 text-center px-4 mt-1">
+          {userBio}
+        </p>
       </div>
 
       {/* Balance Card */}
@@ -94,7 +152,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         <div className="grid grid-cols-3 gap-2">
           {/* Expense Card */}
           <div
-            onClick={() => onNavigate?.('expense-accounts')}
+            onClick={() => onNavigate('accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(239, 68, 68, 0.08)'
@@ -108,12 +166,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             >
               <TrendingDown size={20} style={{ color: '#EF4444' }} />
             </div>
-            <span className="text-xs font-medium text-white text-center">Expense</span>
+            <span className="text-xs font-medium text-white text-center">Withdrawal</span>
           </div>
 
-          {/* Income Card */}
+          {/* Deposit Card */}
           <div
-            onClick={() => onNavigate?.('income-accounts')}
+            onClick={() => onNavigate('deposit-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.08)'
@@ -127,12 +185,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             >
               <TrendingUp size={20} style={{ color: '#10B981' }} />
             </div>
-            <span className="text-xs font-medium text-white text-center">Income</span>
+            <span className="text-xs font-medium text-white text-center">Deposit</span>
           </div>
 
           {/* Transfer Card */}
           <div
-            onClick={() => onNavigate?.('transfer-source-accounts')}
+            onClick={() => onNavigate('transfer-source-accounts')}
             className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-3 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex flex-col items-center justify-center shadow-sm"
             style={{
               boxShadow: '0 4px 12px rgba(59, 130, 246, 0.08)'
@@ -157,7 +215,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           <h2 className="text-sm font-semibold text-gray-300">Transactions</h2>
           {latestTransactions.length > 0 && (
             <button
-              onClick={() => onNavigate?.('transactions')}
+              onClick={() => onNavigate('transactions')}
               className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
             >
               View all
@@ -165,8 +223,20 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </div>
 
+        {/* Loading State */}
+        {loadingTransactions && (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="h-20 bg-slate-800/40 border border-slate-700/50 rounded-xl animate-pulse"
+              />
+            ))}
+          </div>
+        )}
+
         {/* Empty State */}
-        {latestTransactions.length === 0 && (
+        {!loadingTransactions && latestTransactions.length === 0 && (
           <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-6 text-center">
             <p className="text-sm text-gray-400">No transactions yet</p>
             <p className="text-xs text-gray-500 mt-1">Start by creating your first transaction</p>
@@ -174,15 +244,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
 
         {/* Transactions List */}
-        {latestTransactions.length > 0 && (
+        {!loadingTransactions && latestTransactions.length > 0 && (
           <div className="space-y-2">
             {latestTransactions.slice(0, 10).map((transaction) => (
               <TransactionCard
                 key={transaction.id}
                 transaction={transaction}
                 onClick={() => {
-                  onNavigate?.('transaction-detail');
+                  // Store selected transaction ID in sessionStorage for navigation
                   sessionStorage.setItem('selectedTransactionId', transaction.id);
+                  onNavigate('transaction-detail');
                 }}
               />
             ))}
@@ -191,7 +262,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       </div>
 
       {/* Features */}
-      <div className="px-4 pb-6">
+      <div className="px-4">
         <h2 className="text-sm font-semibold mb-3 text-gray-300 px-1">My Features</h2>
 
         <div className="space-y-2">
@@ -200,7 +271,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
             return (
               <div
                 key={idx}
-                onClick={() => feature.route && onNavigate?.(feature.route)}
+                onClick={() => feature.route && onNavigate(feature.route)}
                 className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3.5 hover:bg-slate-800/60 hover:border-slate-600 transition-all cursor-pointer active:scale-98 flex items-center shadow-sm"
                 style={{
                   boxShadow: feature.route ? `0 4px 12px ${feature.color}15` : 'none'

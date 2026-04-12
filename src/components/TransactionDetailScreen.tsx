@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { syncService } from '../services/sync';
+import { fetchTransactionById } from '../services/sync/index';
 import type { DisplayTransaction, TransactionData } from '../types/transaction';
 import {
   formatTransactionForDisplay,
@@ -42,13 +42,13 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
       setLoading(true);
       setError(null);
 
-      const response = await syncService.fetchTransactionById(transactionId);
+      const result = await fetchTransactionById(transactionId);
 
-      if (response.error) {
-        setError(response.error);
+      if (result.error) {
+        setError(result.error);
       } else {
-        setTransaction(response.transaction || null);
-        setRawData(response.rawData || null);
+        setTransaction(result.transaction || null);
+        setRawData(result.rawData || null);
       }
 
       setLoading(false);
@@ -155,33 +155,33 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
         </div>
 
         {/* Category/Account Info based on type */}
-        {transaction.type === 'expense' && (
+        {transaction.type === 'withdrawal' && (
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">From Account</p>
-              <p className="text-sm font-medium text-white">{transaction.sourceName}</p>
+              <p className="text-sm font-medium text-white">{transaction.source_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Category</p>
               <p className="text-sm font-medium text-white">
-                {transaction.categoryName || 'Uncategorized'}
+                {transaction.category_name || 'Uncategorized'}
               </p>
             </div>
           </>
         )}
 
-        {transaction.type === 'income' && (
+        {transaction.type === 'deposit' && (
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">To Account</p>
-              <p className="text-sm font-medium text-white">{transaction.destinationName}</p>
+              <p className="text-sm font-medium text-white">{transaction.destination_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Category</p>
               <p className="text-sm font-medium text-white">
-                {transaction.categoryName || 'Uncategorized'}
+                {transaction.category_name || 'Uncategorized'}
               </p>
             </div>
           </>
@@ -191,12 +191,12 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
           <>
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">From Account</p>
-              <p className="text-sm font-medium text-white">{transaction.sourceName}</p>
+              <p className="text-sm font-medium text-white">{transaction.source_name}</p>
             </div>
 
             <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">To Account</p>
-              <p className="text-sm font-medium text-white">{transaction.destinationName}</p>
+              <p className="text-sm font-medium text-white">{transaction.destination_name}</p>
             </div>
           </>
         )}
@@ -209,17 +209,17 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
               className="text-lg font-semibold"
               style={{
                 color:
-                  displayData.type === 'income'
+                  displayData.type === 'deposit'
                     ? '#10B981'
-                    : displayData.type === 'expense'
+                    : displayData.type === 'withdrawal'
                       ? '#EF4444'
                       : '#3B82F6',
               }}
             >
               {displayData.amount}
             </p>
-            {shouldShowForeignAmount(transaction) && displayData.foreignAmount && (
-              <p className="text-sm text-gray-400">{displayData.foreignAmount}</p>
+            {shouldShowForeignAmount(transaction) && displayData.amount_eur && (
+              <p className="text-sm text-gray-400">{displayData.amount_eur}</p>
             )}
           </div>
         </div>
@@ -235,7 +235,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = ({
         {/* User/Tags */}
         <div className="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl px-4 py-3">
           <p className="text-xs text-gray-400 mb-1">Added by</p>
-          <p className="text-sm font-medium text-white">{transaction.username}</p>
+          <p className="text-sm font-medium text-white">{transaction.user_name}</p>
         </div>
       </div>
 

@@ -1,184 +1,218 @@
 /**
- * Dual-Layer Cache Utility
- * Provides memory (fast) + localStorage (persistent) caching with configurable TTL
- *
- * Usage:
- *   const cache = new DualLayerCache<number>({ ttl: 3600000, prefix: 'exchange_rate_' });
- *   cache.set('USD:EUR', 0.92);
- *   const rate = cache.get('USD:EUR'); // returns 0.92 or null if expired
+ * Generic Cache Utility
+ * Provides dual-layer caching (memory + localStorage) with configurable expiry
+ * Used for exchange rates (1H) and categories (1Min)
  */
 
-import type { CacheEntry, CacheConfig } from '../services/sync/types';
+export interface CacheEntry<T> {
+ data: T;
+ timestamp: number;
+}
 
-export class DualLayerCache<T> {
-  private memory: Map<string, CacheEntry<T>> = new Map();
-  private config: CacheConfig;
+const enableDebugLogs = typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ENABLE_DEBUG_LOGS === 'true';
+const debugLog = (...args: any[]) => {
+  if (enableDebugLogs) {
+    console.log(...args);
+  }
+};
 
-  constructor(config: CacheConfig) {
-    this.config = {
-      useLocalStorage: true,
-      ...config
-    };
+/**
+ * Safe JSON stringifier that handles Unicode surrogate pairs correctly
+ * Prevents "no low surrogate in string" errors by sanitizing strings
+ */
+function safeJsonStringify(obj: any): string {
+  // Custom replacer function to sanitize strings with potential surrogate pair issues
+  const replacer = (_key: string, value: any): any => {
+    if (typeof value === 'string') {
+      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
+      return value
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+    }
+    return value;
+  };
+
+  return JSON.stringify(obj, replacer);
+}
+
+export class Cache<T> {
+  private memoryCache: Map<string, CacheEntry<T>> = new Map();
+  private readonly expiryMs: number;
+  private readonly storageKeyPrefix: string;
+
+  /**
+   * Create a new cache instance
+   * @param expiryMs - Cache expiry time in milliseconds
+   * @param storageKeyPrefix - Prefix for localStorage keys
+   */
+  constructor(expiryMs: number, storageKeyPrefix: string) {
+    this.expiryMs = expiryMs;
+    this.storageKeyPrefix = storageKeyPrefix;
   }
 
   /**
-   * Retrieve value from cache (memory → localStorage fallback)
-   * Returns null if key not found or entry expired
+   * Get value from cache (memory first, then localStorage)
+   * Returns null if cache miss or expired
    */
   get(key: string): T | null {
-    const normalizedKey = this.normalizeKey(key);
+    const now = Date.now();
 
-    // Layer 1: Check memory cache first (fastest)
-    const memEntry = this.memory.get(normalizedKey);
-    if (memEntry && this.isNotExpired(memEntry.timestamp)) {
-      console.log(`💾 Cache HIT (memory): ${normalizedKey}`);
-      return memEntry.data;
+    // Check memory cache first
+    const memoryEntry = this.memoryCache.get(key);
+    if (memoryEntry && (now - memoryEntry.timestamp) < this.expiryMs) {
+      debugLog(`💾 Cache HIT (memory): ${this.storageKeyPrefix}${key}`);
+      return memoryEntry.data;
     }
 
-    // Layer 2: Check localStorage fallback
-    if (this.config.useLocalStorage) {
-      try {
-        const storageKey = this.prefixKey(normalizedKey);
-        const stored = localStorage.getItem(storageKey);
+    // Check localStorage as fallback
+    try {
+      const storageKey = `${this.storageKeyPrefix}${key}`;
+      const cached = localStorage.getItem(storageKey);
 
-        if (stored) {
-          const parsed = JSON.parse(stored) as CacheEntry<T>;
-          if (this.isNotExpired(parsed.timestamp)) {
-            // Restore to memory for future hits
-            this.memory.set(normalizedKey, parsed);
-            console.log(`💾 Cache HIT (localStorage): ${normalizedKey}`);
-            return parsed.data;
-          } else {
-            // Clean up expired entry
-            localStorage.removeItem(storageKey);
-            console.log(`💾 Cache EXPIRED: ${normalizedKey}`);
-          }
+      if (cached) {
+        const entry = JSON.parse(cached) as CacheEntry<T>;
+
+        if ((now - entry.timestamp) < this.expiryMs) {
+          debugLog(`💾 Cache HIT (localStorage): ${this.storageKeyPrefix}${key}`);
+          // Restore to memory cache for faster access
+          this.memoryCache.set(key, entry);
+          return entry.data;
+        } else {
+          // Cache expired, remove it
+          localStorage.removeItem(storageKey);
+          this.memoryCache.delete(key);
+          debugLog(`💾 Cache EXPIRED: ${this.storageKeyPrefix}${key}`);
         }
-      } catch (e) {
-        console.warn(`💾 Cache read error for ${normalizedKey}:`, e);
       }
+    } catch (error) {
+      console.warn(`⚠️ Error reading cache from localStorage:`, error);
     }
 
-    // Cache miss - return null (caller should fetch from API)
-    console.log(`💾 Cache MISS: ${normalizedKey}`);
+    debugLog(`💾 Cache MISS: ${this.storageKeyPrefix}${key}`);
     return null;
   }
 
   /**
-   * Store value in cache (both memory and localStorage)
+   * Set value in cache (memory + localStorage)
    */
-  set(key: string, value: T): void {
-    const normalizedKey = this.normalizeKey(key);
+  set(key: string, data: T): void {
     const entry: CacheEntry<T> = {
-      data: value,
+      data,
       timestamp: Date.now()
     };
 
-    // Store in memory (always)
-    this.memory.set(normalizedKey, entry);
+    // Store in memory cache
+    this.memoryCache.set(key, entry);
 
-    // Store in localStorage if enabled
-    if (this.config.useLocalStorage) {
-      try {
-        const storageKey = this.prefixKey(normalizedKey);
-        localStorage.setItem(storageKey, JSON.stringify(entry));
-        const expiryMinutes = Math.round(this.config.ttl / 60000);
-        console.log(`💾 Cached (${expiryMinutes}min): ${normalizedKey}`);
-      } catch (e) {
-        console.warn(`💾 Cache write error for ${normalizedKey}:`, e);
-      }
-    } else {
-      console.log(`💾 Cached (memory only): ${normalizedKey}`);
+    // Store in localStorage for persistence
+    try {
+      const storageKey = `${this.storageKeyPrefix}${key}`;
+      localStorage.setItem(storageKey, safeJsonStringify(entry));
+      debugLog(`💾 Cache SET: ${this.storageKeyPrefix}${key} (expires in ${this.expiryMs / 1000}s)`);
+    } catch (error) {
+      console.warn(`⚠️ Error saving cache to localStorage:`, error);
     }
   }
 
   /**
-   * Check if entry exists and is not expired
-   */
-  isExpired(key: string): boolean {
-    const normalizedKey = this.normalizeKey(key);
-    const entry = this.memory.get(normalizedKey);
-    if (!entry) return true;
-    return !this.isNotExpired(entry.timestamp);
-  }
-
-  /**
-   * Delete specific cache entry from both layers
+   * Clear specific cache entry
    */
   delete(key: string): void {
-    const normalizedKey = this.normalizeKey(key);
+    this.memoryCache.delete(key);
 
-    // Remove from memory
-    this.memory.delete(normalizedKey);
-
-    // Remove from localStorage
-    if (this.config.useLocalStorage) {
-      try {
-        const storageKey = this.prefixKey(normalizedKey);
-        localStorage.removeItem(storageKey);
-        console.log(`💾 Deleted: ${normalizedKey}`);
-      } catch (e) {
-        console.warn(`💾 Cache delete error for ${normalizedKey}:`, e);
-      }
+    try {
+      const storageKey = `${this.storageKeyPrefix}${key}`;
+      localStorage.removeItem(storageKey);
+      debugLog(`💾 Cache DELETED: ${this.storageKeyPrefix}${key}`);
+    } catch (error) {
+      console.warn(`⚠️ Error deleting cache from localStorage:`, error);
     }
   }
 
   /**
-   * Clear all cached entries from both layers
+   * Clear all cache entries
    */
   clear(): void {
-    const size = this.memory.size;
-    this.memory.clear();
+    this.memoryCache.clear();
 
-    if (this.config.useLocalStorage && this.config.prefix) {
-      try {
-        const prefix = this.config.prefix;
-        const keysToDelete: string[] = [];
-
-        // Find all keys with this prefix
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key?.startsWith(prefix)) {
-            keysToDelete.push(key);
-          }
+    try {
+      // Clear all localStorage entries with this prefix
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.storageKeyPrefix)) {
+          keysToRemove.push(key);
         }
-
-        // Delete them
-        keysToDelete.forEach(key => localStorage.removeItem(key));
-        console.log(`💾 Cleared ${keysToDelete.length} entries`);
-      } catch (e) {
-        console.warn('💾 Cache clear error:', e);
       }
-    } else {
-      console.log(`💾 Cleared ${size} memory entries`);
+
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      debugLog(`💾 Cache CLEARED: ${this.storageKeyPrefix}* (${keysToRemove.length} entries)`);
+    } catch (error) {
+      console.warn(`⚠️ Error clearing cache from localStorage:`, error);
     }
   }
 
   /**
-   * Check if value is not expired based on timestamp
-   * TTL is configured in milliseconds
+   * Get cache statistics
    */
-  private isNotExpired(timestamp: number): boolean {
-    const elapsed = Date.now() - timestamp;
-    return elapsed < this.config.ttl;
+  getStats(): { memorySize: number; expiryMs: number; prefix: string } {
+    return {
+      memorySize: this.memoryCache.size,
+      expiryMs: this.expiryMs,
+      prefix: this.storageKeyPrefix
+    };
   }
+}
 
-  /**
-   * Normalize cache key to uppercase for consistency
-   * Prevents "USD" vs "usd" cache misses
-   */
-  private normalizeKey(key: string): string {
-    return key.toUpperCase();
-  }
+/**
+ * Transaction Cache
+ * Provides 5-minute caching for transaction data with proactive refresh
+ */
 
-  /**
-   * Add prefix to key for localStorage storage
-   * Format: "prefix:KEY"
-   */
-  private prefixKey(key: string): string {
-    if (this.config.prefix) {
-      return `${this.config.prefix}${key}`;
+import type { DisplayTransaction } from '../types/transaction';
+import { fetchTransactions } from '../services/sync/index';
+
+// Transaction cache instance (5-minute TTL)
+export const transactionCache = new Cache<DisplayTransaction[]>(
+  5 * 60 * 1000, // 5 minutes
+  'firefly_transactions_'
+);
+
+// Cache key constants
+export const TRANSACTION_CACHE_KEYS = {
+  HOME_LATEST: 'home_latest',
+} as const;
+
+/**
+ * Refresh home screen transaction cache
+ * Call this after successful transaction create/edit/delete
+ *
+ * @returns true if cache was refreshed successfully
+ */
+export async function refreshHomeTransactionCache(): Promise<boolean> {
+  try {
+    debugLog('🔄 Refreshing transaction cache...');
+    const result = await fetchTransactions(1, 10);
+
+    if (!result.error && result.transactions.length >= 0) {
+      transactionCache.set(TRANSACTION_CACHE_KEYS.HOME_LATEST, result.transactions);
+      debugLog('✅ Transaction cache refreshed with', result.transactions.length, 'transactions');
+      return true;
     }
-    return key;
+
+    console.warn('⚠️ Failed to refresh cache:', result.error);
+    return false;
+  } catch (error) {
+    console.error('❌ Error refreshing transaction cache:', error);
+    return false;
   }
+}
+
+/**
+ * Clear transaction cache
+ * Use when needed for manual cache invalidation
+ */
+export function clearTransactionCache(): void {
+  transactionCache.clear();
+  debugLog('🗑️ Transaction cache cleared');
 }

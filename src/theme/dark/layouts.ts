@@ -4,8 +4,8 @@
  */
 
 export const layouts = {
-  // Screen container
-  screen: 'min-h-screen text-white',
+  // Screen container - absolute positioning to prevent rendering under other elements
+  screen: 'absolute inset-0 min-h-screen text-white overflow-y-auto',
 
   // Header bar (safe area handled by parent container) - Universal pattern for all screens
   header: 'flex items-center justify-between px-4 pt-8 pb-6',

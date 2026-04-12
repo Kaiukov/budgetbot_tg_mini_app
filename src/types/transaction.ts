@@ -91,30 +91,30 @@ export interface FireflyTransactionResponse {
  */
 export interface DisplayTransaction {
   id: string;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'deposit' | 'withdrawal' | 'transfer';
   date: string;
 
   // Primary amount info
   amount: number;
   currency: string;
-  currencySymbol: string;
+  currency_symbol: string;
 
   // For transfers - secondary amount info
-  foreignAmount?: number;
-  foreignCurrency?: string;
-  foreignCurrencySymbol?: string;
+  amount_eur?: number;
+  foreign_currency?: string;
+  foreign_currency_symbol?: string;
 
   // Account/Category
-  categoryName?: string;
-  sourceName?: string;
-  destinationName?: string;
+  category_name?: string;
+  source_name?: string;
+  destination_name?: string;
 
   // Details
   description: string;
-  username: string;
+  user_name: string;
 
   // For navigation/editing
-  journalId: string | number;
+  journal_id: string | number;
 }
 
 /**

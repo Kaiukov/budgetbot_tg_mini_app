@@ -1,21 +1,40 @@
-# Source Code (`src`)
+### CLAUDE.md
 
-This directory contains the core source code for the Budget Mini App, a React application built with TypeScript and Vite.
+BudgetMiniApp.tsx - Router that renders screens from machine state.
+    - BudgetMiniApp "Maps machine context to Home/flows/transactions/debug screens"
 
-## Root Files
+main.tsx - Application bootstrapper.
+    - main "Initializes Telegram service, providers, and mounts React"
 
-- **[BudgetMiniApp.tsx](BudgetMiniApp.tsx)**: The main application component. It manages the application's state, screen navigation (routing), and orchestrates data fetching and UI rendering.
-- **[main.tsx](main.tsx)**: The entry point of the application. It renders the root `BudgetMiniApp` component and performs initial setup for the Telegram Mini App environment.
-- **[index.css](index.css)**: Global stylesheet, including Tailwind CSS setup and base styles.
-- **[vite-env.d.ts](vite-env.d.ts)**: TypeScript declarations for Vite environment variables.
+index.css - Global styling entry.
+    - Base Tailwind resets and theme primitives
 
-## Directories
+vite-env.d.ts - Vite ambient type declarations.
+    - Defines `import.meta.env` typing for build
 
-- **[assets/](assets/)**: Contains static assets, such as custom SVG icons.
-- **[components/](components/)**: Home to all React components, which are organized by screens (e.g., `HomeScreen`, `AccountsScreen`) and reusable UI elements (e.g., `TransactionCard`).
-- **[config/](config/)**: Stores static configuration files, like `categories.json` which defines rules for transaction categories.
-- **[hooks/](hooks/)**: Contains custom React hooks that encapsulate and manage stateful logic, such as fetching user data (`useTelegramUser`). The legacy transaction form hook was removed in preparation for the new expense-flow store.
-- **[services/](services/)**: Includes services for interacting with external APIs. It's responsible for all communication with the Firefly III API, a custom backend sync service, and the Telegram Mini App API. See `services/CLAUDE.md` for more details.
-- **[theme/](theme/)**: Contains the application's visual styling and theme configurations, including a systematic color engine and dark mode specific utilities. See `theme/CLAUDE.md` for more details.
-- **[types/](types/)**: Defines TypeScript types and interfaces used throughout the application, ensuring data consistency and type safety. See `types/CLAUDE.md` for more details.
-- **[utils/](utils/)**: A collection of miscellaneous helper functions for tasks like data formatting, caching, and other shared logic. See `utils/CLAUDE.md` for more details.
+components/CLAUDE.md - Screen and UI component index.
+    - Home/flow screens, cards, buttons, icons overview
+
+machines/CLAUDE.md - State machine documentation.
+    - budgetMachine, actors, actions, types summaries
+
+services/CLAUDE.md - Sync/Telegram service map.
+    - Facades, gateway, API clients, FX/cache utilities
+
+utils/CLAUDE.md - Helper functions reference.
+    - Cache, currency, category, transaction formatting utilities
+
+types/CLAUDE.md - Shared type definitions.
+    - Telegram WebApp types and transaction domain models
+
+theme/CLAUDE.md - Theme tokens and palettes.
+    - claude-code palette + dark theme utilities
+
+hooks/ - Custom React hooks (see source for specifics).
+    - Data fetching and machine integration helpers
+
+context/ - BudgetMachine context provider.
+    - Persists machine state to localStorage and exposes hook
+
+config/actorTimeouts.ts - Actor timeout constants.
+    - DATA_FETCH/CRUD_OPERATION/HEALTH_CHECK values

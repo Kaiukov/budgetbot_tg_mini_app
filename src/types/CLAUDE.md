@@ -1,7 +1,13 @@
-# Types
+### CLAUDE.md
 
-This directory contains TypeScript type definitions and interfaces used throughout the application, ensuring data consistency and type safety.
+telegram.d.ts - Telegram Mini App type surface.
+    - TelegramWebApp "WebApp API contract (initData, buttons, haptics)"
+    - TelegramWebAppUser "User payload returned from initDataUnsafe"
+    - ThemeParams/ViewportData/etc. "Typed theme and viewport metadata"
 
-**[telegram.d.ts](telegram.d.ts)**: Provides comprehensive type definitions for the Telegram Mini App API. This includes interfaces for the `WebApp` object, user data, theme parameters, and various API methods, enabling type-safe interaction with the Telegram client.
-
-**[transaction.ts](transaction.ts)**: Defines all types and interfaces related to financial transactions from the Firefly III API. It includes detailed structures for API responses (`FireflyTransactionResponse`), normalized data for UI display (`DisplayTransaction`), and payloads for updating transactions (`UpdateTransactionRequest`).
+transaction.ts - Firefly transaction domain models.
+    - FireflyTransactionResponse "Raw API response shape"
+    - DisplayTransaction "Normalized UI-ready transaction"
+    - FireflyCreateTransactionRequest "Payload for creating transactions"
+    - UpdateTransactionRequest "Payload for editing transactions"
+    - TransactionType/TransactionEntry/etc. "Core discriminated unions"

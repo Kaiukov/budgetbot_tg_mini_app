@@ -12,8 +12,9 @@ interface AccountsScreenProps {
   accountsError: string | null;
   title?: string;
   isAvailable?: boolean;
+  excludeAccountId?: string | number;
   onBack: () => void;
-  onSelectAccount: (accountName: string) => void;
+  onSelectAccount: (accountName: string, accountId?: string | number, currency?: string, user_name?: string) => void;
   onRetry: () => void;
 }
 
@@ -23,10 +24,15 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
   accountsError,
   title = 'Select Account',
   isAvailable,
+  excludeAccountId,
   onBack,
   onSelectAccount,
   onRetry
 }) => {
+  // Filter out excluded account
+  const filteredAccounts = excludeAccountId
+    ? accounts.filter(acc => String(acc.account_id) !== String(excludeAccountId))
+    : accounts;
   // Show Telegram back button
   useEffect(() => {
     telegramService.showBackButton(onBack);
@@ -66,23 +72,16 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
         )}
 
         {/* Accounts List */}
-        {!accountsLoading && !accountsError && accounts.length > 0 && (
+        {!accountsLoading && !accountsError && filteredAccounts.length > 0 && (
           <div className={layouts.listContainer}>
-            {accounts.map((account) => {
+            {filteredAccounts.map((account) => {
               const color = getAccountColor(account.account_currency, account.account_name);
               const Icon = getAccountIcon(account.account_currency, account.account_name);
-              const usageText = account.user_has_used === false
-                ? 'Not used yet'
-                : `Used ${account.usage_count}`;
-              const subtitleParts = [
-                usageText,
-                formatCurrency(account.current_balance, account.account_currency)
-              ].filter(Boolean);
 
               return (
                 <div
                   key={account.account_id}
-                  onClick={() => onSelectAccount(account.account_name)}
+                  onClick={() => onSelectAccount(account.account_name, account.account_id, account.account_currency, account.user_name)}
                   className={`${cardStyles.listItem} flex items-center`}
                 >
                   <div
@@ -92,16 +91,9 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
                     <Icon size={20} style={{ color }} />
                   </div>
                   <div className={cardStyles.textWrapper}>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
-                      {account.user_has_used === false && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300">
-                          Unused
-                        </span>
-                      )}
-                    </div>
+                    <h3 className="font-medium text-white text-sm leading-tight">{account.account_name}</h3>
                     <p className="text-xs text-gray-400 mt-0.5 leading-tight">
-                      {subtitleParts.join(' • ')}
+                      Used {account.usage_count} • {formatCurrency(account.current_balance, account.account_currency)}
                     </p>
                   </div>
                   <ChevronRight size={16} className={cardStyles.chevron} />
@@ -112,7 +104,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = ({
         )}
 
         {/* Empty State */}
-        {!accountsLoading && !accountsError && accounts.length === 0 && (
+        {!accountsLoading && !accountsError && filteredAccounts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8">
             <CreditCard size={48} className="text-gray-600 mb-3" />
             <p className="text-gray-400 text-sm">No accounts found</p>

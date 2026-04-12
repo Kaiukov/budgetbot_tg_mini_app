@@ -143,15 +143,9 @@ const DebugScreen: React.FC<DebugScreenProps> = ({
           <h4 className="text-xs font-semibold text-gray-400 mb-3">Environment Configuration</h4>
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between">
-              <span className="text-gray-500">Base URL:</span>
+              <span className="text-gray-500">API Base URL:</span>
               <span className="text-gray-300 truncate ml-2 max-w-[60%]">
-                {import.meta.env.VITE_BASE_URL || 'Not configured'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Firefly Token:</span>
-              <span className="text-gray-300">
-                {import.meta.env.VITE_FIREFLY_TOKEN ? '••••••••' : 'Not configured'}
+                {import.meta.env.VITE_API_BASE_URL || 'Same origin'}
               </span>
             </div>
             <div className="flex justify-between">

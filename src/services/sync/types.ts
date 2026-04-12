@@ -1,215 +1,163 @@
 /**
- * Sync API Service - Type Definitions
- * All interfaces for Sync API responses and data structures
+ * Firefly III Transaction Types and Interfaces
  */
 
-import type { TransactionData, DisplayTransaction, PaginationMeta } from '../../types/transaction';
+export enum TransactionType {
+  WITHDRAWAL = 'withdrawal',
+  DEPOSIT = 'deposit',
+  TRANSFER = 'transfer',
+}
 
 /**
- * HTTP methods supported by makeRequest()
- * - GET: Retrieve data from server
- * - POST: Submit data to create new resources
- * - PUT: Replace entire resource with provided data
- * - DELETE: Remove resource from server
- * - PATCH: Partially modify resource
- * - HEAD: Like GET but without response body
+ * Destination suggestions for withdrawal flows
  */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD';
-
-export interface AccountUsage {
-  account_id: string;
-  user_name: string;
-  account_name: string;
-  account_currency: string;
-  current_balance: number;
-  balance_in_USD: number;
-  balance_in_EUR: number;
-  owner: string;
-  owner_id: string;
-  usage_count: number;
-  global_usage?: number;
-  user_has_used?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AccountsUsageResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  get_accounts_usage: AccountUsage[];
-  total: number;
-}
-
-export interface CategoryUsage {
-  user_name: string;
-  category_id: number;
-  category_id1?: number | string;
-  category_name: string;
-  type?: 'withdrawal' | 'deposit';
-  usage_count: number;
-  global_usage?: number;
-  user_has_used?: boolean;
-  created_at?: string | null;
-  updated_at?: string | null;
-}
-
-export interface CategoriesUsageResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  get_categories_usage: CategoryUsage[];
-  total: number;
-}
-
 export interface DestinationSuggestion {
-  user_name: string;
-  destination_id?: string;
+  destination_id: number | string;
   destination_name: string;
-  category_id?: string | number;
-  category_name: string;
   usage_count: number;
-  global_usage?: number;
-  user_has_used?: boolean;
-  created_at: string | null;
-  updated_at: string | null;
 }
 
-export interface DestinationNameUsageResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  get_destination_name_usage: DestinationSuggestion[];
-  total: number;
-  total_sync?: number;
-}
-
+/**
+ * Source suggestions for deposit flows
+ */
 export interface SourceSuggestion {
-  user_name: string;
-  source_id?: string;
+  source_id: number | string;
   source_name: string;
-  category_id?: string | number;
-  category_name: string;
   usage_count: number;
-  global_usage?: number;
-  user_has_used?: boolean;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-export interface SourceNameUsageResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  get_source_name_usage: SourceSuggestion[];
-  total: number;
-  total_sync?: number;
-}
-
-export interface CurrentBalanceResponse {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  get_current_balance: {
-    balance_in_USD: number;
-  }[];
-  total: number;
-}
-
-export interface TelegramUserData {
-  success: boolean;
-  message: string;
-  timestamp: string;
-  userData: {
-    id: number;
-    name: string;
-    username: string;
-    bio: string;
-    avatar_url: string | null;
-    language_code: string;
-    bot_blocked: boolean;
-  } | null;
-}
-
-export interface ExchangeRateCache {
-  rate: number;
-  timestamp: number;
-}
-
-/**
- * Generic cache entry for dual-layer (memory + localStorage) caching
- * Stores any data type with timestamp for TTL validation
- */
-export interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-/**
- * Configuration for DualLayerCache utility
- * - ttl: Time-to-live in milliseconds
- * - prefix: Optional prefix for localStorage keys
- * - useLocalStorage: Whether to use localStorage fallback (default: true)
- */
-export interface CacheConfig {
-  ttl: number;
-  prefix?: string;
-  useLocalStorage?: boolean;
 }
 
 /**
  * Base transaction data - common to all transaction types
  */
 export interface BaseTransactionData {
-  username: string;
+  user_name: string;
   date: string | Date;
   amount: string | number;
-  currency: string;
-  account: string;
+  currency?: string;
+  account?: string;
+  account_name?: string;
   account_currency?: string;
   comment?: string;
   notes?: string;
 }
 
 /**
- * Expense-specific transaction data
+ * Withdrawal-specific transaction data
  */
-export interface ExpenseTransactionData extends BaseTransactionData {
-  category: string;
+export interface WithdrawalTransactionData extends BaseTransactionData {
+  account_currency: string;
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  destination_id?: string | number;
+  destination_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 
 /**
- * Income-specific transaction data
+ * Deposit-specific transaction data
  */
-export interface IncomeTransactionData extends BaseTransactionData {
-  category: string;
+export interface DepositTransactionData extends BaseTransactionData {
+  account_currency: string;
+  category_id?: string | number;
+  category_name: string;
   budget_name?: string;
+  account_name?: string;
   account_id?: string | number;
-  amount_foreign?: string | number;
+  source_id?: string | number;
+  source_name?: string;
+  amount_eur?: string | number;
   user_id?: number;
 }
 
 /**
  * Transfer-specific transaction data
+ * Uses exact field names from transfer flow UI
  */
 export interface TransferTransactionData {
-  username: string;
+  user_name: string;
   date: string | Date;
-  currency?: string;
-  exit_account: string;
-  entry_account: string;
-  exit_amount?: string | number;
-  entry_amount?: string | number;
-  exit_currency?: string;
-  entry_currency?: string;
-  exit_fee?: string | number;
-  entry_fee?: string | number;
-  description?: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate?: number | null;
+  notes: string;
+  timestamp?: string;
 }
+
+/**
+ * Standardized webhook payload types
+ * Used for both DEBUG_API mode and production payload validation
+ */
+
+export interface WithdrawalWebhookPayload {
+  transactionType: 'withdrawal';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  budget_name: string;
+  destination_id: number;
+  destination_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface DepositWebhookPayload {
+  transactionType: 'deposit';
+  user_name: string;
+  account_name: string;
+  account_id: number;
+  account_currency: string;
+  amount: number;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  source_id: number;
+  source_name: string;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export interface TransferWebhookPayload {
+  transactionType: 'transfer';
+  user_name: string;
+  source_account_name: string;
+  source_account_id: number;
+  source_account_currency: string;
+  source_amount: number;
+  source_fee: number;
+  destination_account_name: string;
+  destination_account_id: number;
+  destination_account_currency: string;
+  destination_amount: number;
+  destination_fee: number;
+  exchange_rate: number | null;
+  date: string;
+  notes: string;
+  timestamp: string;
+}
+
+export type UnifiedWebhookPayload =
+  | WithdrawalWebhookPayload
+  | DepositWebhookPayload
+  | TransferWebhookPayload;
 
 /**
  * Individual transaction payload for Firefly III API
@@ -220,8 +168,11 @@ export interface FireflyTransactionPayload {
   amount: string;
   description: string;
   currency_code: string;
+  source_id?: string;
   source_name?: string;
+  destination_id?: string;
   destination_name?: string;
+  category_id?: string;
   category_name?: string;
   budget_name?: string;
   foreign_currency_code?: string;
@@ -233,7 +184,7 @@ export interface FireflyTransactionPayload {
 }
 
 /**
- * Complete API request payload for Sync API /transactions endpoint
+ * Complete API request payload for Firefly III /transactions endpoint
  */
 export interface FireflyCreateTransactionRequest {
   error_if_duplicate_hash: boolean;
@@ -272,7 +223,7 @@ export interface FireflyTransactionResponse {
 /**
  * Result type for transaction operations
  */
-export type TransactionResult = [success: boolean, response: FireflyTransactionPayload | { error: string }];
+export type TransactionResult = [success: boolean, response: FireflyTransactionResponse | { error: string }];
 
 /**
  * Verification response
@@ -281,61 +232,4 @@ export interface VerificationResponse {
   verified: boolean;
   transactionId?: string;
   error?: string;
-}
-
-export interface TransactionLink {
-  self: string;
-  first: string;
-  last: string;
-  prev?: string;
-  next?: string;
-}
-
-export interface TransactionMeta {
-  current_page: number;
-  total_pages: number;
-  per_page: number;
-  total: number;
-  count: number;
-}
-
-export interface TransactionRead {
-  type: string;
-  id: string;
-  attributes: {
-    created_at: string;
-    updated_at: string;
-    user: string;
-    group_title: string | null;
-    transactions: FireflyTransactionPayload[];
-  };
-  links: {
-    self: string;
-  };
-}
-
-export interface TransactionsResponse {
-  data: TransactionRead[];
-  meta: {
-    pagination: TransactionMeta;
-  };
-  links: TransactionLink;
-}
-
-export interface SingleTransactionResponse {
-  data: TransactionRead;
-}
-
-export interface ServiceTransactionsResponse {
-  success: boolean;
-  error?: string;
-  transactions: DisplayTransaction[];
-  pagination: PaginationMeta;
-}
-
-export interface ServiceSingleTransactionResponse {
-  success: boolean;
-  error?: string;
-  transaction?: DisplayTransaction;
-  rawData?: TransactionData;
 }

@@ -7,176 +7,245 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Remote logging pipeline: client logs/errors and startup events are forwarded to configurable `VITE_LOG_ENDPOINT` (defaults to `/log`) with Telegram `initData` attached.
-- **`useExpenseFlow` Hook**: Consolidated expense flow state management hook
-  - Wraps all Zustand expense state into a single, memoized hook
-  - Provides unified interface for expense transaction data and handlers
-  - Reduces BudgetMiniApp component complexity by 14 Zustand selectors
-- **Expense Flow - Accounts Page** ✅ IMPLEMENTED
-  - Complete multi-step transaction flow architecture (Home → Accounts → Amount → Categories → Destination → Confirmation)
-  - Accounts page fully functional with account selection, loading, error handling
-  - Smart account sorting: most-used accounts first, unused accounts at bottom
-  - Back button logic with state preservation and cache management
-  - Pre-loading of categories on Accounts page for optimized UX
-  - Account deduplication: removes duplicates from API, keeps highest usage_count
-  - Full Telegram Mini App integration (back button, dark theme, haptic feedback)
-- **Expense Flow Documentation** ✅ ADDED
-  - Comprehensive guide in `telegram-mini-apps-skill/references/expense-flow.md`
-  - Complete flow overview with state shapes and API calls
-  - Back button logic matrix for all steps
-  - Reference implementation for future steps
-
-### Changed
-- **State Management Refactoring**: Extracted expense flow state from BudgetMiniApp.tsx into dedicated hook
-  - Created `src/hooks/useExpenseFlow.ts` for centralized expense flow logic
-  - Consolidated 14 individual Zustand selectors into single hook call
-  - Removed inline `expenseFlowApi` wrapper pattern from component
-  - Improved code organization and maintainability
-- **BudgetMiniApp Entry Point**: Wired expense flow navigation
-  - Step-based conditional rendering (home vs expense-accounts)
-  - Automatic account and category pre-loading on Accounts page
-  - userName passed correctly to API calls (fixes `/get_accounts_usage?user_name=Kaiukov`)
-  - HomeScreen Expense button triggers `startExpenseFlow()`
-- **Type System**: Enhanced ExpenseFlowErrors type
-  - Fields can now be `Record<string, string | undefined>` for proper error clearing
-- Account usage now reads from the new `/api/v1/get_account_usage` endpoint with legacy fallback, normalizing singular/plural payloads and new fields (`global_usage`, `user_has_used`).
-- Accounts screen shows the per-user usage status with an "Unused" pill, and the subtitle now only contains your usage + balance (removed the "All users X" community metric).
-- Category usage requests now forward the transaction type (`withdrawal`/`deposit`) to `/api/v1/get_categories_usage`, caching results per user + type and respecting new response fields.
-- Category screen mirrors accounts UI with an "Unused" badge and clearer "Not used yet" text when a user hasn't touched a category.
-- Destination suggestions now call `/api/v1/get_destination_name_usage` with `user_name` + `category_id` from `get_categories_usage`, normalize `total_sync`, and surface unused placeholders consistently.
-- **Category ID Synchronization**: Enhanced category selection logic to handle dual ID fields (`category_id` and `category_id1`)
-  - Added `useEffect` hook to keep `selectedCategoryId` in sync with `transactionData.category`
-  - Category selection now checks both `category_id` and `category_id1` fields with fallback logic
-  - Ensures proper destination filtering when categories have multiple ID representations
-- Expense/Income flows restructured with distinct state per flow, cached accounts/categories, and Telegram back-button routes aligned to the new screens.
-- Confirmation screens are placeholders only (no Firefly submit) to focus on flow wiring; state snapshotting preserves account/amount/category/comment when navigating back and forth.
-- Income comment suggestions now use `/get_source_name_usage?user_name=Kaiukov&category_id=<id>` and show only source names.
+## [0.2.5] - 2025-12-15
 
 ### Fixed
-- **Category Selection Flow**: Fixed issue where destination suggestions were filtered by wrong category ID
-  - Category selection now properly derives ID from either `category_id` or `category_id1` field
-  - Unused categories now correctly include `category_id1` mapping for comprehensive filtering
-  - Type definitions updated to make `category_id1` optional and `created_at`/`updated_at` nullable
-- **API Query Parameters**: Fixed missing `user_name` parameter in account fetch
-  - Accounts now properly filtered by user via `/get_accounts_usage?user_name=Kaiukov`
-  - useEffect timing ensures userName is set in state before API call
-  - Resolves duplicate accounts issue through deduplication logic
-- **Accounts Page Optimization**: Pre-load categories on Accounts page
-  - Categories now fetched concurrently with accounts for faster Amount step load
-  - Reduces loading time when advancing from Accounts to Amount page
-
-## [1.2.7] - 2025-11-25
+- **P1 Bug: ConfirmScreen Infinite Loop**: Fixed React "Maximum update depth exceeded" error in transfer flows
+  - Issue: `notesInput` state was in useEffect dependency array while being modified inside the effect
+  - Solution: Removed `notesInput` from deps + added eslint-disable comment
+  - Impact: All diff-currency transfers (EUR↔USD↔UAH) now complete successfully
 
 ### Added
-- **Transaction CRUD Operations**: Complete transaction management via Sync API
-  - `deleteTransaction()` - Delete transactions with Tier 2 authentication
-  - `updateTransaction()` - Update transactions with full payload support
-  - `fetchTransactions()` - Paginated transaction retrieval with display mapping
-  - `fetchTransactionById()` - Single transaction lookup with data transformation
-- **Transaction Mapping Utility**: `mapTransactionToDisplay()` helper in transaction-utils
-  - Converts API `TransactionRead` format to frontend `DisplayTransaction` format
-  - Handles income, expense, and transfer type detection
-  - Supports foreign currency amounts and multi-currency transactions
-  - Extracts journal IDs, usernames, and transaction metadata
+- **E2E Test Suite Expansion**: 24→27 tests (100% pass rate)
+  - Transfer: 3 new back button variants (9→10 tests)
+    - Back from amount: preserves source/destination accounts
+    - Back from confirmation: preserves amounts + fees
+    - Back from confirmation: notes field behavior
+  - Transfer: Confirmed all diff-currency flows work end-to-end
+- **Test Coverage**: Enhanced back button preservation and state management validation
+
+### Test Metrics
+- **Suite**: 27 total tests (withdrawal:9, deposit:8, transfer:10)
+- **Runtime**: ~10 seconds (parallel execution)
+- **Coverage**: All flows + back button variants + Decline actions
+- **Mocking**: Full API mock suite, zero real network calls
+
+## [0.2.4] - 2025-12-13
 
 ### Changed
-- **Complete Firefly API Migration**: Removed entire legacy Firefly service layer (~1,600 lines)
-  - Deleted `src/services/firefly/` directory and all modules
-  - All transaction operations now route through Sync API (`/api/v1/transactions`)
-  - UI components migrated: HomeScreen, TransactionList, TransactionDetail, TransactionEdit
-  - Cache utilities updated to use `syncService.fetchTransactions()`
-- **Sync Service Expansion**: Enhanced type definitions and response structures
-  - Added `ServiceTransactionsResponse` and `ServiceSingleTransactionResponse` types
-  - Added `TransactionsResponse`, `TransactionRead`, and `TransactionMeta` types
-  - Added `TransactionLink` for pagination navigation
-  - Enhanced `TelegramUserData` with complete user profile structure
-- **Transaction Endpoints Updated**: All API calls now use `/api/v1/*` standard paths
-  - Transaction creation: `/api/sync/transactions` → `/api/v1/transactions`
-  - Transaction operations now consistently use Sync API v1 namespace
-- **Code Formatting**: Standardized indentation and whitespace across modified components
-  - BudgetMiniApp.tsx: Consistent 2-space indentation for service status objects
-  - Improved code readability and maintainability
+- **Refactored Data Loading Actions**: Introduced factory pattern for state action generation to eliminate duplicated action definitions
+- **Action Factory Pattern**: Created `createResourceActions()` factory in `src/machines/helpers/actionFactory.ts` following established ActorConfig design
+
+### Added
+- **Action Factory**: New `src/machines/helpers/actionFactory.ts` module that generates standardized loading/success/error action triplets
+  - Supports both orchestrator pattern (`event.output.accounts`) and manual event pattern (`event.accounts`)
+  - Generic type support for type-safe resource actions
+  - Foundation for future enhancements (callbacks, validation)
+
+### Technical
+- **Code Reduction**: Eliminated 62 LOC of duplicated action definitions in `actions.ts`
+- **Pattern Consistency**: Factory follows same design as v0.2.2 `errorHandling.ts` ActorConfig pattern
+- **Maintainability**: Single source of truth for resource state management patterns
+- **Extensibility**: Adding new data resources now requires 3 lines instead of 9 manual action definitions
+- **Zero Breaking Changes**: 100% behavioral equivalence maintained (17/17 E2E tests pass)
+
+## [0.2.3] - 2025-12-13
+
+### Major Changes
+- **Service Architecture Refactoring**: Converted 800+ LOC monolithic `sync.ts` to clean facade pattern with 8 domain-specific modules
+- **Transaction CRUD Operations**: Added `updateTransaction()` and `deleteTransaction()` operations with proper Tier 2 authentication
+- **Exchange Rate Service**: Implemented real FX conversion service with dual-layer caching (memory + localStorage, 1h TTL)
+- **Test Consolidation**: Unified E2E tests from mixed locations into single `tests/e2e/` directory
+
+### Added
+- **New Sync Modules** (v0.2.3):
+  - `sync/gateway.ts` - HTTP request abstraction with Tier 2 auth (138 LOC)
+  - `sync/auth.ts` - Authentication helpers (88 LOC)
+  - `sync/cache.ts` - Centralized cache management (198 LOC)
+  - `sync/exchangeRate.ts` - FX conversion service (181 LOC)
+  - `sync/syncAccounts.ts` - Account operations (257 LOC)
+  - `sync/syncCategories.ts` - Category operations (222 LOC)
+  - `sync/syncDestinationSourceNames.ts` - Auto-complete suggestions (171 LOC)
+  - `sync/addTransactions.ts` - Transaction CRUD (create, update, delete)
+  - `sync/getTransactions.ts` - Transaction fetching (read operations)
+- **Facade Pattern**: Clean `sync.ts` re-exports all domain modules for backward compatibility
 
 ### Fixed
-- **Account Usage 403 Error**: Resolved authentication and CORS issues preventing account data retrieval
-  - Fixed environment detection to properly use Vite proxy in development (localhost/Tailscale)
-  - Production mode now uses `VITE_BASE_URL` from environment configuration
-  - Development mode always uses empty baseUrl to force Vite proxy routing
-  - Added hostname to debug logging for better troubleshooting
-- **Authentication Tier Issue**: GET requests now properly authenticate as Tier 2 users
-  - `X-Telegram-Init-Data` header now sent for ALL requests (GET and POST)
-  - Previously only POST requests included Telegram authentication
-  - Fixes "Read-only access - write operations require Telegram authorization" error
-  - Enables proper authenticated user context for all Sync API calls
-- **Telegram User Profile Endpoint**: Corrected API endpoint and request structure
-  - Updated endpoint: `/api/sync/tgUser` → `/api/v1/tgUser`
-  - Fixed request body structure to include `{ initData }` field
-  - Avatar URL now properly synced from backend response
-  - Hook now uses `syncService.getTelegramUser()` instead of legacy utility
+- **Exchange Rate API Response**: Fixed parsing for backend format `{exchangeData: {exchangeAmount}}`
+- **FX Conversion Blocking USD**: Resolves P1 issue preventing USD/non-EUR transaction flows
+- **Response Fallback Handling**: Support multiple response formats with graceful degradation
+
+### Technical Improvements
+- **Clear Separation of Concerns**: Each module has single, focused responsibility
+- **Improved Testability**: Smaller, focused modules easier to unit test
+- **Reduced Cognitive Load**: Easier navigation and understanding of service layer
+- **Type Safety**: Proper TypeScript interfaces for all response formats
+- **Cache Strategy**: Tiered caching (accounts: 5min, categories: 1min, FX: 1h)
+
+### Test Suite (v0.2.3)
+- **File Organization**: Unified `tests/e2e/` directory (consolidated from mixed locations)
+- **Full Coverage**: 17/17 tests passing (deposit: 7, withdrawal: 8, transfer: 2)
+- **Flow Validation**: All transaction flows tested end-to-end with back button behavior
+- **Mocked APIs**: Complete mock suite with no real network calls
+- **Runtime**: ~10 seconds for full test suite
+
+### Quality Metrics
+- **Service Refactoring**: 3,361 insertions, 1,037 deletions
+- **Architecture Improvement**: Facade pattern replacing monolith
+- **Code Organization**: 9 focused modules vs 1 large file
+- **API Gateway**: Standardized request handling with error classification
+- **Error Handling**: Full integration with v0.2.2 error handling factory
+
+## [0.2.2] - 2025-12-11
+
+### Changed
+- **Refactored Actor Error Handling**: Created centralized error handling factory to eliminate 209 lines of duplicate timeout logic across all 11 actors
+- **Unified Error Patterns**: Standardized all actors to use Promise.race pattern with structured error categorization
+- **Improved Error Logging**: Consistent emoji-based logging (❌, ✅, 🔄) across all actors with debug mode support
+
+### Added
+- **Error Type Hierarchy**: Introduced ErrorCategory enum (TIMEOUT, NETWORK, VALIDATION, AUTH, NOT_FOUND, SERVER_ERROR, UNKNOWN)
+- **Error Classification System**: Automatic error categorization for better debugging and future retry logic
+- **Timeout Wrapper Utility**: Reusable withTimeout() function for consistent timeout handling across all actors
+
+### Technical
+- **Code Reduction**: Reduced src/machines/actors.ts from 559 → 340 LOC (39% reduction)
+- **Foundation for Future Enhancements**: Error categorization enables retry logic, circuit breakers, and error analytics
+- **Zero Breaking Changes**: Full backward compatibility maintained - existing error handling unaffected
+- **Type Safety**: All error paths fully typed with structured error metadata
+
+## [0.2.1] - 2025-12-11
+
+### Added
+- **Centralized Actor Timeout Configuration**: Created `src/config/actorTimeouts.ts` with semantic timeout constants (TELEGRAM_INIT: 5s, DATA_FETCH: 30s, CRUD_OPERATION: 15s, HEALTH_CHECK: 10s)
+- **Comprehensive Project Documentation**: Updated CLAUDE.md files across all directories for DRY compliance
+- **Telegram Mini Apps Skill Reference**: Added `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md` with complete Budget Mini App architecture reference
+
+### Changed
+- **All 11 Actors**: Now use centralized timeout configuration from `src/config/actorTimeouts.ts` instead of hardcoded magic numbers
+- **CRUD Actor Protection**: Added timeout protection to 5 actors previously missing it (transaction create/edit/delete, transaction detail fetch, health checks)
+- **CLAUDE.md Files**: Refactored for conciseness (70% size reduction while preserving essential info)
+  - Root CLAUDE.md: High-level overview with links to skill documentation
+  - `src/CLAUDE.md`: Directory structure + 11 actor table
+  - `src/components/CLAUDE.md`: Existing comprehensive documentation maintained
+  - `src/machines/CLAUDE.md`: Actor timeout table + core files reference
+- **Timeout Semantics**: Replaced magic numbers with semantic constants across all actor implementations
+
+### Technical Improvements
+- Single source of truth for all timeout values across the application
+- Type-safe semantic constants replacing magic numbers throughout codebase
+- DRY documentation: bulk details moved to skill, project docs focus on essentials
+- Foundation for error handling patterns and timeout-based retry logic (#35)
+
+### Documentation Structure
+- **Quick Reference**: Root CLAUDE.md + src/CLAUDE.md for rapid project understanding
+- **Component Details**: src/components/CLAUDE.md for screen/component architecture
+- **Skill Integration**: Budget Mini App complete reference in telegram-mini-apps-skill
+- **Machine Architecture**: src/machines/CLAUDE.md with actor timeout reference table
+
+### Known Issues
+- None.
+
+## [0.2.0] - 2025-12-08
+
+### Major Refactoring: Unified Transaction Flows & Simplified Architecture
+
+This release delivers a comprehensive architectural refactoring consolidating withdrawal, deposit, and transfer flows into unified, reusable components. Major technical debt reduction through ~80 backup file cleanup and significant simplification of the service layer. **Pre-release version - not yet production-ready.**
+
+### Added
+- **DestinationSourceNamesScreen**: New unified component for handling destination/source name selection across all transaction flows
+- **Transfer Notes Utility**: New `src/utils/transferNotes.ts` for standardized transfer note handling
+- **Currency Utility Module**: New `src/utils/currency.ts` for centralized currency handling
+- **New API Client Module**: `src/services/sync/apiClient.ts` for direct API client usage
+- **Validation Infrastructure**: Auto-clearing error display across flow screens with comprehensive guards
+- **Date Editing**: Transfer confirmation screen now supports date input for transaction dating
+
+### Changed
+- **State Machine Refactoring**: Complete `budgetMachine.ts` rewrite with cleaner event system and improved actor coordination (390+/740- lines)
+- **Unified ConfirmScreen**: Single generic confirmation screen for withdrawal/deposit/transfer flows (478+/397- lines)
+- **Unified AmountScreen**: Consolidated amount handling for all transaction types with improved currency handling (465+/176- lines)
+- **API Payload Standardization**: Consistent snake_case field naming across all transaction types (aligned with Firefly API)
+- **Service Layer Simplification**: Dramatically reduced `sync.ts` (77+/728- lines) with cleaner responsibility separation
+- **Direct Machine Interaction**: Eliminated `useBudgetMachine` hook in favor of direct XState machine usage for cleaner component logic
+- **Context Structure**: Updated `BudgetMachineContext` for improved state organization (103+/103- lines)
+- **Transaction Payload Handling**: Refactored `src/services/sync/transactions.ts` (483+/758- lines) with cleaner mapping logic
+- **User Data Fetching**: Streamlined `fetchUserData.ts` with improved error handling (111+/100- lines)
+
+### Fixed
+- **Render Loops**: Eliminated update cycles in transfer amount and fee handling screens
+- **Transfer Amount Sync**: Prevent infinite loops when updating rates and amounts in transfer flow
+- **Confirm Notes Sync**: Keep confirm notes synced with fee edits; renamed `notesTouched` to `hasUserEditedNotes` for clarity
+- **Destination Input Persistence**: Standardized `UPDATE_NOTES` payloads so destination input and IDs persist correctly
+- **Fee Input Handling**: Fixed select-all behavior on fee inputs with proper normalization
+- **Transfer Destination Change**: Cleared stale values when changing transfer destination account
+- **Event Payload Consistency**: Fixed type mismatches in transfer event handlers with proper snake_case alignment
 
 ### Removed
-- **Firefly API Service Layer**: Complete removal of legacy Firefly III direct integration
-  - `src/services/firefly/firefly.ts` (302 lines) - Base Firefly API client
-  - `src/services/firefly/transactions.ts` (648 lines) - Transaction operations
-  - `src/services/firefly/transactionsFetch.ts` (217 lines) - Transaction fetching
-  - `src/services/firefly/types.ts` (135 lines) - Firefly type definitions
-  - `src/services/firefly/utils.ts` (259 lines) - Firefly utilities
-  - `src/services/firefly/index.ts` (39 lines) - Service exports
-  - `src/services/firefly/CLAUDE.md` (9 lines) - Documentation
-- **Firefly Service Connection Check**: Removed Firefly API health check from BudgetMiniApp
-  - App now exclusively uses Sync API for all backend operations
-  - Service status monitoring simplified to Telegram + Sync API only
+- **80+ Backup Files**: Complete cleanup of `.bak` backup files across codebase
+- **Deprecated DepositConfirmScreen**: Replaced by unified ConfirmScreen component
+- **Deprecated useBudgetMachine Hook**: Components now use direct machine interaction
+- **Deprecated DestinationNameScreen**: Replaced by unified DestinationSourceNamesScreen
+- **Deprecated TransferAmountScreen**: Consolidated into unified AmountScreen
+- **Deprecated TransferConfirmScreen**: Consolidated into unified ConfirmScreen
+- **API.md**: Moved to external reference (github.com/Kaiukov/firefly main branch)
+- **Refactoring Documentation**: Cleaned up ~10 refactoring notes and progress documents
+- **Test Artifacts**: Removed test failure reports and screenshot artifacts
 
 ### Technical Improvements
-- **Architecture Consolidation**: Single source of truth for all backend operations (Sync API)
-- **Type Safety**: Enhanced TypeScript types for transaction responses and pagination
-- **Authentication Flow**: Consistent Tier 2 authentication across all API operations
-- **Code Quality**: Reduced codebase by ~1,600 lines through legacy code removal
-- **API Consistency**: All endpoints now follow `/api/v1/*` standard namespace
-- `SyncServiceCore` environment detection properly handles all deployment scenarios
-- CORS handling improved through consistent Vite proxy usage in development
-- Authentication tier properly maintained (Tier 2) for Telegram Mini App users
-- Debug logging enhanced with hostname information for environment diagnosis
+- **Unified Flow Architecture**: All transaction flows (withdrawal/deposit/transfer) use shared components and consistent patterns
+- **Simplified Event System**: Discriminated union types for better type safety and clarity
+- **Improved Action Handlers**: Expanded and reorganized action handlers (464+/337- lines) for better maintainability
+- **Actor System Simplification**: Cleaner actor implementations with reduced complexity (117+/376- lines)
+- **Type Definition Overhaul**: Event system reorganized with clearer definitions (299+/347- lines)
+- **Router Refactoring**: `BudgetMiniApp.tsx` completely restructured for improved routing logic (920+/920- lines)
+- **Service Architecture**: Direct API usage without intermediate wrapper layers
+- **Error Handling**: Improved validation with auto-clearing error displays
 
-## [1.2.6] - 2025-11-14
+### Performance
+- **Reduced Service Layer**: 90% reduction in `sync.ts` complexity
+- **Fewer Component Instances**: Unified components reduce bundle size and render complexity
+- **Simplified State Management**: Cleaner machine events reduce event processing overhead
+- **Better Actor Coordination**: Streamlined actor system reduces concurrent execution overhead
+
+### Deprecations
+- **Firefly API Architecture**: Removed intermediate `fireflyService` wrapper, all Firefly API calls now use `apiClient` directly with Tier 2 authentication
+- **Transaction Operations**: `addTransaction()`, `fetchTransactions()`, and `fetchTransactionById()` now directly use `apiClient.request()` instead of wrapper methods
+- **Actor Integration**: Transaction CRUD and health check actors now use `apiClient.request()` with explicit auth tier injection
+
+### Quality Metrics
+- **Code Reduction**: Net -13,359 lines (removed duplicates and backups)
+- **Test Coverage**: Maintained through phase-by-phase refactoring
+- **Type Safety**: Improved type definitions and event handling
+- **Documentation**: Comprehensive CLAUDE.md files across project structure
+
+## [1.3.0] - 2025-12-01
 
 ### Added
-- **Sync Service Transactions**: Dedicated `SyncServiceTransactions` module with transaction utilities, verification helpers, and Claude skill references for Telegram mini app workflows.
+- **Withdrawal Debugging**: Optional debug webhook on withdrawal confirmation; `VITE_DEBUG_API=true` can short-circuit requests and POST payloads to `VITE_DEBUG_WEBHOOK_URL`.
+- **Playwright E2E Suite**: Added `playwright.config.ts` and `tests/e2e/withdrawal-flow.spec.ts` with HTML reporter and scripts `test`, `test:ui`, `test:headed`, `test:debug`.
+- **Documentation**: New `rename_flow.md` (expense→withdrawal rename plan) and `deposit_flow.md` (upcoming income→deposit scope).
 
 ### Changed
-- **Transaction Flows**: Confirm screens now call `syncService.addTransaction` with unified Sync API types and helpers (budget extraction, transaction utils).
-- **Sync Core**: Tier 2 POST requests now send `X-Telegram-Init-Data` header while keeping GET payloads clean; POST bodies exclude redundant `initData`.
-- **Dev Proxy**: `vite.config.ts` dev proxy allows self-signed certs and surfaces proxy errors to bypass PNA restrictions.
-- **Docs**: `CLAUDE.md` trimmed obsolete API instructions in favor of centralized Sync API references.
+- **Terminology**: Expense flow renamed to **withdrawal** across UI, state machine, hooks, services, helpers, and types; default transaction type now withdrawal.
+- **Confirmation UX**: Withdrawal confirm screen requires notes, adds date input, pre-fills context-aware note, improves error messaging, and exposes optional payload debugging.
+- **Category & State Handling**: Category fetch now keyed by user+type and cached to prevent duplicate calls; withdrawal notes live in machine context and reset on flow start/cancel.
+- **UI Labels**: Home tiles, transaction cards/detail/edit, and helper text now use withdrawal wording with updated color logic.
+- **Sync Layer**: Withdrawal handler renamed, uses `user_name` consistently, safer stringification, and clearer error payloads.
 
-## [1.2.5] - 2025-11-13
+### Removed
+- **CommentScreen**: Replaced by shared `DestinationNameScreen` for withdrawal/transfer/comment steps.
 
-### Fixed
-- **Telegram User Profile**: Display full Telegram name and user bio on home page
-- **Auth Headers**: Fixed `/api/sync/tgUser` endpoint to use Tier 2 authentication
-  - Replace `Authorization: Bearer` with `X-Anonymous-Key` header
-  - Add `X-Telegram-Init-Data` for Telegram signature validation
-  - Proper multi-tier auth implementation for frontend clients
+## [1.2.4] - 2025-11-29
 
-### Changed
-- **Bio Display**: Removed hardcoded "Manage finances" fallback text
-- **User Data**: Show actual Telegram bio instead of placeholder text
-- **Authentication**: Implement Tier 2 (Authorized Telegram User) for profile endpoint
-
-### Technical Improvements
-- fetchUserData.ts now uses correct authentication tier headers
-- useTelegramUser hook updated to remove default bio fallback
-- HomeScreen bio display logic improved to show actual user data
-
-## [1.2.4] - 2025-11-10
+### Added
+- **Browser Back Fallback**: Debug-only back button (click + ESC) that works outside Telegram for expense/income/transfer/transactions entry screens.
 
 ### Changed
-- **Deployment Config**: Configure Vite base path for reverse proxy deployment at `/app/`
+- **Telegram Detection**: `telegramService.isAvailable()` now requires real `initDataUnsafe.user.id`, preventing SDK-only false positives in the browser.
+- **Back Button Calls**: Screens guard Telegram BackButton usage behind availability to avoid noisy console warnings in browser mode.
 
-### Technical Improvements
-- Vite config updated to support nginx reverse proxy routing
-- App accessible via https://dev.neon-chuckwalla.ts.net/app/
+### Documentation
+- Updated FSM reference to reflect the unified `budgetMachine` (XState v5) with browser back behavior and entry-screen home routing.
 
 ## [1.2.3] - 2025-11-03
 
@@ -230,81 +299,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Category Preloading**: Automatic category loading 5 seconds after app mount
 - **Account Preloading**: Background account loading when on home screen
 
-### Changed
-- **Cache Integration**: Both accounts and categories now use the generic Cache<T> utility
-- **Preload Strategy**: Lazy loading for categories and accounts to optimize initial load
+### Fixed
+- **Duplicate Accounts**: Fixed account deduplication using unique account_id
+- **React Key Warning**: Changed from account_name-idx to account_id for proper rendering
 
 ### Performance
-- **Reduced API Calls**: Cache prevents redundant fetches for frequently accessed data
-- **Better UX**: Pre-warmed data ready when users navigate to selection screens
+- **API Call Reduction**: 60% fewer API calls through intelligent caching
+- **Transfer Optimization**: Single API call now serves both source and destination account selection
+- **Instant UX**: Sub-100ms response time for cached account data
+- **Dual-Layer Cache**: Memory + localStorage for persistence across sessions
 
 ### Technical Improvements
-- Unified caching strategy across multiple data types
-- Configurable TTL for different cache instances
+- Generic Cache utility integration for accounts (60s TTL)
+- Silent background preloading without blocking user interaction
+- Comprehensive cache logging (HIT/MISS/EXPIRED events)
 
-## [1.2.0] - 2025-10-29
+## [1.2.0] - 2025-10-30
 
 ### Added
-- **Generic Caching Utility**: New `Cache<T>` class with dual-layer storage
-  - Memory cache for fast access within session
-  - localStorage for persistence across reloads
-  - Configurable TTL (time-to-live) per cache instance
-  - Generic type support for type-safe caching
-- **Transaction Caching**: Dedicated transaction cache with 5-minute TTL
-  - `transactionCache.get()` and `transactionCache.set()` methods
-  - Automatic expiration and cleanup
-  - Memory + localStorage dual-layer implementation
+- **Transfer Flow**: Complete money transfer flow between accounts
+- **TransferAmountScreen**: Dual-input screen with real-time currency conversion for exit/entry amounts
+- **TransferFeeScreen**: Optional fee input for both exit and entry sides with skip functionality
+- **TransferConfirmScreen**: Transfer confirmation with detailed fee breakdown and multi-currency display
+- **Currency Conversion**: Automatic exchange rate calculation for cross-currency transfers
+- **Transfer Icon**: ArrowRightLeft icon in HomeScreen for transfer feature
 
 ### Changed
-- **HomeScreen Optimization**: Integrated transaction caching
-  - Check cache before fetching from API
-  - Set cache after successful API response
-  - Reduced redundant API calls on screen revisit
+- **BudgetMiniApp**: Added transfer state management with 10 new state variables for complete transfer flow
+- **BudgetMiniApp**: Extended account fetching trigger to include transfer screens
+- **AmountScreen**: Renamed `expenseData` prop to `transactionData` for better generality
+- **ConfirmScreen**: Renamed `expenseData` prop to `transactionData` for consistency
+- **HomeScreen**: Updated Accounts feature color from blue to indigo for visual distinction
 
-### Performance
-- **Faster Load Times**: Cached transactions load instantly from memory
-- **Reduced Backend Load**: API calls only when cache expires
-- **Persistent Data**: Transactions persist across page reloads via localStorage
+### Removed
+- **useExpenseData.ts**: Removed old hook in favor of generic `useTransactionData`
 
 ### Technical Improvements
-- Type-safe caching with TypeScript generics
-- Automatic cache invalidation based on TTL
-- Dual-layer storage for optimal performance
+- Consistent transaction data handling across expense, income, and transfer flows
+- Real-time exchange rate integration for cross-currency transfers
+- Comprehensive state management for multi-step transfer workflow
+- Same-currency and different-currency transfer support
 
-## [1.1.0] - 2025-10-28
+## [1.1.0] - 2025-10-29
 
 ### Added
-- **Multi-Currency Support**: Complete currency handling across all transaction types
-  - Foreign currency amount input for expense, income, and transfer flows
-  - Exchange rate fetching from Sync API with 1-hour caching
-  - Dual currency display (native + foreign) in UI
-- **Currency Conversion Cache**: Efficient exchange rate management
-  - Memory cache for session-wide rate reuse
-  - localStorage persistence across page reloads
-  - 1-hour TTL to balance freshness and API efficiency
+- **Income Flow**: Complete income transaction flow with GREEN confirmation screen
+- **Generic Cache Utility**: Centralized caching with dual-layer (memory + localStorage) and configurable expiry
+- **Category Caching**: 1-minute cache for categories to reduce API calls
+- **Category Filtering**: Income transactions filter to category_id: 4, expense shows all categories
+- **Income Configuration**: Category type configuration file (`src/config/categories.json`)
+- **Generic Hooks**: `useTransactionData` for expense/income/transfer types, `useSyncData` for data fetching
+- **Category Filter Utility**: Type-based filtering (income-only, expense shows all)
+- **Income Confirmation Screen**: GREEN screen with positive amount display (+amount)
 
 ### Changed
-- **Transaction Confirm Screens**: Enhanced all confirm screens with currency data
-  - ExpenseConfirmScreen: Foreign currency support added
-  - IncomeConfirmScreen: Foreign currency support added
-  - TransferConfirmScreen: Foreign currency support added
-- **Transaction Submission**: Updated payload structure
-  - Added `foreign_amount` and `foreign_currency_code` fields
-  - Exchange rate included for backend verification
+- **AmountScreen**: Improved number input handling with better overflow management for large numbers
+- **AmountScreen**: Dynamic text alignment - centered placeholder, right-aligned input with currency
+- **AmountScreen**: Fixed spacing between amount and currency label (reduced gap)
+- **CategoryScreen**: Added optional transaction type filtering support
+- **HomeScreen**: Income feature now has active route (`income-accounts`)
+- **BudgetMiniApp**: Transaction type state management for expense/income flows
+- **BudgetMiniApp**: Success toast message now shows transaction type (Income/Expense)
+- **Sync Service**: Integrated generic Cache utility for category caching
+
+### Fixed
+- Amount input overflow issue with very large numbers (now scrollable)
+- Amount input text cutting off on left side for multi-digit numbers
+- Excessive spacing between amount and currency code
+- Category caching implementation (1-minute TTL as per design requirements)
 
 ### Technical Improvements
-- `getExchangeRate()` method in SyncService with dual-layer caching
-- Normalized exchange rate responses (handles both direct rates and reciprocals)
-- Smart cache key generation (`USD:EUR` format)
-- Cache expiry logic with automatic cleanup
+- **DRY Compliance**: Eliminated duplication in data fetching and transaction management
+- **Code Organization**: Separated concerns with utility files and generic hooks
+- **Type Safety**: Improved TypeScript types for transaction flows
+- **Reusability**: Screens now support multiple transaction types
 
-## [1.0.0] - 2025-10-25
+## [1.0.0] - 2025-10-29
 
 ### Added
-- **Initial Release**: Budget Mini App for Telegram
-- **Transaction Management**: Create and view expenses, income, and transfers
-- **Account Selection**: Multi-account support with dynamic account loading
-- **Category System**: Hierarchical category selection with emoji support
-- **Telegram Integration**: Native Telegram UI components (Main Button, Back Button)
-- **Dark Mode**: Telegram-native dark theme with gradient system
-- **Service Architecture**: Dual API integration (Firefly III + Sync API)
+- Client-side destination filtering for comment suggestions
+- Negative amount support for expense tracking with validation
+- Currency icons and emoji display in UI
+- Enhanced data display with formatting improvements
+
+### Fixed
+- Reject negative amounts in expense input validation
+- Add leading zero to decimal amounts without integer part
+- Require amount > 0 to proceed with transaction
+
+### Removed
+- Back button from ConfirmScreen
+
+---
+
+**Version Strategy**: Following Semantic Versioning
+- Patch: Bug fixes
+- Minor: New features, no breaking changes
+- Major: Breaking changes
+
+**2025-10-31**
+- feat(home): move Debug into My Features and remove floating button

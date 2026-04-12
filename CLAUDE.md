@@ -1,232 +1,120 @@
-# Budget Mini App - Project Overview
+# CLAUDE.md
 
-A Telegram Mini App for managing personal finances, integrated with Firefly III and a custom backend sync service.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Production URL:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
+## Project Overview
 
-## Key Features
-- ✅ Real-time Telegram user profile integration
-- ✅ Expense, income, and transfer tracking
-- ✅ Multi-account and multi-currency support
-- ✅ Dark mode UI optimized for Telegram
+A Telegram Mini App for personal finance management with XState v5 state machines, real-time currency conversion, and Firefly III integration.
 
-## Tech Stack & Code Quality
-- **Framework:** React `^18.3.1`
-- **Language:** TypeScript `^5.7.2`
-- **Build Tool:** Vite `^5.4.11`
-- **Linting:** `npm run lint`
-- **Type-Checking:** `npx tsc --noEmit`
+- **Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
+- **Local Dev:** `npm run dev` → http://localhost:3000
 
-This document provides a high-level overview of the "Budget Mini App" project, a Telegram Mini App for personal finance management.
+### Stack
+- **Language:** TypeScript 5.7
+- **Framework:** React 18.3 + Vite 5.4
+- **State Management:** XState v5 (11 actors with timeout protection)
+- **Backend APIs:** Sync Service + Firefly III
+- **Deployment:** Cloudflare Pages
+- **Testing:** Playwright (27 E2E tests, 100% passing)
 
-## Testing & Development
+## Latest Changes (v0.2.5)
 
-### Prerequisites
+**Dec 15, 2025** - Bug Fixes + Test Suite Expansion
+
+- 🔧 **Fixed P1 Bug:** ConfirmScreen infinite loop in diff-currency transfers (notes field useEffect dependency)
+- ✅ **Tests:** 24→27 E2E tests passing (100% pass rate, ~10s runtime)
+- ✅ **Transfer Tests:** 3 new back button variants (9→10 tests total)
+- ✅ **Coverage:** All flows + Decline actions + state preservation validated
+
+See [CHANGELOG.md](CHANGELOG.md) for full history (v0.2.4, v0.2.3, v0.2.2, v0.2.1).
+
+## Architecture
+
+### Directory Structure
+```
+src/
+├── components/       # Screen components (withdrawal/deposit/transfer flows)
+├── machines/         # XState v5 state machine + 11 actors
+├── services/         # API clients (Sync, Firefly, Telegram)
+├── context/          # React context for machine + provider
+├── config/           # Centralized timeout constants
+├── theme/            # Tailwind colors + dark mode
+├── utils/            # Helpers (cache, currency, validation)
+├── types/            # TypeScript interfaces
+├── hooks/            # Custom React hooks
+└── assets/           # SVG icons
+```
+
+### Key Files
+- **`budgetMachine.ts`** - Nested state machine with transaction flows
+- **`errorHandling.ts`** - Centralized error factory (v0.2.2+): `createActorWithErrorHandling()`, `withTimeout()`, error classification
+- **`helpers/actionFactory.ts`** - Action factory (v0.2.4+): `createResourceActions()` for standardized state actions
+- **`actors.ts`** - 11 async actors using error factory (data fetch, CRUD, health checks)
+- **`actorTimeouts.ts`** - Centralized timeout config: TELEGRAM_INIT (5s), DATA_FETCH (30s), CRUD_OPERATION (15s), HEALTH_CHECK (10s)
+- **`actions.ts`** - Machine actions (factory-generated + validation guards)
+- **`BudgetMachineContext.tsx`** - Context provider with localStorage persistence
+- **`BudgetMiniApp.tsx`** - Router component
+
+## Scripts
+
+### Development
 ```bash
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration:
-# - VITE_SYNC_API_KEY: Backend Sync API key
-# - Other API credentials as needed
+npm run dev          # Start Vite dev server (http://localhost:3000)
+npm run build        # Production build
+npm run lint         # Check code quality
 ```
 
-### Development Server
+### Testing (v0.2.5+)
 ```bash
-# Start local development server (runs on http://localhost:5173)
-npm run dev
-
-# The app will:
-✅ Hot-reload on file changes
-✅ Proxy API requests to backend (see vite.config.ts)
-✅ Serve with Telegram Mini App SDK
+npm run test tests/e2e/                          # Run all E2E tests (27 tests, ~10s)
+npm run test tests/e2e/withdrawal-mock-flow      # Withdrawal flow only (9 tests)
+npm run test tests/e2e/deposit-mock-flow         # Deposit flow only (8 tests)
+npm run test tests/e2e/transfer-mock-flow        # Transfer flow only (10 tests)
+npx playwright test tests/e2e/ --ui              # Interactive UI mode (watch tests)
+npx playwright show-report                       # View HTML test report
 ```
 
-### Code Quality Checks
-
-**Type Safety** (TypeScript compilation)
+### Deployment
 ```bash
-# Check for TypeScript errors
-npx tsc --noEmit
-
-# Fix TypeScript errors
-npx tsc --noEmit --pretty false  # verbose output
+wrangler deploy      # Deploy to Cloudflare Pages
 ```
 
-**Linting** (ESLint + code style)
-```bash
-# Check code style and quality
-npm run lint
+## Configuration Files
+- **`vite.config.ts`** - Dev server with `/api` proxy for local development
+- **`wrangler.toml`** - Cloudflare Pages deployment config
+- **`tailwind.config.js`** - Tailwind CSS for dark mode + responsive design
+- **`tsconfig.json`** - TypeScript configuration
+- **`.env.example`** - Required environment variables
 
-# Auto-fix fixable issues
-npm run lint -- --fix
+## Additional Documentation
 
-# Check specific directory
-npx eslint src/services/sync/ --ext ts,tsx
-```
+### Project Documentation
+- **`src/CLAUDE.md`** - Source structure overview
+- **`src/components/CLAUDE.md`** - Component architecture
+- **`src/machines/CLAUDE.md`** - State machine details
+- **`src/services/CLAUDE.md`** - API integration
+- **`src/theme/CLAUDE.md`** - Theme system
+- **`src/types/CLAUDE.md`** - Type definitions
 
-### Build Testing
+### Test Documentation
+- **`tests/e2e/CLAUDE.md`** - E2E test suite index (27 tests, 100% passing)
+- **`tests/e2e/`** - Playwright E2E test suite with full mocking
+- **`test-results/`** - Test reports and detailed error context
 
-**Production Build**
-```bash
-# Build the project
-npm run build
+### Skill References
+Complete guidance available in the telegram-mini-apps-skill:
+- **`budget-app-overview.md`** - Complete architecture and implementation reference
+- **`test-e2e.md`** - Comprehensive E2E testing guide with patterns and examples
 
-# Output will be in dist/ directory
-# Preview production build locally:
-npm run preview
+### CLAUDE.md
 
-# The build includes:
-✅ Minified and optimized code
-✅ Tree-shaken imports
-✅ Optimized bundle size
-```
-
-**Before Deploying**
-```bash
-# Always run these before deployment:
-npm run lint          # Check code quality
-npx tsc --noEmit     # Verify types
-npm run build        # Build for production
-npm run preview      # Test production build
-```
-
-### Manual Testing in Telegram
-
-**1. Using Web Preview**
-```bash
-npm run dev
-# Open browser to http://localhost:5173
-# Browser DevTools will show most functionality
-```
-
-**2. Using Telegram Bot Web App**
-```
-1. Add test bot to Telegram
-2. Use web_app parameter in command
-3. Mini App opens in Telegram client
-4. Can test mobile UI and full integration
-```
-
-**3. Key Testing Scenarios**
-- [ ] Login with Telegram user
-- [ ] View account list and balances
-- [ ] Create new transaction (expense/income/transfer)
-- [ ] Switch between categories
-- [ ] Currency conversion works correctly
-- [ ] Dark mode toggles properly
-- [ ] API errors handled gracefully
-- [ ] Cache works (check Network tab)
-
-### API Testing
-
-
-
-**Browser DevTools Network Tab**
-```
-1. Open DevTools (F12)
-2. Go to Network tab
-3. Perform action (load accounts, etc.)
-4. View request/response
-5. Check headers (X-Anonymous-Key, Authorization)
-6. Monitor cache hits (console logs)
-```
-
-### Debugging
-
-**Console Logging**
-- Sync API: 🔄 🔧  💾 ✅ ❌
-- Telegram: 👤 📸 📱
-- Transactions: 💰 📝
-- Errors: 💥
-
-**Browser DevTools**
-```bash
-# Open DevTools
-F12 or Cmd+Option+I (Mac)
-
-# Check:
-✅ Console for errors/logs
-✅ Network tab for API calls
-✅ Application tab for localStorage (caches)
-✅ Sources tab for debugging (set breakpoints)
-```
-
-**VS Code Debugging**
-```json
-// Add to .vscode/launch.json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "chrome",
-      "request": "launch",
-      "name": "Launch Chrome",
-      "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}"
-    }
-  ]
-}
-```
-
-### Common Issues & Fixes
-
-| Issue | Solution |
-|-------|----------|
-| **Module not found error** | Run `npm install` and check import paths |
-| **API key not configured** | Set VITE_SYNC_API_KEY in .env |
-| **Types errors in IDE** | Run `npx tsc --noEmit` to see all errors |
-| **Changes not showing** | Check browser cache, hard refresh (Cmd+Shift+R) |
-| **Proxy not working** | Check vite.config.ts proxy settings |
-| **Build fails** | Run `npm run lint` to find issues first |
-
-### Continuous Integration
-
-**Pre-commit Checks** (before pushing)
-```bash
-# Run all quality checks
-npm run lint        # Linting
-npx tsc --noEmit   # Type checking
-npm run build       # Build test
-```
-
-**Quick Validation Script**
-```bash
-#!/bin/bash
-echo "Running type check..."
-npx tsc --noEmit || exit 1
-echo "Running linter..."
-npm run lint || exit 1
-echo "Building..."
-npm run build || exit 1
-echo "✅ All checks passed!"
-```
-
-## Core Components
-
-- **[src/](src/)**: The heart of the application, containing all the React components, hooks, services, and utilities. See the detailed breakdown in `src/CLAUDE.md`. (Check code with `npm run lint` and `npx tsc --noEmit`).
-- **[public/](public/)**: Contains static assets that are served directly, such as the `vite.svg` favicon.
-- **[functions/](functions/)**: Houses Cloudflare Pages functions. Currently, it includes a pass-through middleware, as API requests are proxied or made directly to the backend.
-
-## Frontend Build & Configuration
-
-- **[index.html](index.html)**: The main entry point for the web application, which loads the React app and the Telegram WebApp SDK.
-- **[vite.config.ts](vite.config.ts)**: Configuration for the Vite build tool, including development server settings and API proxy rules.
-- **[package.json](package.json)**: Defines project metadata, npm scripts (like `dev`, `build`), and dependencies.
-- **[tailwind.config.js](tailwind.config.js)** & **[postcss.config.js](postcss.config.js)**: Configuration files for the Tailwind CSS framework.
-- **[tsconfig.json](tsconfig.json)**: The main TypeScript configuration for the project.
-
-## Backend & Deployment
-
-- **[Dockerfile](Dockerfile)**: Defines the steps to build a production-ready Docker image for the application using Nginx.
-- **[nginx.conf](nginx.conf)**: Nginx configuration for serving the static frontend files and proxying API requests to the backend services in a production environment.
-- **[wrangler.toml](wrangler.toml)**: Configuration for deploying the application to Cloudflare Pages.
-
-## Documentation & Project Management
-
-- **[CHANGELOG.md](CHANGELOG.md)**: A log of all notable changes to the project, organized by version.
-- **[.gitignore](.gitignore)**: Specifies which files and directories to exclude from version control.
-- **[.env.example](.env.example)**: An example file detailing the environment variables required to run the application.
-- **[.claude/](.claude/)**: Contains local settings for the Claude AI assistant.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/CLAUDE.md - Root index linking all directory guides.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/CLAUDE.md - Source structure overview for the React/Vite app.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/services/CLAUDE.md - Sync/Telegram service facades and helpers.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/theme/CLAUDE.md - Theme tokens, palettes, and dark utilities.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/machines/CLAUDE.md - XState machine, actors, actions, and types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/components/CLAUDE.md - Screens and shared UI components.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/utils/CLAUDE.md - Utility helpers (cache, currency, categories, formatting).
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/src/types/CLAUDE.md - Shared TypeScript domain and Telegram types.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/functions/CLAUDE.md - Cloudflare Pages middleware note.
+/Users/oleksandrkaiukov/Code/budgetbot_tg_mini_app/tests/e2e/CLAUDE.md - Mocked Playwright withdrawal/deposit/transfer suites.

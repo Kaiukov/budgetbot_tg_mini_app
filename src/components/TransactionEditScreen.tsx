@@ -7,9 +7,10 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Save, Loader, ArrowLeft } from 'lucide-react';
 import telegramService from '../services/telegram';
-import { syncService } from '../services/sync';
+import { apiClient } from '../services/sync/index';
 import type { TransactionData, DisplayTransaction } from '../types/transaction';
 import { formatTransactionDate } from '../utils/transactionHelpers';
+import { refreshHomeTransactionCache } from '../utils/cache';
 
 interface TransactionEditScreenProps {
   transaction: DisplayTransaction;
@@ -78,21 +79,11 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
 
     try {
       // Prepare update payload - must include all fields
-      // Preserve time from original transaction when date is edited
-      const originalDate = new Date(rawData.date);
-      const editedDate = new Date(formData.date);
-      editedDate.setHours(
-        originalDate.getHours(),
-        originalDate.getMinutes(),
-        originalDate.getSeconds(),
-        originalDate.getMilliseconds()
-      );
-
       const payload = {
         transactions: [
           {
             type: rawData.type as 'withdrawal' | 'deposit' | 'transfer',
-            date: editedDate.toISOString(),
+            date: new Date(formData.date).toISOString(),
             amount: formData.amount,
             description: formData.description,
             currency_code: rawData.currency_code,
@@ -110,15 +101,17 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
         ],
       };
 
-      const response = await syncService.updateTransaction(
-        String(transaction.journalId),
-        payload
+      await apiClient.request<Record<string, unknown>>(
+        `/api/v1/transactions/${transaction.journal_id}`,
+        {
+          method: 'PUT',
+          body: payload,
+          auth: 'tier2' // Tier 2: Anonymous Authorized (Telegram Mini App users)
+        }
       );
 
-      if (!response.success) {
-        setError(response.error || 'Failed to update transaction');
-        return;
-      }
+      // Proactively refresh transaction cache
+      await refreshHomeTransactionCache();
 
       setSuccess(true);
       setTimeout(() => {
@@ -225,17 +218,17 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
             <span className="text-sm font-medium text-white capitalize">{transaction.type}</span>
           </div>
 
-          {transaction.type === 'expense' && (
+          {transaction.type === 'withdrawal' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">From Account</span>
-              <span className="text-sm font-medium text-white">{transaction.sourceName}</span>
+              <span className="text-sm font-medium text-white">{transaction.source_name}</span>
             </div>
           )}
 
-          {transaction.type === 'income' && (
+          {transaction.type === 'deposit' && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">To Account</span>
-              <span className="text-sm font-medium text-white">{transaction.destinationName}</span>
+              <span className="text-sm font-medium text-white">{transaction.destination_name}</span>
             </div>
           )}
 
@@ -243,19 +236,19 @@ const TransactionEditScreen: React.FC<TransactionEditScreenProps> = ({
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">From</span>
-                <span className="text-sm font-medium text-white">{transaction.sourceName}</span>
+                <span className="text-sm font-medium text-white">{transaction.source_name}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-400">To</span>
-                <span className="text-sm font-medium text-white">{transaction.destinationName}</span>
+                <span className="text-sm font-medium text-white">{transaction.destination_name}</span>
               </div>
             </>
           )}
 
-          {transaction.categoryName && (
+          {transaction.category_name && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Category</span>
-              <span className="text-sm font-medium text-white">{transaction.categoryName}</span>
+              <span className="text-sm font-medium text-white">{transaction.category_name}</span>
             </div>
           )}
         </div>

@@ -7,10 +7,8 @@ import { gradients } from './gradients';
 import { cardStyles } from './cards';
 import { layouts } from './layouts';
 import { animations } from './animations';
-import * as currencies from './currencies';
-import * as categories from './categories';
 
-export { gradients, cardStyles, layouts, animations, currencies, categories };
+export { gradients, cardStyles, layouts, animations };
 
 // Re-export as single object for convenience
 export const theme = {
@@ -18,6 +16,4 @@ export const theme = {
   cardStyles,
   layouts,
   animations,
-  currencies,
-  categories,
 } as const;

@@ -1,22 +1,735 @@
-interface ConfirmScreenProps {
-  onBack: () => void;
-  onSubmit: () => void;
-}
+import { useState, useEffect } from 'react';
+import { X, Check, Loader, ArrowLeft, Wallet, Tag, MapPin, Calendar, FileText, ArrowRight } from 'lucide-react';
+import {
+  addTransaction,
+  type WithdrawalWebhookPayload,
+  type DepositWebhookPayload,
+  type TransferWebhookPayload,
+  type UnifiedWebhookPayload
+} from '../services/sync/index';
+import telegramService from '../services/telegram';
+import { getCurrencySymbol } from '../utils/currencies';
+import { refreshHomeTransactionCache } from '../utils/cache';
+import { gradients, layouts } from '../theme/dark';
 
-const ConfirmScreen: React.FC<ConfirmScreenProps> = ({ onBack, onSubmit }) => {
+const safeStringify = (value: unknown): string => {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value === 'string') return value;
+  if (value instanceof Error) return value.message || String(value);
+
+  const seen = new WeakSet<object>();
+  try {
+    return JSON.stringify(
+      value,
+      (_k, v) => {
+        if (typeof v === 'object' && v !== null) {
+          if (seen.has(v as object)) return '[Circular]';
+          seen.add(v as object);
+        }
+        if (typeof v === 'bigint') return v.toString();
+        return v;
+      },
+      2
+    );
+  } catch {
+    return String(value);
+  }
+};
+
+type BaseConfirmScreenProps = {
+  isSubmitting?: boolean;
+  submitMessage?: { type: 'success' | 'error'; text: string } | null;
+  errors?: Record<string, string>;
+  isAvailable?: boolean;
+  date?: string; // transaction date (ISO format)
+  notes?: string; // transaction notes
+  onBack: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onSuccess: () => void;
+  onIsSubmittingChange?: (isSubmitting: boolean) => void;
+  onSubmitMessageChange?: (message: { type: 'success' | 'error'; text: string } | null) => void;
+  onDateChange?: (isoDate: string) => void;
+  onNotesChange?: (notes: string) => void;
+  onClearError?: () => void;
+};
+
+type WithdrawalConfirmProps = BaseConfirmScreenProps & {
+  transactionType: 'withdrawal';
+  user_name: string;
+  account_name: string;
+  account_id: number | string;
+  account_currency: string;
+  amount: string;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  budget_name: string;
+  destination_id: number | string;
+  destination_name: string;
+};
+
+type DepositConfirmProps = BaseConfirmScreenProps & {
+  transactionType: 'deposit';
+  user_name: string;
+  account_name: string;
+  account_id: number | string;
+  account_currency: string;
+  amount: string;
+  amount_eur: number;
+  category_id: number;
+  category_name: string;
+  budget_name: string;
+  destination_name: string;
+  source_name: string;
+  source_id: number | string;
+};
+
+type TransferConfirmProps = BaseConfirmScreenProps & {
+  transactionType: 'transfer';
+  user_name: string;
+  sourceAccount: string;
+  sourceAccountId: number | string;
+  destAccount: string;
+  destAccountId: number | string;
+  sourceAmount: string;
+  destAmount: string;
+  sourceCurrency: string;
+  destCurrency: string;
+  sourceFee?: string;
+  destFee?: string;
+};
+
+type ConfirmScreenProps = WithdrawalConfirmProps | DepositConfirmProps | TransferConfirmProps;
+
+const ConfirmScreen: React.FC<ConfirmScreenProps> = (props) => {
+  const {
+    transactionType,
+    isSubmitting: propIsSubmitting,
+    submitMessage: propSubmitMessage,
+    errors = {},
+    isAvailable,
+    date: propDate = '',
+    notes: propNotes = '',
+    onBack,
+    onCancel,
+    onConfirm,
+    onSuccess,
+    onIsSubmittingChange,
+    onSubmitMessageChange,
+    onDateChange,
+    onNotesChange,
+    onClearError
+  } = props;
+
+  // Extract transaction-type-specific props
+  const isTransfer = transactionType === 'transfer';
+  const isWithdrawal = transactionType === 'withdrawal';
+
+  const user_name_prop = isTransfer
+    ? (props as TransferConfirmProps).user_name
+    : (props as WithdrawalConfirmProps | DepositConfirmProps).user_name;
+
+  // For withdrawal/deposit
+  const account_name = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_name : '';
+  const account_id_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_id : 0;
+  const account_currency = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).account_currency : '';
+  const amount = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).amount : '';
+  const amount_eur_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).amount_eur : 0;
+  const category_id_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).category_id : 0;
+  const category_name_prop = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).category_name : '';
+  const budget_name = !isTransfer ? (props as WithdrawalConfirmProps | DepositConfirmProps).budget_name : '';
+  const destination_id_prop = !isTransfer && isWithdrawal ? (props as WithdrawalConfirmProps).destination_id : 0;
+
+  // For transfer
+  const sourceAccount = isTransfer ? (props as TransferConfirmProps).sourceAccount : '';
+  const sourceAccountId = isTransfer ? (props as TransferConfirmProps).sourceAccountId : 0;
+  const destAccount = isTransfer ? (props as TransferConfirmProps).destAccount : '';
+  const destAccountId = isTransfer ? (props as TransferConfirmProps).destAccountId : 0;
+  const sourceAmount = isTransfer ? (props as TransferConfirmProps).sourceAmount : '';
+  const destAmount = isTransfer ? (props as TransferConfirmProps).destAmount : '';
+  const source_id_prop = !isTransfer && !isWithdrawal ? (props as DepositConfirmProps).source_id : 0;
+  const source_name_prop = !isTransfer && !isWithdrawal ? (props as DepositConfirmProps).source_name : '';
+
+  // Construct transactionData from available props for use in component logic
+  const transactionData = {
+    user_name: user_name_prop || '',
+    account_name: account_name || sourceAccount || '',
+    account_id: account_id_prop || 0,
+    account_currency: account_currency || '',
+    amount: amount || sourceAmount || '',
+    amount_eur: amount_eur_prop || 0,
+    category_id: category_id_prop || 0,
+    category_name: category_name_prop || budget_name,
+    budget_name: budget_name,
+    destination_id: destination_id_prop || 0,
+    destination_name: (props as WithdrawalConfirmProps | DepositConfirmProps).destination_name || destAccount || '',
+    date: propDate,
+    notes: propNotes,
+    source_id: source_id_prop || 0,
+    source_name: source_name_prop || sourceAccount || ''
+  };
+  const sourceCurrency = isTransfer ? (props as TransferConfirmProps).sourceCurrency : '';
+  const destCurrency = isTransfer ? (props as TransferConfirmProps).destCurrency : '';
+  const sourceFee = isTransfer ? (props as TransferConfirmProps).sourceFee : '';
+  const destFee = isTransfer ? (props as TransferConfirmProps).destFee : '';
+  const toLocalDateInput = (value: Date) => {
+    const tzOffsetMs = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - tzOffsetMs).toISOString().slice(0, 10);
+  };
+
+  const getDateInputValue = (date?: string) => {
+    if (!date) return toLocalDateInput(new Date());
+    const parsed = new Date(date);
+    return Number.isNaN(parsed.getTime()) ? toLocalDateInput(new Date()) : toLocalDateInput(parsed);
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(propIsSubmitting ?? false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(propSubmitMessage ?? null);
+  const [dateInput, setDateInput] = useState<string>(() => getDateInputValue(propDate));
+  const [notesInput, setNotesInput] = useState<string>(propNotes);
+  const [hasUserEditedNotes, setHasUserEditedNotes] = useState<boolean>(false);
+
+  // Show Telegram back button
+  useEffect(() => {
+    telegramService.showBackButton(onBack);
+    return () => telegramService.hideBackButton();
+  }, [onBack]);
+
+  // Generate auto-suggested notes on mount (always, not just first time)
+  useEffect(() => {
+    if (!hasUserEditedNotes) {
+      setNotesInput(buildNotesSuggestion());
+    }
+  }, []);
+
+  // Sync local date/notes if parent transaction data changes
+  useEffect(() => {
+    setDateInput(getDateInputValue(propDate));
+  }, [propDate]);
+
+  const buildNotesSuggestion = () => {
+    if (isTransfer) {
+      // Transfer suggestion: "Transfer from Account A 100 EUR to Account B 95 USD. Source fee 1 EUR, destination fee 2 USD"
+      const base = `Transfer from ${sourceAccount} ${sourceAmount} ${sourceCurrency} to ${destAccount} ${destAmount} ${destCurrency}`;
+
+      const hasSourceFee = sourceFee && parseFloat(sourceFee) > 0;
+      const hasDestFee = destFee && parseFloat(destFee) > 0;
+
+      if (hasSourceFee || hasDestFee) {
+        const fees = `Source fee ${sourceFee || '0'} ${sourceCurrency}, destination fee ${destFee || '0'} ${destCurrency}`;
+        return `${base}. ${fees}`;
+      }
+
+      return base;
+    }
+
+    // Original logic for withdrawal/deposit
+    const category = transactionData.category_name || (transactionType === 'withdrawal' ? 'Withdrawal' : 'Deposit');
+    const account = transactionData.account_name || 'Account';
+    const amountRaw = transactionData.amount || '0';
+    const currency = (transactionData.account_currency || 'EUR').toUpperCase();
+    const amountEur = (transactionData.amount_eur ?? parseFloat(amountRaw)) || 0;
+    const transactionLabel = transactionType === 'withdrawal' ? 'Withdrawal' : 'Deposit';
+    const sourceOrDest = transactionType === 'withdrawal' ? 'from' : 'to';
+
+    if (currency === 'EUR') {
+      return `${transactionLabel} ${category} ${sourceOrDest} ${account} ${amountRaw} ${currency}`;
+    }
+
+    return `${transactionLabel} ${category} ${sourceOrDest} ${account} ${amountRaw} ${currency} (${amountEur.toFixed(2)} EUR)`;
+  };
+
+  // Prefill / resync notes when user hasn't edited
+  useEffect(() => {
+    if (hasUserEditedNotes) return;
+
+    const trimmed = transactionData.notes?.trim() ?? '';
+    if (trimmed) {
+      if (notesInput !== trimmed) {
+        setNotesInput(trimmed);
+      }
+      return;
+    }
+
+    const suggestion = buildNotesSuggestion();
+    if (notesInput !== suggestion) {
+      setNotesInput(suggestion);
+      onNotesChange?.(suggestion);
+    }
+  // Note: notesInput intentionally excluded from deps to prevent infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hasUserEditedNotes,
+    transactionData.notes,
+    transactionData.category_name,
+    transactionData.account_name,
+    transactionData.amount,
+    transactionData.amount_eur,
+    transactionData.account_currency,
+    sourceAccount,
+    destAccount,
+    sourceAmount,
+    destAmount,
+    sourceCurrency,
+    destCurrency,
+    sourceFee,
+    destFee
+  ]);
+
+  const handleDateChange = (value: string) => {
+    setDateInput(value);
+    const isoValue = value ? new Date(`${value}T00:00:00`).toISOString() : '';
+    onDateChange?.(isoValue);
+    // Clear validation error when user sets a date
+    if (value && onClearError) {
+      onClearError();
+    }
+  };
+
+  const handleNotesChange = (value: string) => {
+    if (!hasUserEditedNotes) setHasUserEditedNotes(true);
+    setNotesInput(value);
+    onNotesChange?.(value);
+    // Clear validation error when user types notes (notes can be empty, so any input clears error)
+    if (onClearError) {
+      onClearError();
+    }
+  };
+
+  const handleConfirmTransaction = async () => {
+    if (isSubmitting) return;
+
+    // Validate amount_eur is available (required for API submission)
+    if (!isTransfer && (!transactionData.amount_eur || transactionData.amount_eur === 0)) {
+      const errorMsg = {
+        type: 'error' as const,
+        text: 'Currency conversion failed. Please retry or check your connection.'
+      };
+      setSubmitMessage(errorMsg);
+      onSubmitMessageChange?.(errorMsg);
+      return;
+    }
+
+    // Notes validation: required for withdrawal, optional for deposit and transfer
+    if (isWithdrawal && !notesInput.trim()) {
+      const errorMsg = { type: 'error' as const, text: 'Please add notes before submitting.' };
+      setSubmitMessage(errorMsg);
+      onSubmitMessageChange?.(errorMsg);
+      return;
+    }
+
+    setIsSubmitting(true);
+    onIsSubmittingChange?.(true);
+    setSubmitMessage(null);
+    onSubmitMessageChange?.(null);
+
+    try {
+      // Build transaction payload
+      const effectiveDateIso = dateInput
+        ? new Date(`${dateInput}T00:00:00`).toISOString()
+        : new Date().toISOString();
+
+      const timestamp = new Date().toISOString();
+
+      // Ensure notes format - moved inside function to fix scope access to state variables
+      const ensureNotesFormat = (): string => {
+        // Always regenerate notes to ensure correct format
+        const suggestion = buildNotesSuggestion();
+
+        // If user edited notes manually, respect it; otherwise use suggestion
+        // Exception: if notes are empty or just whitespace, always use suggestion
+        const trimmed = notesInput.trim();
+        if (!trimmed || !hasUserEditedNotes) {
+          return suggestion;
+        }
+
+        return trimmed;
+      };
+
+      const finalNotes = ensureNotesFormat();
+
+      // Build standardized webhook payload based on transaction type
+      let webhookPayload: UnifiedWebhookPayload;
+
+      if (transactionType === 'withdrawal') {
+        webhookPayload = {
+          transactionType: 'withdrawal',
+          user_name: transactionData.user_name || 'unknown',
+          account_name: transactionData.account_name,
+          account_id: Number(transactionData.account_id) || 0,
+          account_currency: transactionData.account_currency,
+          amount: parseFloat(transactionData.amount),
+          amount_eur: transactionData.amount_eur || 0,
+          category_id: transactionData.category_id,
+          category_name: transactionData.category_name,
+          budget_name: transactionData.budget_name || '',
+          destination_id: Number(transactionData.destination_id) || 0,
+          destination_name: transactionData.destination_name || '',
+          date: effectiveDateIso,
+          notes: finalNotes,
+          timestamp
+        } as WithdrawalWebhookPayload;
+      } else if (transactionType === 'deposit') {
+        webhookPayload = {
+          transactionType: 'deposit',
+          user_name: transactionData.user_name || 'unknown',
+          account_name: transactionData.account_name,
+          account_id: Number(transactionData.account_id) || 0,
+          account_currency: transactionData.account_currency,
+          amount: parseFloat(transactionData.amount),
+          amount_eur: transactionData.amount_eur || 0,
+          category_id: transactionData.category_id,
+          category_name: transactionData.category_name,
+          source_id: Number(transactionData.source_id) || 0,
+          source_name: transactionData.source_name || '',
+          date: effectiveDateIso,
+          notes: finalNotes,
+          timestamp
+        } as DepositWebhookPayload;
+      } else {
+        // Transfer
+        const srcAccountId = Number(sourceAccountId) || 0;
+        const dstAccountId = Number(destAccountId) || 0;
+
+        // Calculate exchange_rate with priority-based fallback
+        const exchangeRate = (() => {
+          // Priority 1: Use machine context exchange_rate (set by AmountScreen)
+          const machineRate = (transactionData as any).exchange_rate;
+          if (machineRate !== null && machineRate !== undefined && !isNaN(machineRate)) {
+            return machineRate;
+          }
+
+          // Priority 2: Same currency → rate is always 1.0
+          const sourceCurr = sourceCurrency?.toUpperCase() || '';
+          const destCurr = destCurrency?.toUpperCase() || '';
+          if (sourceCurr && destCurr && sourceCurr === destCurr) {
+            return 1.0;
+          }
+
+          // Priority 3: Calculate from amounts (cross-currency)
+          const srcNum = parseFloat(sourceAmount || '');
+          const dstNum = parseFloat(destAmount || '');
+          if (!isNaN(srcNum) && !isNaN(dstNum) && srcNum > 0 && dstNum > 0) {
+            return dstNum / srcNum;
+          }
+
+          // Fallback: null (should not happen if validation passed)
+          console.warn('⚠️ exchange_rate could not be determined for transfer');
+          return null;
+        })();
+
+        webhookPayload = {
+          transactionType: 'transfer',
+          user_name: transactionData.user_name || 'unknown',
+          source_account_name: sourceAccount,
+          source_account_id: srcAccountId,
+          source_account_currency: sourceCurrency?.toUpperCase() || 'EUR',
+          source_amount: parseFloat(sourceAmount),
+          source_fee: sourceFee ? parseFloat(sourceFee) : 0,
+          destination_account_name: destAccount,
+          destination_account_id: dstAccountId,
+          destination_account_currency: destCurrency?.toUpperCase() || 'EUR',
+          destination_amount: parseFloat(destAmount),
+          destination_fee: destFee ? parseFloat(destFee) : 0,
+          exchange_rate: exchangeRate,
+          date: effectiveDateIso,
+          notes: finalNotes,
+          timestamp
+        } as TransferWebhookPayload;
+      }
+
+      console.log(`📝 ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} payload built:`, webhookPayload);
+
+      // Submit to Firefly (or debug webhook if VITE_DEBUG_API=true)
+      // The addTransaction function will handle routing based on VITE_DEBUG_API flag
+      const [success, response] = await addTransaction(webhookPayload, transactionType, true);
+
+      if (success) {
+        console.log(`✅ ${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} submitted successfully:`, response);
+
+        // Proactively refresh transaction cache
+        await refreshHomeTransactionCache();
+
+        // Show Telegram alert for success
+        const successMsg = transactionType === 'withdrawal'
+          ? '✅ Withdrawal saved successfully!'
+          : transactionType === 'deposit'
+            ? '✅ Deposit saved successfully!'
+            : '✅ Transfer saved successfully!';
+        telegramService.showAlert(successMsg, () => {
+          onSuccess();
+          onConfirm();
+        });
+      } else {
+        console.error('❌ Transaction submission failed:', response);
+        let errorMessage = 'Failed to save transaction';
+        if (typeof response === 'object' && response !== null) {
+          // ApiError shape from apiClient
+          if ('status' in response && 'statusText' in response) {
+            const r = response as { status?: unknown; statusText?: unknown; body?: unknown; message?: unknown; error?: unknown };
+            const status = r.status ?? '';
+            const statusText = r.statusText ?? '';
+            const body = r.body ? ` body: ${safeStringify(r.body)}` : '';
+            const msg = r.message ? ` message: ${safeStringify(r.message)}` : '';
+            const err = r.error ? ` error: ${safeStringify(r.error)}` : '';
+            errorMessage = `${status} ${statusText}${msg}${body}${err}`.trim();
+          } else if ('error' in response) {
+            const maybeError = (response as { error: unknown }).error;
+            errorMessage = safeStringify(maybeError);
+          } else if ('message' in response) {
+            errorMessage = safeStringify((response as { message: unknown }).message);
+          } else {
+            errorMessage = safeStringify(response);
+          }
+        } else if (response) {
+          errorMessage = String(response);
+        }
+
+        // Show Telegram alert for error
+        telegramService.showAlert(`❌ Error: ${errorMessage}`);
+
+        const errorMsg = {
+          type: 'error' as const,
+          text: `Error: ${errorMessage}`
+        };
+        setSubmitMessage(errorMsg);
+        onSubmitMessageChange?.(errorMsg);
+      }
+    } catch (error) {
+      console.error('💥 Transaction submission error:', error);
+      const errorMessage = safeStringify(error);
+
+      // Show Telegram alert for error
+      telegramService.showAlert(`❌ Error: ${errorMessage}`);
+
+      const errorMsg = {
+        type: 'error' as const,
+        text: `Error: ${errorMessage}`
+      };
+      setSubmitMessage(errorMsg);
+      onSubmitMessageChange?.(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+      onIsSubmittingChange?.(false);
+    }
+  };
+
+  const displayCategory = transactionData.category_name || budget_name;
+  const isSameCurrency = isTransfer && sourceCurrency?.toUpperCase() === destCurrency?.toUpperCase();
+  const transactionTypeLabel = isTransfer ? 'Transfer' : isWithdrawal ? 'Withdrawal' : 'Deposit';
+  const notesPlaceholder = isTransfer
+    ? 'Describe the transfer...'
+    : isWithdrawal
+      ? 'Describe the withdrawal...'
+      : 'Describe the deposit...';
+
+  // For withdrawal/deposit
+  const amountColorClass = isTransfer ? 'text-blue-400' : isWithdrawal ? 'text-red-400' : 'text-green-400';
+  const amountBgClass = isTransfer
+    ? 'bg-gradient-to-br from-blue-900/40 to-blue-900/20 border border-blue-800/50'
+    : isWithdrawal
+      ? 'bg-gradient-to-br from-red-900/40 to-red-900/20 border border-red-800/50'
+      : 'bg-gradient-to-br from-green-900/40 to-green-900/20 border border-green-800/50';
+  const amountLabelColorClass = isTransfer ? 'text-blue-200' : isWithdrawal ? 'text-red-200' : 'text-green-200';
+  const amountPrefix = isTransfer ? '' : isWithdrawal ? '-' : '+';
+  const sourceOrDestLabel = isWithdrawal ? 'Destination' : 'Source';
+  const sourceOrDestValue = isWithdrawal ? transactionData.destination_name : transactionData.source_name;
+  const sourceOrDestIcon = isWithdrawal ? 'text-green-400' : 'text-blue-400';
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Confirm</h1>
-        <button onClick={onBack} className="text-gray-400 hover:text-white">←</button>
+    <div className={`${layouts.screen} ${gradients.screen}`}>
+      <div className={`${layouts.header} ${gradients.header}`}>
+        {!isAvailable && (
+          <button onClick={onBack} className="mr-3">
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+        )}
+        <h1 className="text-2xl font-bold">Confirm {transactionTypeLabel}</h1>
       </div>
-      <div className="bg-gray-800 p-4 rounded-lg mb-6 space-y-2">
-        <div>Transaction Details</div>
-        <div className="text-sm text-gray-400">Ready to submit</div>
+
+      <div className={layouts.content}>
+        {/* Validation Error */}
+        {errors.validation && (
+          <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-600/50">
+            <p className="text-xs text-red-200">{errors.validation}</p>
+          </div>
+        )}
+
+        {/* Amount Card - Prominent Display */}
+        <div className={`mb-4 p-3 rounded-lg ${amountBgClass} shadow-lg`}>
+          <p className={`text-xs ${amountLabelColorClass} uppercase tracking-wider font-semibold mb-1`}>Amount</p>
+          {isTransfer ? (
+            <div className="flex items-center justify-center gap-2 text-3xl font-bold text-blue-400 mb-1">
+              {isSameCurrency ? (
+                <>{getCurrencySymbol(sourceCurrency)}{sourceAmount}</>
+              ) : (
+                <>
+                  <span>{getCurrencySymbol(sourceCurrency)}{sourceAmount}</span>
+                  <ArrowRight size={24} className="flex-shrink-0" />
+                  <span>{getCurrencySymbol(destCurrency)}{destAmount}</span>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className={`text-3xl font-bold ${amountColorClass} mb-1`}>
+              {amountPrefix}{getCurrencySymbol(transactionData.account_currency)}{amount}
+            </div>
+          )}
+          <p className="text-xs text-gray-400">{transactionTypeLabel} Transaction</p>
+        </div>
+
+        {/* Details Card */}
+        <div className="mb-4 rounded-lg bg-gray-800/50 border border-gray-700/50 shadow-lg overflow-hidden">
+          {isTransfer ? (
+            <>
+              {/* Source Account */}
+              <div className="p-3 border-b border-gray-700/50">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <MapPin size={14} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">From Account</span>
+                </div>
+                <span className="text-xs font-medium text-white ml-5">{sourceAccount}</span>
+              </div>
+
+              {/* Destination Account */}
+              <div className="p-3 border-b border-gray-700/50">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <MapPin size={14} className="text-green-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">To Account</span>
+                </div>
+                <span className="text-xs font-medium text-white ml-5">{destAccount}</span>
+              </div>
+
+              {/* Fees - Only show if present */}
+              {((sourceFee && parseFloat(sourceFee) > 0) || (destFee && parseFloat(destFee) > 0)) && (
+                <div className="p-3 border-b border-gray-700/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Tag size={14} className="text-amber-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Fees</span>
+                  </div>
+                  <div className="ml-5 space-y-0.5">
+                    {sourceFee && parseFloat(sourceFee) > 0 && (
+                      <div className="text-xs font-medium text-white">
+                        Source: {getCurrencySymbol(sourceCurrency)}{sourceFee}
+                      </div>
+                    )}
+                    {destFee && parseFloat(destFee) > 0 && (
+                      <div className="text-xs font-medium text-white">
+                        Destination: {getCurrencySymbol(destCurrency)}{destFee}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Account */}
+              <div className="p-3 border-b border-gray-700/50">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Wallet size={14} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Account</span>
+                </div>
+                <span className="text-xs font-medium text-white ml-5">{account_name}</span>
+              </div>
+
+              {/* Category */}
+              <div className="p-3 border-b border-gray-700/50">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <Tag size={14} className="text-amber-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Category</span>
+                </div>
+                <span className="text-xs font-medium text-white ml-5">{displayCategory}</span>
+              </div>
+
+              {/* Destination / Source */}
+              <div className="p-3 border-b border-gray-700/50">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <MapPin size={14} className={`${sourceOrDestIcon} flex-shrink-0`} />
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{sourceOrDestLabel}</span>
+                </div>
+                <span className="text-xs font-medium text-white ml-5">{sourceOrDestValue || 'Not specified'}</span>
+              </div>
+            </>
+          )}
+
+          {/* Date */}
+          <div className="p-3 border-b border-gray-700/50">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar size={14} className="text-purple-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Date</span>
+            </div>
+            <input
+              type="date"
+              aria-label="Transaction date"
+              value={dateInput}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-full max-w-[140px]"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <FileText size={14} className="text-cyan-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-gray-300 uppercase tracking-wide">Notes</span>
+            </div>
+            <textarea
+              value={notesInput}
+              onChange={(e) => handleNotesChange(e.target.value)}
+              placeholder={notesPlaceholder}
+              rows={4}
+              className="ml-5 bg-gray-900/50 border border-gray-600/50 text-white text-xs px-2 py-1.5 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-y min-h-[100px] w-[calc(100%-20px)]"
+            />
+          </div>
+        </div>
+
+        {/* Submit Message */}
+        {submitMessage && (
+          <div className={`mb-3 p-3 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
+            submitMessage.type === 'success'
+              ? 'bg-green-900/30 border border-green-600/50 text-green-200'
+              : 'bg-red-900/30 border border-red-600/50 text-red-200'
+          }`}>
+            {submitMessage.type === 'success' ? (
+              <Check size={16} className="flex-shrink-0" />
+            ) : (
+              <X size={16} className="flex-shrink-0" />
+            )}
+            <span>{submitMessage.text}</span>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-semibold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            <X size={16} />
+            Decline
+          </button>
+          <button
+            onClick={handleConfirmTransaction}
+            disabled={isSubmitting}
+            className="bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg font-semibold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader size={16} className="animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Check size={16} />
+                Confirm
+              </>
+            )}
+          </button>
+        </div>
       </div>
-      <button onClick={onSubmit} className="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg">
-        Submit
-      </button>
     </div>
   );
 };
