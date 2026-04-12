@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+
+# Development
+.vite/
+.turbo/
+.next/
+.nuxt/
+
+# Testing
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Lock files (already installed in container)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Documentation
+*.md
+!CLAUDE.md
+
+# Wrangler
+.wrangler/
+functions/
+
+# Test config
+playwright.config.ts
+postcss.config.js
+
+# Claude docs
+claudedocs/
+.claude/
+.playwright-mcp/

@@ -61,7 +61,14 @@ export async function fetchTransactions(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch transactions';
-    console.error('❌ Failed to fetch transactions:', errorMessage);
+    const isAbortLike =
+      error instanceof DOMException
+        ? error.name === 'AbortError'
+        : /aborted|failed to fetch/i.test(errorMessage);
+
+    if (!isAbortLike) {
+      console.error('❌ Failed to fetch transactions:', errorMessage);
+    }
 
     return {
       transactions: [],
@@ -139,7 +146,14 @@ export async function fetchTransactionById(id: string | number): Promise<{
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch transaction';
-    console.error('❌ Failed to fetch transaction:', errorMessage);
+    const isAbortLike =
+      error instanceof DOMException
+        ? error.name === 'AbortError'
+        : /aborted|failed to fetch/i.test(errorMessage);
+
+    if (!isAbortLike) {
+      console.error('❌ Failed to fetch transaction:', errorMessage);
+    }
 
     return {
       error: errorMessage,

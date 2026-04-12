@@ -1,33 +1,12 @@
-/**
- * Fetch Telegram user data from backend sync-service
- * 
- * This function fetches the complete user data from the API with the structure:
- * {
- *   "success": true,
- *   "message": "User data retrieved successfully",
- *   "timestamp": "2025-10-27T04:04:18.446959",
- *   "userData": {
- *     "id": 64096067,
- *     "name": "Oleksandr 🇺🇦 Kaiukov",
- *     "username": "Kaiukov",
- *     "bio": "😎",
- *     "avatar_url": "https://api.telegram.org/file/bot7287096901:AAEXbITi_NXcCeZmI-odblaOOL33fft4jmk/profile_photos/file_5.jpg",
- *     "language_code": "en",
- *     "bot_blocked": false
- *   }
- * }
- */
+import { authService, type AuthUserData } from '../services/sync/auth';
 
-import telegramService from '../services/telegram';
-
-// Define TypeScript interfaces matching the expected API response structure
 export interface TelegramUserData {
   id: number;
   name: string;
-  username: string;
-  bio: string;
+  username: string | null | undefined;
+  bio: string | null | undefined;
   avatar_url: string | null;
-  language_code: string;
+  language_code: string | null | undefined;
   bot_blocked: boolean;
 }
 
@@ -35,89 +14,65 @@ export interface UserDataResponse {
   success: boolean;
   message: string;
   timestamp: string;
-  userData: TelegramUserData;
+  userData: TelegramUserData | null;
+  sessionToken?: string | null;
+  sessionExpiresAt?: string | null;
 }
 
-// Request deduplication: Track in-flight requests by user ID
 const userDataFetchPromises = new Map<number, Promise<UserDataResponse>>();
 
-/**
- * Fetches complete user data from the backend API with request deduplication
- * Prevents multiple concurrent API calls for the same user ID
- * @param userId Optional user ID to fetch data for (if not provided, uses current user)
- * @returns Promise resolving to the complete user data response
- */
 export async function fetchUserData(userId?: number): Promise<UserDataResponse> {
-  // Return cached promise if request is already in flight for this user
   if (userId && userDataFetchPromises.has(userId)) {
-    console.log('🔄 Reusing in-flight request for user ID:', userId);
     return userDataFetchPromises.get(userId)!;
   }
+
   const promise = (async () => {
     try {
-      console.log('📸 Fetching full user data from backend for user ID:', userId);
-
-      // Get Telegram initData for authentication
-      const initData = telegramService.getInitData();
-
-      if (!initData) {
-        console.warn('⚠️ No Telegram initData available (browser mode)');
-        throw new Error('Telegram initData not available');
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser) {
+        return {
+          success: false,
+          message: 'No active session',
+          timestamp: new Date().toISOString(),
+          userData: null,
+          sessionToken: null,
+          sessionExpiresAt: null,
+        };
       }
 
-      // Define the base URL - in production, use the production URL, otherwise use proxy
-      const isProduction = typeof window !== 'undefined' &&
-        (window.location.hostname.includes('workers.dev') ||
-         window.location.hostname.includes('pages.dev'));
-
-      const baseUrl = isProduction ? 'https://dev.neon-chuckwalla.ts.net' : '';
-      const apiKey = import.meta.env.VITE_SYNC_API_KEY || '';
-
-      if (!apiKey) {
-        throw new Error('Sync API key not configured');
-      }
-
-      const url = `${baseUrl}/api/v1/tgUser`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-Anonymous-Key': apiKey,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          ...(initData && { 'X-Telegram-Init-Data': initData }),
-        },
-        body: JSON.stringify({
-          ...(userId && { userId }) // Include userId in the request if provided
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Failed to fetch user data:', response.statusText, response.status, errorText);
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data: UserDataResponse = await response.json();
-      console.log('✅ User data fetched successfully for ID:', userId);
-
-      return data;
-
+      return {
+        success: true,
+        message: 'Authenticated session found',
+        timestamp: new Date().toISOString(),
+        userData: mapAuthUserData(currentUser),
+        sessionToken: null,
+        sessionExpiresAt: null,
+      };
     } catch (error) {
-      console.error('💥 Error fetching user data from backend:', error);
+      console.error('Error fetching user data:', error);
       throw error;
     } finally {
-      // Clean up the promise from the map when done (success or error)
       if (userId) {
         userDataFetchPromises.delete(userId);
       }
     }
   })();
 
-  // Store the promise in the map to deduplicate concurrent requests
   if (userId) {
     userDataFetchPromises.set(userId, promise);
   }
 
   return promise;
+}
+
+function mapAuthUserData(user: AuthUserData): TelegramUserData {
+  return {
+    id: user.id,
+    name: user.name,
+    username: user.username,
+    bio: user.bio,
+    avatar_url: user.avatar_url || null,
+    language_code: user.language_code,
+    bot_blocked: Boolean(user.bot_blocked),
+  };
 }

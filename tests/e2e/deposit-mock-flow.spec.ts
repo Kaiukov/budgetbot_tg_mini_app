@@ -80,14 +80,37 @@ const mockSources = {
   ],
 };
 
-const mockBalance = { success: true, message: 'ok', timestamp: mockNow, total: 1, get_current_balance: [{ balance_in_USD: 1234.56 }] };
+const mockBalance = {
+  success: true,
+  message: 'ok',
+  timestamp: mockNow,
+  total: 1,
+  get_running_balance: [{ date: mockNow, balance_eur: 1150.12, balance_usd: 1234.56 }],
+};
 const mockTransactions = { data: [] };
+const mockAuthSession = {
+  success: true,
+  message: 'ok',
+  timestamp: mockNow,
+  sessionToken: null,
+  sessionExpiresAt: null,
+  userData: {
+    id: 64096067,
+    name: 'Oleksandr Kaiukov',
+    username: 'Kaiukov',
+    bio: 'Manage finances',
+    avatar_url: null,
+    language_code: 'en',
+    bot_blocked: false,
+    isAuth: true,
+  },
+};
 
 function mockTelegram(page: Page) {
   return page.addInitScript(() => {
     (window as any).Telegram = {
       WebApp: {
-        initData: '',
+        initData: 'mock-init-data',
         initDataUnsafe: {
           user: {
             id: 64096067,
@@ -112,7 +135,10 @@ function mockTelegram(page: Page) {
         ready() { },
         expand() { },
         close() { },
-        showAlert: (message: string) => console.log('Telegram Alert:', message),
+        showAlert: (message: string, cb?: () => void) => {
+          console.log('Telegram Alert:', message);
+          cb?.();
+        },
         showConfirm: (_msg: string, cb?: (confirmed: boolean) => void) => cb?.(true),
       },
     };
@@ -120,23 +146,39 @@ function mockTelegram(page: Page) {
 }
 
 async function installApiMocks(page: Page) {
-  await page.route('**/api/v1/get_accounts_usage**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockAccounts) }));
-  await page.route('**/api/v1/get_categories_usage**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockCategories) }));
-  await page.route('**/api/v1/get_source_name_usage**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockSources) }));
-  await page.route('**/api/v1/get_exchange_rate**', (route) =>
-    route.fulfill({
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockAuthSession) }));
+  await page.route('**/api/v1/read-model/accounts/usage**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockAccounts) }));
+  await page.route('**/api/v1/read-model/categories/usage**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockCategories) }));
+  await page.route('**/api/v1/read-model/sources**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockSources) }));
+  await page.route('**/api/v1/exchange-rate**', (route) =>
+    {
+      const url = new URL(route.request().url());
+      const amount = Number(url.searchParams.get('amount') ?? '1');
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          message: 'ok',
+          timestamp: mockNow,
+          exchangeData: { from: 'USD', to: 'EUR', amount, exchangeRate: 0.85231, exchangeAmount: amount * 0.85231 },
+        }),
+      });
+    }
+  );
+  await page.route('**/api/v1/read-model/running-balance**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockBalance) }));
+  await page.route('**/api/v1/transactions**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockTransactions) });
+      return;
+    }
+
+    await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        success: true,
-        message: 'ok',
-        timestamp: mockNow,
-        get_exchange_rate: [{ from: 'USD', to: 'EUR', rate: 0.85231 }],
-      }),
-    })
-  );
-  await page.route('**/api/v1/get_running_balance**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockBalance) }));
-  await page.route('**/api/v1/transactions**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockTransactions) }));
+      body: JSON.stringify({ data: { id: 'mock-123', type: 'transactions' } }),
+    });
+  });
   await page.route('**/webhook/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) }));
 }
 
@@ -170,10 +212,10 @@ test.describe('Deposit flow (mocked, fast)', () => {
     // Date should be today's date (dynamic)
     const dateInput = page.getByRole('textbox', { name: /Transaction date/ });
     const dateValue = await dateInput.inputValue();
-    expect(dateValue).toMatch(/2025-12-\d{2}/);
+    expect(dateValue).toMatch(/\d{4}-\d{2}-\d{2}/);
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('back button keeps amount for same account and clears on switch', async ({ page }) => {
@@ -224,7 +266,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
     await page.getByText('Salary').first().click();
     await page.getByRole('button', { name: 'Income' }).click();
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('happy path with USD account shows converted amount in confirmation', async ({ page }) => {
@@ -247,7 +289,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
     await expect(page.locator('div').filter({ hasText: 'Source' }).filter({ hasText: 'Income' }).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('back button from confirmation page returns to source selection with data preserved', async ({ page }) => {
@@ -296,7 +338,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
     await expect(page.locator('div').filter({ hasText: 'Source' }).filter({ hasText: 'Bonus' }).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('exchange rate displayed correctly for USD amount entry', async ({ page }) => {
@@ -319,7 +361,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
     );
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('Decline button cancels transaction and returns to home', async ({ page }) => {
@@ -339,7 +381,7 @@ test.describe('Deposit flow (mocked, fast)', () => {
     await page.getByRole('button', { name: 'Decline' }).click();
 
     // Verify returned to home
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 });
 

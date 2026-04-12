@@ -59,7 +59,6 @@ export { apiClient } from './sync/apiClient';
 import { accountsService } from './sync/syncAccounts';
 import { categoriesService } from './sync/syncCategories';
 import { destinationSourceService } from './sync/syncDestinationSourceNames';
-import { authService } from './sync/auth';
 
 /**
  * Unified SyncService for backward compatibility
@@ -134,7 +133,7 @@ class SyncService {
    * Check service configuration
    */
   public isConfigured(): boolean {
-    return authService.isAuthenticated();
+    return true;
   }
 
   /**

@@ -39,8 +39,10 @@ export interface CurrentBalanceResponse {
   success: boolean;
   message: string;
   timestamp: string;
-  get_current_balance: {
-    balance_in_USD: number;
+  get_running_balance: {
+    date: string | null;
+    balance_eur: number;
+    balance_usd: number;
   }[];
   total: number;
 }
@@ -83,7 +85,7 @@ class AccountsService {
 
   /**
    * Make API request using unified ApiClient with Tier 2 auth
-   * Tier 2: Anonymous Authorized (X-Anonymous-Key + X-Telegram-Init-Data)
+   * Tier 2: Anonymous Authorized (session token after bootstrap)
    */
   private async makeRequest<T>(
     endpoint: string,
@@ -112,21 +114,22 @@ class AccountsService {
       const cachedData = this.balanceCache.get(cacheKey);
       if (cachedData) {
         console.log('💾 Using cached balance');
-        const cachedBalance = cachedData?.get_current_balance?.[0]?.balance_in_USD;
-        if (cachedBalance !== undefined) {
-          return cachedBalance;
+        const latestCachedBalance =
+          cachedData?.get_running_balance?.[cachedData.get_running_balance.length - 1]?.balance_usd;
+        if (latestCachedBalance !== undefined) {
+          return latestCachedBalance;
         }
       }
 
       console.log('🔄 Fetching fresh balance');
 
       const data = await this.makeRequest<CurrentBalanceResponse>(
-        '/api/v1/get_running_balance',
+        '/api/v1/read-model/running-balance',
         { method: 'GET' }
       );
 
       // Validate response structure before accessing
-      if (!data || !data.get_current_balance || !Array.isArray(data.get_current_balance) || data.get_current_balance.length === 0) {
+      if (!data || !data.get_running_balance || !Array.isArray(data.get_running_balance) || data.get_running_balance.length === 0) {
         console.warn('⚠️ Invalid balance response structure, returning 0');
         return 0;
       }
@@ -134,7 +137,7 @@ class AccountsService {
       // Cache the result for 5 minutes
       this.balanceCache.set(cacheKey, data);
 
-      return data.get_current_balance[0]?.balance_in_USD || 0;
+      return data.get_running_balance[data.get_running_balance.length - 1]?.balance_usd || 0;
     } catch (error) {
       console.error('Failed to fetch current balance:', error);
       return 0; // Return 0 instead of throwing to prevent UI breakage
@@ -169,8 +172,8 @@ class AccountsService {
 
       // Build URL with optional user_name query parameter
       const endpoint = user_name
-        ? `/api/v1/get_accounts_usage?user_name=${encodeURIComponent(user_name)}`
-        : '/api/v1/get_accounts_usage';
+        ? `/api/v1/read-model/accounts/usage?user_name=${encodeURIComponent(user_name)}`
+        : '/api/v1/read-model/accounts/usage';
 
       const data = await this.makeRequest<AccountsUsageResponse>(
         endpoint,

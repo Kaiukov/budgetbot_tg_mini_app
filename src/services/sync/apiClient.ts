@@ -1,37 +1,21 @@
 /**
- * Unified HTTP Client for Firefly API
- * Implements Firefly 3-tier authentication system:
- * - Tier 2: Anonymous Authorized (Telegram Mini App users with initData)
- * - Tier 1: Service Role (Backend services with Bearer token)
- * - Tier 3: Anonymous Read-Only (Public access, read-only)
+ * Unified HTTP Client for Sync API
+ * Cookie-based auth — session carried by HttpOnly cookie.
+ * No bearer tokens in localStorage.
  */
 
-/**
- * Safe JSON stringifier that handles Unicode surrogate pairs correctly
- * Prevents "no low surrogate in string" errors by sanitizing strings
- */
+import { resolveApiBaseUrl } from '../../config/runtime';
+
 function safeJsonStringify(obj: any): string {
-  // Custom replacer function to sanitize strings with potential surrogate pair issues
   const replacer = (_key: string, value: any): any => {
     if (typeof value === 'string') {
-      // Replace any unpaired surrogates with Unicode replacement character (U+FFFD)
       return value
-        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')  // unpaired high surrogate
-        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD'); // unpaired low surrogate
+        .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '\uFFFD')
+        .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD');
     }
     return value;
   };
-
   return JSON.stringify(obj, replacer);
-}
-
-type AuthTier = 'tier1' | 'tier2' | 'tier3';
-
-interface ApiClientOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  body?: any;
-  auth?: AuthTier;
-  timeout?: number;
 }
 
 interface ApiError {
@@ -42,130 +26,23 @@ interface ApiError {
 }
 
 export class ApiClient {
-  private baseUrl: string;
-  private syncApiKey: string | null = null;           // X-Anonymous-Key
-  private fireflyToken: string | null = null;         // Tier 1 Bearer token
   private readonly DEFAULT_TIMEOUT_MS = 30000;
 
   constructor() {
-    this.syncApiKey = import.meta.env.VITE_SYNC_API_KEY || null;
-    this.fireflyToken = import.meta.env.VITE_FIREFLY_TOKEN || null;
-
-    // Resolve base URL
-    this.baseUrl = this.resolveBaseUrl();
-
-    console.log('🔌 ApiClient initialized:', {
-      environment: this.baseUrl ? 'production' : 'development (proxy)',
-      baseUrl: this.baseUrl || '(using Vite proxy)',
-      hasSyncApiKey: !!this.syncApiKey,
-      hasFireflyToken: !!this.fireflyToken
-    });
+    this.resolveBaseUrl();
   }
 
-  /**
-   * Resolve base URL based on environment
-   * - Development: Empty string (uses Vite proxy at /api)
-   * - Production: Direct URL from env or hostname detection
-   */
   private resolveBaseUrl(): string {
-    if (typeof window === 'undefined') {
-      return '';
-    }
-
-    const isProduction =
-      window.location.hostname.includes('workers.dev') ||
-      window.location.hostname.includes('pages.dev');
-
-    if (isProduction) {
-      return import.meta.env.VITE_API_BASE_URL || 'https://dev.neon-chuckwalla.ts.net';
-    }
-
-    return ''; // Development: use Vite proxy
+    return resolveApiBaseUrl();
   }
 
-  /**
-   * Build Tier 2 headers: Anonymous Authorized (Telegram Mini App users)
-   * Requires: X-Anonymous-Key + X-Telegram-Init-Data
-   */
-  private async buildTier2Headers(): Promise<Record<string, string>> {
-    if (!this.syncApiKey) {
-      throw new Error('Sync API key not configured for Tier 2 authentication');
-    }
-
-    // Dynamically import to avoid circular deps
-    const { default: telegramService } = await import('../telegram');
-    const initData = telegramService.getInitData();
-
-    console.log('🔐 Tier 2 Auth:', {
-      hasSyncApiKey: !!this.syncApiKey,
-      hasInitData: !!initData,
-      initDataLength: initData?.length || 0,
-    });
-
-    if (!initData) {
-      console.warn('⚠️ No Telegram initData available - Tier 2 auth will fail. Are you testing in Telegram?');
-    }
-
+  private buildHeaders(): Record<string, string> {
     return {
-      'X-Anonymous-Key': this.syncApiKey,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      ...(initData && { 'X-Telegram-Init-Data': initData }),
-    };
-  }
-
-  /**
-   * Build Tier 1 headers: Service Role (Backend services)
-   * Requires: Authorization (Bearer) + X-Anonymous-Key
-   */
-  private buildTier1Headers(): Record<string, string> {
-    if (!this.fireflyToken || !this.syncApiKey) {
-      throw new Error('Firefly token and Sync API key required for Tier 1 authentication');
-    }
-
-    return {
-      'Authorization': `Bearer ${this.fireflyToken}`,
-      'X-Anonymous-Key': this.syncApiKey,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
     };
   }
 
-  /**
-   * Build Tier 3 headers: Anonymous Read-Only (Public access)
-   * Requires: X-Anonymous-Key only
-   */
-  private buildTier3Headers(): Record<string, string> {
-    if (!this.syncApiKey) {
-      throw new Error('Sync API key not configured for Tier 3 authentication');
-    }
-
-    return {
-      'X-Anonymous-Key': this.syncApiKey,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    };
-  }
-
-  /**
-   * Build headers based on authentication tier
-   */
-  private async buildHeaders(tier: AuthTier = 'tier2'): Promise<Record<string, string>> {
-    switch (tier) {
-      case 'tier1':
-        return this.buildTier1Headers();
-      case 'tier2':
-        return this.buildTier2Headers();
-      case 'tier3':
-        return this.buildTier3Headers();
-      default:
-        throw new Error(`Unknown auth tier: ${tier}`);
-    }
-  }
-
-  /**
-   * Execute HTTP request with timeout
-   */
   private async executeRequest<T>(
     url: string,
     config: RequestInit,
@@ -201,103 +78,50 @@ export class ApiClient {
     }
   }
 
-  /**
-   * Redact sensitive information from logs
-   */
-  private redactSecretsInLogs(msg: string): string {
-    if (!msg) return msg;
-
-    return msg
-      .replace(new RegExp(this.syncApiKey || 'NOMATCH', 'g'), '***SYNC_KEY***')
-      .replace(new RegExp(this.fireflyToken || 'NOMATCH', 'g'), '***FIREFLY_TOKEN***');
-  }
-
-  /**
-   * Main request method - unified entry point for all API calls
-   */
   public async request<T>(
     path: string,
-    options?: ApiClientOptions
+    options?: {
+      method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+      body?: any;
+      auth?: string; // Ignored — auth is now cookie-based
+      timeout?: number;
+    }
   ): Promise<T> {
     const {
       method = 'GET',
       body,
-      auth = 'tier2',
       timeout = this.DEFAULT_TIMEOUT_MS,
     } = options || {};
 
-    const url = `${this.baseUrl}${path}`;
+    const baseUrl = this.resolveBaseUrl();
+    const url = `${baseUrl}${path}`;
 
     try {
-      // Build headers based on auth tier
-      const headers = await this.buildHeaders(auth);
+      const headers = this.buildHeaders();
 
-      // Log request (redacted)
-      console.log('📤 API Request:', {
-        method,
-        url: url.replace(/https?:\/\/[^/]+/, ''), // Hide domain in logs
-        auth,
-        hasBody: !!body,
-      });
-
-      // Prepare request config
       const config: RequestInit = {
         method,
         headers,
+        credentials: 'include',
         ...(method !== 'GET' && body && {
           body: safeJsonStringify(body),
         }),
       };
 
-      // Execute request with timeout
       const data = await this.executeRequest<T>(url, config, timeout);
-
-      console.log('📥 API Response:', {
-        method,
-        status: 200,
-        path: path.replace(/https?:\/\/[^/]+/, ''),
-      });
 
       return data;
     } catch (error) {
       const err = error as any;
 
-      // Handle abort errors (timeout)
       if (err.name === 'AbortError') {
-        console.error('⏱️ API Request Timeout:', {
-          method,
-          url,
-          timeout,
-        });
         throw new Error(`Request timeout after ${timeout}ms`);
       }
-
-      // Handle API errors
-      if (err.status !== undefined) {
-        console.error('❌ API Error:', {
-          method,
-          url,
-          status: err.status,
-          statusText: err.statusText,
-          message: this.redactSecretsInLogs(err.message),
-        });
-        throw err;
-      }
-
-      // Handle other errors
-      console.error('💥 API Request Error:', {
-        method,
-        url,
-        error: this.redactSecretsInLogs(err.message || String(err)),
-      });
 
       throw error;
     }
   }
 
-  /**
-   * Convenience methods for common operations
-   */
   public get<T>(path: string, timeout?: number): Promise<T> {
     return this.request<T>(path, { method: 'GET', timeout });
   }
@@ -314,20 +138,13 @@ export class ApiClient {
     return this.request<T>(path, { method: 'DELETE', timeout });
   }
 
-  /**
-   * Get base URL (for external use if needed)
-   */
   public getBaseUrl(): string {
-    return this.baseUrl;
+    return this.resolveBaseUrl();
   }
 
-  /**
-   * Check if API is properly configured
-   */
   public isConfigured(): boolean {
-    return !!this.syncApiKey;
+    return true;
   }
 }
 
-// Export singleton instance
 export const apiClient = new ApiClient();

@@ -92,8 +92,8 @@ class DestinationSourceService {
       if (categoryId) params.append('category_id', categoryId.toString());
       const queryString = params.toString();
       const endpoint = queryString
-        ? `/api/v1/get_destination_name_usage?${queryString}`
-        : '/api/v1/get_destination_name_usage';
+        ? `/api/v1/read-model/destinations?${queryString}`
+        : '/api/v1/read-model/destinations';
 
       const data = await this.makeRequest<DestinationNameUsageResponse>(
         endpoint,
@@ -137,8 +137,8 @@ class DestinationSourceService {
       if (categoryId) params.append('category_id', categoryId.toString());
       const queryString = params.toString();
       const endpoint = queryString
-        ? `/api/v1/get_source_name_usage?${queryString}`
-        : '/api/v1/get_source_name_usage';
+        ? `/api/v1/read-model/sources?${queryString}`
+        : '/api/v1/read-model/sources';
 
       const data = await this.makeRequest<SourceNameUsageResponse>(
         endpoint,

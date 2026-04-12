@@ -245,9 +245,20 @@ export const dataLoadingOrchestratorActor = fromPromise<
 >(async ({ input }) => {
   const timeout = input?.timeout || ACTOR_TIMEOUTS.ORCHESTRATOR;
   const startTime = Date.now();
+  const isUnknown = input?.user_name === 'User' || input?.user_name === 'Guest' || !input?.user_name;
 
   try {
     logActorEvent('start', 'dataLoadingOrchestrator', { user_name: input?.user_name });
+
+    if (isUnknown) {
+      logActorEvent('success', 'dataLoadingOrchestrator', {
+        accounts: 0,
+        categories: 0,
+        transactions: 0,
+        totalTime: `${Date.now() - startTime}ms`,
+      });
+      return { accounts: [], categories: [], transactions: [] };
+    }
 
     // Step 1: Load accounts first (blocking step)
     const accountsResponse = await withTimeout(
@@ -260,7 +271,6 @@ export const dataLoadingOrchestratorActor = fromPromise<
     const accountsTime = Date.now() - startTime;
 
     // Step 2: Load categories and transactions in parallel
-    const isUnknown = input?.user_name === 'User' || input?.user_name === 'Guest';
     const remainingTimeout = Math.max(timeout - accountsTime, 5000);
     const [categoriesResponse, transactionsResponse] = await Promise.all([
       withTimeout(

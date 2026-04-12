@@ -1,22 +1,21 @@
-# Budget Mini App - Project Overview
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
 
 A Telegram Mini App for personal finance management with XState v5 state machines, real-time currency conversion, and Firefly III integration.
 
-**Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
-**Local Dev:** `npm run dev` → http://localhost:3000
+- **Production:** https://budgetbot-tg-mini-app.kayukov2010.workers.dev/
+- **Local Dev:** `npm run dev` → http://localhost:3000
 
-**Git Branch:** `chore/bug-31-eliminate-telegram-init` (bug fixes + test enhancements)
-
-## Quick Facts
-- **Language:** TypeScript 5
-- **Framework:** React 18 + Vite 5
-- **State:** XState v5 (11 actors with timeout protection)
-- **APIs:** Sync Service + Firefly III
-- **Deploy:** Cloudflare Pages
-- **Quality:** `npm run lint` + `npx tsc --noEmit`
-
-**Complete reference:** See `~/.claude/skills/telegram-mini-apps-skill/examples/budget-app-overview.md`
-**Testing guide:** See `~/.claude/skills/telegram-mini-apps-skill/examples/test-e2e.md`
+### Stack
+- **Language:** TypeScript 5.7
+- **Framework:** React 18.3 + Vite 5.4
+- **State Management:** XState v5 (11 actors with timeout protection)
+- **Backend APIs:** Sync Service + Firefly III
+- **Deployment:** Cloudflare Pages
+- **Testing:** Playwright (27 E2E tests, 100% passing)
 
 ## Latest Changes (v0.2.5)
 

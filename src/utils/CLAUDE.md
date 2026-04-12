@@ -34,11 +34,11 @@ fakeInitData.ts - Browser-mode Telegram data helpers.
     - generateFakeInitDataUnsafe "Returns parsed mock initData"
     - getInitData/getInitDataUnsafe "Retrieves stored fake payloads"
 
-fetchUserData.ts - User profile fetcher via Sync API.
-    - fetchUserData "Returns name/bio/avatar using initData auth"
+fetchUserData.ts - Session-backed user profile fetcher via Sync API.
+    - fetchUserData "Returns name/bio/avatar from the authenticated session"
 
-fetchUserPhoto.ts - Legacy user photo fetcher.
-    - fetchUserData "Fetches basic user info by id"
+fetchUserPhoto.ts - Session-backed user photo helper.
+    - fetchUserPhoto "Fetches authenticated user photo/profile data"
 
 formatCurrency.ts - Intl-based currency formatter.
     - formatCurrency "Formats amount with code"

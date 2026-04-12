@@ -126,9 +126,9 @@ Visit http://localhost:3000 directly to test UI without Telegram integration.
 ### Telegram Testing
 
 1. Open your bot in Telegram
-2. Click the menu button
-3. Select "Budget Manager"
-4. Mini App opens with your real Telegram profile
+2. Send `/login`
+3. Copy the short-lived code
+4. Paste the code into the web app
 
 ## API Integration
 
@@ -141,8 +141,6 @@ The app connects to:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `VITE_TELEGRAM_BOT_TOKEN` | Your Telegram bot token | `123456:ABC-DEF...` |
-| `VITE_TELEGRAM_BOT_USERNAME` | Your bot username | `mybudgetbot` |
 | `VITE_API_BASE_URL` | Sync service URL | `http://sync-service:8001` |
 | `VITE_FIREFLY_BASE_URL` | Firefly III URL | `http://firefly-app:8080` |
 

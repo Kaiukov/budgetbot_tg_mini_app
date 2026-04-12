@@ -2,19 +2,13 @@ import { useEffect } from 'react';
 import telegramService from '../services/telegram';
 
 /**
- * Browser-only back button for development/debugging
- * Only renders when in browser debug mode (VITE_WEB_APP_MODE=browser)
- *
- * This component duplicates the functionality of Telegram's built-in back button:
- * - Shows on all screens except home
- * - Calls the provided onBack callback when clicked
- * - Supports Escape key for back navigation
+ * Browser-only back button for standalone PWA mode.
+ * Shows when NOT inside Telegram (standalone browser / PWA).
+ * Inside Telegram, the native back button is used instead.
  */
 export const BrowserBackButton = ({ onBack, isHome }: { onBack?: () => void, isHome?: boolean }) => {
-  // Only show if in browser debug mode
-  const isBrowserMode = telegramService.isBrowserMode();
-
-  if (!isBrowserMode) {
+  // Only show if NOT inside Telegram
+  if (telegramService.isAvailable()) {
     return null;
   }
 
@@ -24,15 +18,12 @@ export const BrowserBackButton = ({ onBack, isHome }: { onBack?: () => void, isH
   }
 
   const handleBack = () => {
-    console.log('🔙 Browser back button clicked');
     onBack?.();
   };
 
-  // Support Escape key for back navigation (matches Telegram back button behavior)
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isHome) {
-        console.log('⌨️ Escape key pressed - navigating back');
         handleBack();
       }
     };

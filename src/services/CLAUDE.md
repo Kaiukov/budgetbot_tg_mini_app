@@ -24,19 +24,19 @@ sync/gateway.ts - Thin orchestrator over domain modules.
     - checkHealth "Ping Sync API connectivity"
     - needsCurrencyConversion "Boolean helper for FX requirement"
 
-sync/apiClient.ts - HTTP client with Tier-2 auth support.
+sync/apiClient.ts - HTTP client with session-cookie auth support.
     - request "Generic fetch wrapper with timeout + auth tier"
     - get "GET convenience wrapper"
     - post "POST JSON helper"
     - put "PUT JSON helper"
     - delete "DELETE helper"
-    - isConfigured "Checks base URL and keys exist"
+    - isConfigured "Checks the API path is available"
 
-sync/auth.ts - Tier-2 authentication utilities.
-    - getTier2Headers "Builds X-Anonymous-Key + X-Telegram-Init-Data headers"
-    - isAuthenticated "Confirms required auth inputs are present"
-    - getAuthConfig "Returns current key/initData pair"
-    - isValidTier2Headers "Validates inbound header set"
+sync/auth.ts - Cookie-session authentication utilities.
+    - redeemLoginCode "Redeems a Telegram-issued code and establishes session"
+    - getCurrentUser "Fetches current session user"
+    - logout "Clears the active session cookie"
+    - isAuthenticated "Confirms session presence through /auth/me"
     - logAuthState "Debug logger for auth configuration"
 
 sync/cache.ts - Cache factory and FX cache utilities.

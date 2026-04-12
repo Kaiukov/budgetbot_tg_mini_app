@@ -61,7 +61,7 @@ export async function getExchangeRate(
     console.log('💱 Fetching exchange rate from API:', { from: normalizedFrom, to: normalizedTo, amount });
 
     const response = await apiClient.request<ExchangeRateResponse>(
-      `/api/v1/exchange_rate?from=${normalizedFrom}&to=${normalizedTo}&amount=${amount}`,
+      `/api/v1/exchange-rate?from=${normalizedFrom}&to=${normalizedTo}&amount=${amount}`,
       {
         method: 'GET',
         auth: 'tier2'
@@ -128,7 +128,7 @@ export async function getExchangeRateOnly(
 
     // Fetch from API (amount=1 to get direct rate)
     const response = await apiClient.request<ExchangeRateResponse>(
-      `/api/v1/exchange_rate?from=${normalizedFrom}&to=${normalizedTo}&amount=1`,
+      `/api/v1/exchange-rate?from=${normalizedFrom}&to=${normalizedTo}&amount=1`,
       {
         method: 'GET',
         auth: 'tier2'

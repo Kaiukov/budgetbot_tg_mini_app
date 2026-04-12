@@ -12,6 +12,7 @@ interface HomeScreenProps {
   userInitials: string;
   userBio: string;
   isAvailable: boolean;
+  onLogout: () => void;
   onNavigate: (screen: string) => void;
 }
 
@@ -29,6 +30,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   userInitials,
   userBio,
   isAvailable,
+  onLogout,
   onNavigate
 }) => {
   const [latestTransactions, setLatestTransactions] = useState<DisplayTransaction[]>([]);
@@ -85,6 +87,16 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="min-h-screen text-white">
       <div className="flex flex-col items-center pt-8 pb-6 px-4">
+        <div className="w-full flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-xs text-slate-300 transition hover:border-slate-500 hover:text-white"
+          >
+            Logout
+          </button>
+        </div>
+
         {/* User Avatar */}
         <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mb-3 shadow-lg shadow-amber-500/30">
           {userPhotoUrl ? (
@@ -103,7 +115,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           {userFullName}
         </h1>
         <p className="text-xs text-gray-400 text-center px-4 mt-1">
-          {isAvailable ? userBio : 'Browser Mode - Limited Features'}
+          {userBio}
         </p>
       </div>
 

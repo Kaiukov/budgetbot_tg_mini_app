@@ -1,7 +1,44 @@
 name = "budgetbot-tg-mini-app"
 compatibility_date = "2025-10-25"
+pages_build_output_dir = "dist"
 
-# Configuration for static assets (Vite build output)
-# Using modern Wrangler 4.x syntax
-[assets]
-directory = "./dist"
+# ============================================================
+# CLOUDFLARE PAGES ENVIRONMENT VARIABLES
+# ============================================================
+# Required environment variables (set via dashboard or wrangler secret):
+#
+#   BACKEND_URL
+#     Full URL of the backend nginx entry point.
+#     The Pages middleware proxies /api/* requests to this host.
+#     Example: https://dev-1.neon-chuckwalla.ts.net
+#
+#     Set via: Pages → Settings → Environment variables → BACKEND_URL
+#     Or: wrangler pages secret put BACKEND_URL
+#
+#   SESSION_COOKIE_NAME (optional, defaults to __Host-session)
+#     Name of the session cookie that the backend sets.
+#     Only change if your backend uses a different cookie name.
+#
+# ============================================================
+# COOKIE BRIDGING ARCHITECTURE
+# ============================================================
+# The frontend (workers.dev) and backend (ts.net) are on different origins.
+# Browsers won't accept cookies from cross-origin responses.
+#
+# Solution: The middleware implements "cookie bridging":
+# 1. Extracts session token from backend's Set-Cookie header
+# 2. Issues a new cookie for the workers.dev domain
+# 3. On subsequent requests, extracts the bridged cookie and forwards
+#    it to the backend as the original __Host-session cookie
+#
+# This maintains security while working around browser cross-origin restrictions.
+#
+# Cookie names:
+#   Backend: __Host-session (HttpOnly, Secure, SameSite=Lax)
+#   Frontend: session (HttpOnly, Secure, SameSite=Lax)
+#
+# SECURITY NOTES:
+# - Do NOT put VITE_TELEGRAM_BOT_TOKEN, VITE_SYNC_API_KEY, or any
+#   auth secrets in Cloudflare Pages build environment variables.
+# - They would be bundled into static assets and exposed to all browsers.
+# - All auth is now handled via cookie sessions managed by the backend.

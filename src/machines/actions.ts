@@ -15,6 +15,7 @@ import { initialTransactionForm as transactionFormDefault, initialTransferForm a
 import { extractBudgetName } from '../services/sync/utils';
 import { needsConversion, normalizeCurrency } from '../utils/currency';
 import { buildTransferNotesFromContext } from '../utils/transferNotes';
+import { isBrowserModeUser } from '../utils/user';
 import { createResourceActions } from './helpers/actionFactory';
 import type { AccountUsage, CategoryUsage } from '../services/sync';
 import type { DisplayTransaction } from '../types/transaction';
@@ -444,7 +445,7 @@ export const guards = {
   },
 
   isUnknownUser: (context: BudgetMachineContext) => {
-    return context.user.user_name === 'User' || context.user.user_name === 'Guest';
+    return isBrowserModeUser(context.user.user_name);
   },
 };
 

@@ -80,15 +80,14 @@ export const BudgetMachineProvider: React.FC<BudgetMachineProviderProps> = ({ ch
     }
   }, [state]);
 
-  // Add state persistence
+  // Add state persistence (no auth secrets — session is in HttpOnly cookie)
   useEffect(() => {
     try {
       const machineState = {
         state: state.value,
         context: {
-          // Only persist safe data, skip sensitive info
+          // Persist UI state only — no auth tokens or secrets
           user: state.context.user,
-          // Don't persist form data during entry
           transaction: state.context.transaction.amount
             ? state.context.transaction
             : { account: '', amount: '', category: '', notes: '', account_id: '', account_currency: '', user_id: undefined, user_name: '', amount_eur: '', conversionAmount: null, isLoadingConversion: false, suggestions: [], isLoadingSuggestions: false, suggestionsError: null, isSubmitting: false, submitMessage: null },

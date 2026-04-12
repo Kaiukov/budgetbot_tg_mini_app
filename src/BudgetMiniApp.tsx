@@ -20,7 +20,9 @@ import TransactionsListScreen from './components/TransactionsListScreen';
 import TransactionDetailScreen from './components/TransactionDetailScreen';
 import TransactionEditScreen from './components/TransactionEditScreen';
 import BrowserBackButton from './components/BrowserBackButton';
+import LoginScreen from './components/LoginScreen';
 import type { DisplayTransaction, TransactionData as APITransactionData } from './types/transaction';
+import { authService } from './services/sync/auth';
 
 const enableDebugLogs = import.meta.env.VITE_ENABLE_DEBUG_LOGS === 'true';
 
@@ -85,7 +87,9 @@ const BudgetMiniApp = () => {
   // Get Telegram user data from machine context
   const user = machineContext.context.user;
   const { user_name, fullName: userFullName, photoUrl: userPhotoUrl, initials: userInitials, bio: userBio } = user;
-  const isAvailable = telegramService.isAvailable();
+  const isTelegramRuntime = telegramService.isAvailable();
+  const isAuthenticated = user.id > 0;
+  const isAvailable = isAuthenticated;
 
   // Screen derivations from machine state
   const isHomeScreen = machineContext.state.matches({ ready: 'home' });
@@ -269,10 +273,10 @@ const BudgetMiniApp = () => {
         service.name === 'Telegram Bot'
           ? {
               ...service,
-              status: isAvailable ? 'connected' : 'disconnected',
-              message: isAvailable
+              status: isTelegramRuntime ? 'connected' : 'disconnected',
+              message: isTelegramRuntime
                 ? 'Connected to Telegram Mini App'
-                : 'Not running in Telegram environment'
+                : 'Running as standalone browser PWA'
             }
           : service
       ));
@@ -516,6 +520,34 @@ const BudgetMiniApp = () => {
     return () => machineContext.send({ type: 'NAVIGATE_HOME' });
   };
 
+  const handleLogout = async () => {
+    await authService.logout();
+    localStorage.removeItem('budget-machine-state');
+    sessionStorage.removeItem('selectedTransactionId');
+    window.location.reload();
+  };
+
+  if (machineContext.state.matches('loading')) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-400">
+        Loading session...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onLoginSuccess={() => {
+          window.location.reload();
+        }}
+        onLoginError={(message) => {
+          window.alert(message);
+        }}
+      />
+    );
+  }
+
   return (
     <div
       className="relative max-w-md mx-auto min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950/30 to-indigo-950"
@@ -538,6 +570,7 @@ const BudgetMiniApp = () => {
           userInitials={userInitials}
           userBio={userBio}
           isAvailable={isAvailable}
+          onLogout={handleLogout}
           onNavigate={handleNavigate}
         />
       )}

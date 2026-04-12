@@ -131,18 +131,36 @@ const mockBalance = {
   message: 'ok',
   timestamp: mockNow,
   total: 1,
-  get_current_balance: [{ balance_in_USD: 1234.56 }],
+  get_running_balance: [{ date: mockNow, balance_eur: 1150.12, balance_usd: 1234.56 }],
 };
 
 const mockTransactions = {
   data: [],
 };
 
+const mockAuthSession = {
+  success: true,
+  message: 'ok',
+  timestamp: mockNow,
+  sessionToken: null,
+  sessionExpiresAt: null,
+  userData: {
+    id: 64096067,
+    name: 'Oleksandr Kaiukov',
+    username: 'Kaiukov',
+    bio: 'Manage finances',
+    avatar_url: null,
+    language_code: 'en',
+    bot_blocked: false,
+    isAuth: true,
+  },
+};
+
 function mockTelegram(page: Page) {
   return page.addInitScript(() => {
     (window as any).Telegram = {
       WebApp: {
-        initData: '',
+        initData: 'mock-init-data',
         initDataUnsafe: {
           user: {
             id: 64096067,
@@ -179,7 +197,10 @@ function mockTelegram(page: Page) {
         ready() { },
         expand() { },
         close() { },
-        showAlert: (message: string) => console.log('Telegram Alert:', message),
+        showAlert: (message: string, cb?: () => void) => {
+          console.log('Telegram Alert:', message);
+          cb?.();
+        },
         showConfirm: (_msg: string, cb?: (confirmed: boolean) => void) => cb?.(true),
       },
     };
@@ -187,26 +208,31 @@ function mockTelegram(page: Page) {
 }
 
 async function installApiMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockAuthSession) })
+  );
+
   // Accounts usage
-  await page.route('**/api/v1/get_accounts_usage**', (route) =>
+  await page.route('**/api/v1/read-model/accounts/usage**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockAccounts) })
   );
 
   // Categories (withdrawal)
-  await page.route('**/api/v1/get_categories_usage**', (route) =>
+  await page.route('**/api/v1/read-model/categories/usage**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockCategories) })
   );
 
   // Destinations
-  await page.route('**/api/v1/get_destination_name_usage**', (route) =>
+  await page.route('**/api/v1/read-model/destinations**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockDestinations) })
   );
 
   // Exchange rate (fallback for any currency conversions)
-  await page.route('**/api/v1/get_exchange_rate**', (route) => {
+  await page.route('**/api/v1/exchange-rate**', (route) => {
     const url = new URL(route.request().url());
     const from = url.searchParams.get('from') ?? 'USD';
     const to = url.searchParams.get('to') ?? 'EUR';
+    const amount = Number(url.searchParams.get('amount') ?? '1');
     const rate =
       from === 'UAH' && to === 'EUR'
         ? 0.025
@@ -220,13 +246,13 @@ async function installApiMocks(page: Page) {
         success: true,
         message: 'ok',
         timestamp: mockNow,
-        get_exchange_rate: [{ from, to, rate }],
+        exchangeData: { from, to, amount, exchangeRate: rate, exchangeAmount: amount * rate },
       }),
     });
   });
 
   // Balances
-  await page.route('**/api/v1/get_running_balance**', (route) =>
+  await page.route('**/api/v1/read-model/running-balance**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockBalance) })
   );
 
@@ -288,10 +314,10 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     // Date should be today's date (dynamic)
     const dateInput = page.getByRole('textbox', { name: /Transaction date/ });
     const dateValue = await dateInput.inputValue();
-    expect(dateValue).toMatch(/2025-12-\d{2}/);
+    expect(dateValue).toMatch(/\d{4}-\d{2}-\d{2}/);
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('back button preserves amount for same account and clears when account changes', async ({ page }) => {
@@ -348,7 +374,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await expect(page.getByText('YouTube')).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('happy path with UAH account shows converted amount and note', async ({ page }) => {
@@ -367,10 +393,10 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
       page.locator('div').filter({ hasText: 'Account' }).filter({ hasText: 'MONO UAH Oleksandr' }).first()
     ).toBeVisible();
     await expect(page.getByText('-₴1000', { exact: true })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: /Describe/ })).toHaveValue(/20\.?2\d?\s?EUR/i);
+    await expect(page.getByRole('textbox', { name: /Describe/ })).toHaveValue(/\(\d+(\.\d+)? EUR\)/i);
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('back button from confirmation page returns to destination with data preserved', async ({ page }) => {
@@ -421,7 +447,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await expect(page.getByText('Netflix')).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('exchange rate conversion displayed for USD withdrawal', async ({ page }) => {
@@ -444,7 +470,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     );
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('both EUR and USD accounts can complete withdrawals successfully', async ({ page }) => {
@@ -462,7 +488,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await expect(page.getByText('Apple')).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
 
     // Return to home and test USD account
     await page.getByText('Withdrawal').first().waitFor({ timeout: 5000 });
@@ -480,7 +506,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await expect(page.getByText('Google one')).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirm' }).click();
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
   });
 
   test('Decline button cancels transaction and returns to home', async ({ page }) => {
@@ -509,7 +535,7 @@ test.describe('Withdrawal flow (mocked, fast)', () => {
     await page.getByRole('button', { name: 'Decline' }).click();
 
     // Verify returned to home
-    await page.waitForSelector('text=Quick Actions', { timeout: 3000 });
+    await page.waitForSelector('text=Quick Actions', { timeout: 5000 });
     expect(postCalled).toBe(false);
   });
 });

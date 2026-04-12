@@ -57,7 +57,7 @@ class CategoriesService {
 
   /**
    * Make API request using unified ApiClient with Tier 2 auth
-   * Tier 2: Anonymous Authorized (X-Anonymous-Key + X-Telegram-Init-Data)
+   * Tier 2: Anonymous Authorized (session token after bootstrap)
    */
   private async makeRequest<T>(
     endpoint: string,
@@ -106,8 +106,8 @@ class CategoriesService {
       if (type) params.append('type', type);
       const queryString = params.toString();
       const endpoint = queryString
-        ? `/api/v1/get_categories_usage?${queryString}`
-        : '/api/v1/get_categories_usage';
+        ? `/api/v1/read-model/categories/usage?${queryString}`
+        : '/api/v1/read-model/categories/usage';
 
       const data = await this.makeRequest<CategoriesUsageResponse>(
         endpoint,
